@@ -7,7 +7,11 @@
     "textScale",
     "textScaleByDisplay",
     "soundMuted",
+    "soundRepeatOnComplete",
+    "soundRepeatIntervalMs",
+    "soundRepeatDurationMs",
     "flashTaskbarOnComplete",
+    "flashEffect",
     "flashIntervalMs",
     "flashDurationMs",
     "testReactionsEnabled",
@@ -66,7 +70,9 @@
     "codexWorkingStaleMs",
     "detachedIdleStaleMs",
   ]);
-  const FLASH_NUMBER_KEYS = new Set([
+  const COMPLETION_ALERT_NUMBER_KEYS = new Set([
+    "soundRepeatIntervalMs",
+    "soundRepeatDurationMs",
     "flashIntervalMs",
     "flashDurationMs",
   ]);
@@ -1279,6 +1285,35 @@
       children: [buildOptionList("sound-option-list", [
         buildSoundEnabledRow(summaryControl),
         buildVolumeSliderRow(),
+        helpers.buildSwitchRow({
+          key: "soundRepeatOnComplete",
+          labelKey: "rowSoundRepeatOnComplete",
+          descKey: "rowSoundRepeatOnCompleteDesc",
+        }),
+        helpers.buildNumberInputRow({
+          key: "soundRepeatIntervalMs",
+          labelKey: "rowSoundRepeatInterval",
+          descKey: "rowSoundRepeatIntervalDesc",
+          unitKey: "unitMilliseconds",
+          toDisplay: (ms) => ms,
+          fromDisplay: (v) => Math.max(1000, Math.min(60000, Math.round(v))),
+          min: 1000,
+          max: 60000,
+        }).row,
+        helpers.buildNumberInputRow({
+          key: "soundRepeatDurationMs",
+          labelKey: "rowSoundRepeatDuration",
+          descKey: "rowSoundRepeatDurationDesc",
+          unitKey: "unitMilliseconds",
+          toDisplay: (ms) => ms,
+          fromDisplay: (v) => {
+            const n = parseInt(v, 10);
+            return Number.isFinite(n) ? Math.max(0, Math.min(600000, Math.round(n))) : 0;
+          },
+          min: 0,
+          max: 600000,
+          zeroLabelKey: "valueAlways",
+        }).row,
       ])],
     });
   }
@@ -1296,6 +1331,7 @@
           labelKey: "rowFlashTaskbarOnComplete",
           descKey: "rowFlashTaskbarOnCompleteDesc",
         }),
+        buildFlashEffectRow(),
         helpers.buildNumberInputRow({
           key: "flashIntervalMs",
           labelKey: "rowFlashInterval",
@@ -1322,6 +1358,54 @@
         }).row,
       ])],
     });
+  }
+
+  function buildFlashEffectRow() {
+    const row = document.createElement("div");
+    row.className = "row flash-effect-row";
+
+    const text = document.createElement("div");
+    text.className = "row-text";
+    const label = document.createElement("span");
+    label.className = "row-label";
+    label.textContent = t("rowFlashEffect");
+    const desc = document.createElement("span");
+    desc.className = "row-desc";
+    desc.textContent = t("rowFlashEffectDesc");
+    text.append(label, desc);
+
+    const controlWrap = document.createElement("div");
+    controlWrap.className = "row-control";
+    const control = helpers.buildSegmentedRadio({
+      value: (state.snapshot && state.snapshot.flashEffect) || "default",
+      ariaLabel: t("rowFlashEffect"),
+      className: "flash-effect-choice",
+      options: [
+        { value: "default", label: t("flashEffectDefault") },
+        { value: "rainbow", label: t("flashEffectRainbow") },
+      ],
+      onChange: (next) => {
+        if (!window.settingsAPI || typeof window.settingsAPI.update !== "function") {
+          ops.showToast(t("toastSaveFailed") + "settings API unavailable", { error: true });
+          return false;
+        }
+        return Promise.resolve()
+          .then(() => window.settingsAPI.update("flashEffect", next))
+          .then((result) => {
+            if (result && result.status === "ok") return true;
+            ops.showToast(t("toastSaveFailed") + ((result && result.message) || "unknown error"), { error: true });
+            return false;
+          })
+          .catch((err) => {
+            ops.showToast(t("toastSaveFailed") + (err && err.message), { error: true });
+            return false;
+          });
+      },
+    });
+    controlWrap.appendChild(control.element);
+    row.append(text, controlWrap);
+    state.mountedControls.flashEffect = control;
+    return row;
   }
 
   function buildSoundEnabledRow(summaryControl) {
@@ -2478,6 +2562,10 @@
       const control = state.mountedControls.quotaRingDisplayMode;
       if (!control || !document.body.contains(control.element)) return false;
     }
+    if (keys.includes("flashEffect")) {
+      const control = state.mountedControls.flashEffect;
+      if (!control || !document.body.contains(control.element)) return false;
+    }
     if (keys.includes("permissionAutomationMode")) {
       const control = state.mountedControls.permissionAutomationMode;
       if (!control || !document.body.contains(control.element)) return false;
@@ -2497,16 +2585,16 @@
         if (!meta || !document.body.contains(meta.row)) return false;
       }
     }
-    if (keys.some((key) => FLASH_NUMBER_KEYS.has(key))) {
+    if (keys.some((key) => COMPLETION_ALERT_NUMBER_KEYS.has(key))) {
       for (const key of keys) {
-        if (!FLASH_NUMBER_KEYS.has(key)) continue;
+        if (!COMPLETION_ALERT_NUMBER_KEYS.has(key)) continue;
         const meta = state.mountedControls.sessionCleanupControls.get(key);
         if (!meta || !document.body.contains(meta.row)) return false;
       }
     }
     for (const key of keys) {
       if (key === "size" || key === "soundVolume" || key === "textScale" || key === "textScaleByDisplay") continue;
-      if (key === "quotaRingDisplayMode") continue;
+      if (key === "quotaRingDisplayMode" || key === "flashEffect") continue;
       if (key === "permissionAutomationMode"
         || key === "permissionAutomationAutoToolsWarningDismissed"
         || key === "permissionAutomationUnattendedWarningDismissed") continue;
@@ -2517,7 +2605,7 @@
       }
       if (BUBBLE_PLACEMENT_KEYS.has(key)) continue;
       if (SESSION_CLEANUP_NUMBER_KEYS.has(key)) continue;
-      if (FLASH_NUMBER_KEYS.has(key)) continue;
+      if (COMPLETION_ALERT_NUMBER_KEYS.has(key)) continue;
       if (key === "roamConstrainAxis") continue;
       const meta = state.mountedControls.generalSwitches.get(key);
       if (!meta || !document.body.contains(meta.element)) return false;
@@ -2527,6 +2615,12 @@
       if (key === "quotaRingDisplayMode") {
         state.mountedControls.quotaRingDisplayMode.setValue(
           state.snapshot && state.snapshot.quotaRingDisplayMode
+        );
+        continue;
+      }
+      if (key === "flashEffect") {
+        state.mountedControls.flashEffect.setValue(
+          (state.snapshot && state.snapshot.flashEffect) || "default"
         );
         continue;
       }
@@ -2553,7 +2647,7 @@
         state.mountedControls.sessionCleanupControls.get(key).syncFromSnapshot();
         continue;
       }
-      if (FLASH_NUMBER_KEYS.has(key)) {
+      if (COMPLETION_ALERT_NUMBER_KEYS.has(key)) {
         state.mountedControls.sessionCleanupControls.get(key).syncFromSnapshot();
         continue;
       }

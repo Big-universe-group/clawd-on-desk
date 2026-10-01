@@ -227,6 +227,8 @@ Mini 状态映射：
 - `main.js` 里的 `playSound(name)` 会检查 `soundMuted`、`doNotDisturb` 和 cooldown
 - `renderer.js` 用 `_audioCache` 缓存 `Audio` 对象
 - `attention/mini-happy` 播放 complete，`notification/mini-alert` 播放 confirm
+- `soundRepeatOnComplete` 打开时，`attention/mini-happy` 还会调用 `startCompleteSoundRepeat()`：按 `soundRepeatIntervalMs` 重复 complete（绕过 cooldown），`soundRepeatDurationMs` 到期停止（0 = 一直播放）；每次 tick 复查 `soundMuted` / DND / 开关，托盘点击与托盘闪烁共用 `dismissCompletionAlerts()` 一起停止。新的完成事件会重启计时
+- 托盘完成闪烁的 `flashEffect`：`default` 在普通图标与完成标记之间切换；`rainbow` 由 `tray-flash-icon.js` 的 `buildTrayRainbowFrames()` 从普通托盘图标生成 6 帧色相图（macOS Template 按剪影整体填色、Windows/Linux 只改饱和像素色相），按 `flashIntervalMs` 轮换；生成失败回退到 `default`
 
 ### Eye Tracking
 

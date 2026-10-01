@@ -1,7 +1,12 @@
 const test = require("node:test");
 const assert = require("node:assert");
 
-const { loadTrayNormalIcon, loadTrayFlashIcon } = require("../src/tray-flash-icon");
+const {
+  loadTrayNormalIcon,
+  loadTrayFlashIcon,
+  buildTrayRainbowFrames,
+  recolorBitmap,
+} = require("../src/tray-flash-icon");
 
 // Minimal nativeImage stand-in: records what was asked of it so the tests can
 // assert on the sizing decisions rather than on real pixels.
@@ -92,5 +97,55 @@ test("missing or unreadable flash asset yields no highlight icon", () => {
   assert.strictEqual(
     loadTrayFlashIcon({ nativeImage: emptyImage, platform: "darwin", ...PATHS, fileExists: () => true }),
     null
+  );
+});
+
+// Bitmaps are premultiplied BGRA, matching Electron's toBitmap()/createFromBitmap().
+test("silhouette recolor fills visible pixels with the hue and keeps premultiplied alpha", () => {
+  const bitmap = Buffer.from([
+    0, 0, 0, 0,     // transparent
+    0, 0, 0, 255,   // opaque black template glyph
+    0, 0, 0, 128,   // half-alpha black edge
+  ]);
+  const out = recolorBitmap(bitmap, 0, { silhouette: true });
+
+  assert.deepStrictEqual([...out.subarray(0, 4)], [0, 0, 0, 0]);
+  const [b, g, r, a] = out.subarray(4, 8);
+  assert.strictEqual(a, 255);
+  assert.ok(r > 200 && g < 60 && b < 60, `expected red, got r=${r} g=${g} b=${b}`);
+  const edge = out.subarray(8, 12);
+  assert.strictEqual(edge[3], 128);
+  assert.ok(edge[0] <= 128 && edge[1] <= 128 && edge[2] <= 128, "channels must stay premultiplied");
+  assert.ok(edge[2] > 100, "edge keeps the hue");
+  assert.deepStrictEqual([...bitmap.subarray(4, 8)], [0, 0, 0, 255], "source bitmap is not mutated");
+});
+
+test("hue recolor shifts saturated pixels and keeps greys (eyes) intact", () => {
+  const bitmap = Buffer.from([
+    40, 120, 230, 255, // orange body (B,G,R)
+    20, 20, 20, 255,   // near-black eye
+  ]);
+  const out = recolorBitmap(bitmap, 240, { silhouette: false });
+
+  const [b, g, r] = out.subarray(0, 3);
+  assert.ok(b > r && b > g, `expected blue-dominant, got r=${r} g=${g} b=${b}`);
+  assert.deepStrictEqual([...out.subarray(4, 8)], [20, 20, 20, 255]);
+});
+
+test("rainbow frames are empty when the base icon cannot be read, so callers fall back", () => {
+  const nativeImage = { createFromBitmap() { throw new Error("must not be called"); } };
+  assert.deepStrictEqual(
+    buildTrayRainbowFrames({ nativeImage, baseIcon: { isEmpty: () => true }, platform: "win32" }),
+    []
+  );
+  const mismatched = {
+    isEmpty: () => false,
+    getScaleFactors: () => [1],
+    getSize: () => ({ width: 32, height: 32 }),
+    toBitmap: () => Buffer.alloc(16),
+  };
+  assert.deepStrictEqual(
+    buildTrayRainbowFrames({ nativeImage, baseIcon: mismatched, platform: "win32" }),
+    []
   );
 });

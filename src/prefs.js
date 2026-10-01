@@ -293,7 +293,23 @@ const SCHEMA = {
     default: 1,
     validate: (v) => Number.isFinite(v) && v >= 0 && v <= 1,
   },
+  // Repeat the "complete" chime after a task finishes until the duration
+  // elapses (0 = until dismissed via tray click, mute, or DND).
+  soundRepeatOnComplete: { type: "boolean", default: false },
+  soundRepeatIntervalMs: {
+    type: "number",
+    default: 3000,
+    validate: (v) => Number.isInteger(v) && v >= 1000 && v <= 60000,
+  },
+  soundRepeatDurationMs: {
+    type: "number",
+    default: 30000,
+    validate: (v) => Number.isInteger(v) && v >= 0 && v <= 600000,
+  },
   flashTaskbarOnComplete: { type: "boolean", default: true },
+  // "default" toggles the completion mark; "rainbow" cycles the whole tray
+  // icon through hue-shifted frames.
+  flashEffect: { type: "string", default: "default", enum: ["default", "rainbow"] },
   flashIntervalMs: {
     type: "number",
     default: 500,

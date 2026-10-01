@@ -787,6 +787,7 @@ function applyState(state, svgOverride, options = {}) {
   if (!applyOptions.muteStateSounds) {
     if (state === "attention" || state === "mini-happy") {
       ctx.playSound("complete");
+      if (ctx.startCompleteSoundRepeat) ctx.startCompleteSoundRepeat();
       if (ctx.flashTaskbar) ctx.flashTaskbar();
     } else if (state === "notification" || state === "mini-alert") {
       if (!applyOptions.muteNotificationSound) ctx.playSound("confirm");

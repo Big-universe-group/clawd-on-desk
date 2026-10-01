@@ -327,7 +327,11 @@ const updateRegistry = {
     }
     return { status: "ok" };
   },
+  soundRepeatOnComplete: requireBoolean("soundRepeatOnComplete"),
+  soundRepeatIntervalMs: requireNumberInRange("soundRepeatIntervalMs", 1000, 60000),
+  soundRepeatDurationMs: requireNumberInRange("soundRepeatDurationMs", 0, 600000),
   flashTaskbarOnComplete: requireBoolean("flashTaskbarOnComplete"),
+  flashEffect: requireEnum("flashEffect", ["default", "rainbow"]),
   flashIntervalMs: requireNumberInRange("flashIntervalMs", 200, 2000),
   flashDurationMs: requireNumberInRange("flashDurationMs", 0, 60000),
   testReactionsEnabled: requireBoolean("testReactionsEnabled"),

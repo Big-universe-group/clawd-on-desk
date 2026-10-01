@@ -100,6 +100,7 @@
       segmentedRadios: new Set(),
       disposableScopes: new Map(),
       quotaRingDisplayMode: null,
+      flashEffect: null,
       permissionAutomationMode: null,
       aboutAutoUpdate: null,
       aboutUpdateStatus: null,
@@ -1497,6 +1498,7 @@
     state.mountedControls.roamMovementStyle = null;
     state.mountedControls.bubblePlacement = null;
     state.mountedControls.quotaRingDisplayMode = null;
+    state.mountedControls.flashEffect = null;
     state.mountedControls.permissionAutomationMode = null;
     state.mountedControls.roamArea = null;
     state.mountedControls.aboutAutoUpdate = null;

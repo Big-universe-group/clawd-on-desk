@@ -171,7 +171,7 @@ const {
 } = require("./size-utils");
 const { formatSizeKey } = require("./settings-size-slider");
 const { keepOutOfTaskbar } = require("./taskbar");
-const { loadTrayNormalIcon, loadTrayFlashIcon } = require("./tray-flash-icon");
+const { loadTrayNormalIcon, loadTrayFlashIcon, buildTrayRainbowFrames } = require("./tray-flash-icon");
 const {
   installStartupDockIcon,
   resolveRuntimeDockIconPolicy,
@@ -1210,6 +1210,10 @@ let trayFlashTimer = null;
 let trayFlashStopTimer = null;
 let trayFlashNormalIcon = null;
 let trayFlashHighlightIcon = null;
+let trayRainbowFrames = null;
+// Repeating "complete" chime state
+let completeSoundRepeatTimer = null;
+let completeSoundRepeatStopTimer = null;
 let tray = null;
 let contextMenuOwner = null;
 // Mirror of _settingsController.get("size") — initialized from disk, kept in
@@ -1785,6 +1789,68 @@ function resetSoundCooldown() {
   lastSoundTime = 0;
 }
 
+function stopCompleteSoundRepeat() {
+  if (completeSoundRepeatTimer) {
+    clearInterval(completeSoundRepeatTimer);
+    completeSoundRepeatTimer = null;
+  }
+  if (completeSoundRepeatStopTimer) {
+    clearTimeout(completeSoundRepeatStopTimer);
+    completeSoundRepeatStopTimer = null;
+  }
+}
+
+function canRepeatCompleteSound() {
+  return !soundMuted && !doNotDisturb && _settingsController.get("soundRepeatOnComplete") === true;
+}
+
+// Keeps replaying the "complete" chime after a task finishes. The first chime
+// is the regular playSound("complete"); repeats bypass its cooldown. Mute, DND
+// and turning the option off are re-checked every tick so they stop it.
+function startCompleteSoundRepeat() {
+  stopCompleteSoundRepeat();
+  if (!canRepeatCompleteSound()) return;
+  if (!themeRuntime.getSoundUrl("complete")) return;
+
+  const intervalMs = _settingsController.get("soundRepeatIntervalMs") || 3000;
+  const durationMs = _settingsController.get("soundRepeatDurationMs");
+  // durationMs defaults to 30000; 0 means repeat until dismissed
+
+  completeSoundRepeatTimer = setInterval(() => {
+    const url = canRepeatCompleteSound() ? themeRuntime.getSoundUrl("complete") : null;
+    if (!url) {
+      stopCompleteSoundRepeat();
+      return;
+    }
+    lastSoundTime = Date.now();
+    sendToRenderer("play-sound", { url, volume: soundVolume });
+  }, intervalMs);
+
+  if (durationMs !== 0) {
+    completeSoundRepeatStopTimer = setTimeout(() => {
+      stopCompleteSoundRepeat();
+    }, durationMs || 30000);
+  }
+
+  armTrayAlertDismiss();
+}
+
+function dismissCompletionAlerts() {
+  stopTrayFlash();
+  stopCompleteSoundRepeat();
+}
+
+// A tray click dismisses both the flash and the repeating chime.
+function armTrayAlertDismiss() {
+  const tray = _menu.getTray ? _menu.getTray() : null;
+  if (!tray) return;
+  tray.removeAllListeners("click");
+  tray.on("click", () => {
+    dismissCompletionAlerts();
+    tray.removeAllListeners("click");
+  });
+}
+
 function stopTrayFlash() {
   if (trayFlashTimer) {
     clearInterval(trayFlashTimer);
@@ -1798,6 +1864,37 @@ function stopTrayFlash() {
   if (t && trayFlashNormalIcon) {
     t.setImage(trayFlashNormalIcon);
   }
+}
+
+function getTrayFlashFrames() {
+  if (_settingsController.get("flashEffect") === "rainbow") {
+    if (!trayRainbowFrames) {
+      try {
+        trayRainbowFrames = buildTrayRainbowFrames({
+          nativeImage,
+          baseIcon: trayFlashNormalIcon,
+          platform: process.platform,
+        });
+      } catch (err) {
+        console.warn("Clawd: rainbow tray frames unavailable:", err && err.message);
+        trayRainbowFrames = [];
+      }
+    }
+    if (trayRainbowFrames.length > 0) return trayRainbowFrames;
+  }
+
+  // Cache the completion icon on first call. macOS uses a dedicated Template
+  // pair in the same 18pt slot; Windows/Linux retain the 32px orange dot.
+  if (!trayFlashHighlightIcon) {
+    trayFlashHighlightIcon = loadTrayFlashIcon({
+      nativeImage,
+      platform: process.platform,
+      flashPath: path.join(__dirname, "../assets/tray-icon-flash.png"),
+      flashTemplatePath: path.join(__dirname, "../assets/tray-icon-flashTemplate.png"),
+      fileExists: (p) => fs.existsSync(p),
+    });
+  }
+  return trayFlashHighlightIcon ? [trayFlashHighlightIcon, trayFlashNormalIcon] : null;
 }
 
 function flashTaskbar() {
@@ -1817,22 +1914,11 @@ function flashTaskbar() {
     });
   }
 
-  // Cache the completion icon on first call. macOS uses a dedicated Template
-  // pair in the same 18pt slot; Windows/Linux retain the 32px orange dot.
-  if (!trayFlashHighlightIcon) {
-    trayFlashHighlightIcon = loadTrayFlashIcon({
-      nativeImage,
-      platform: process.platform,
-      flashPath: path.join(__dirname, "../assets/tray-icon-flash.png"),
-      flashTemplatePath: path.join(__dirname, "../assets/tray-icon-flashTemplate.png"),
-      fileExists: (p) => fs.existsSync(p),
-    });
-  }
-
-  if (!trayFlashHighlightIcon) return;
+  const frames = getTrayFlashFrames();
+  if (!frames) return;
 
   // Clear any existing flash timers
-  if (trayFlashTimer) clearInterval(trayFlashTimer);
+  clearInterval(trayFlashTimer);
   if (trayFlashStopTimer) {
     clearTimeout(trayFlashStopTimer);
     trayFlashStopTimer = null;
@@ -1842,15 +1928,15 @@ function flashTaskbar() {
   const durationMs = _settingsController.get("flashDurationMs");
   // durationMs defaults to 5000; 0 means flash until manually stopped
 
-  let useHighlight = true;
+  let frameIndex = 0;
   trayFlashTimer = setInterval(() => {
     if (!_menu.getTray || !_menu.getTray()) {
       stopTrayFlash();
       return;
     }
     const t = _menu.getTray();
-    t.setImage(useHighlight ? trayFlashHighlightIcon : trayFlashNormalIcon);
-    useHighlight = !useHighlight;
+    t.setImage(frames[frameIndex]);
+    frameIndex = (frameIndex + 1) % frames.length;
   }, intervalMs);
 
   // Auto-stop after duration (unless duration is 0 = always)
@@ -1860,12 +1946,7 @@ function flashTaskbar() {
     }, durationMs || 5000);
   }
 
-  // Stop on tray click
-  tray.removeAllListeners("click");
-  tray.on("click", () => {
-    stopTrayFlash();
-    tray.removeAllListeners("click");
-  });
+  armTrayAlertDismiss();
 }
 
 function syncHitWin() { return petWindowRuntime.syncHitWin(); }
@@ -2356,6 +2437,7 @@ const _stateCtx = {
   syncHitWin,
   playSound,
   flashTaskbar,
+  startCompleteSoundRepeat,
   t: (key) => t(key),
   focusTerminalWindow: (...args) => focusTerminalWindow(...args),
   resolvePermissionEntry: (...args) => resolvePermissionEntry(...args),
