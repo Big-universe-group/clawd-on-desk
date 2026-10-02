@@ -1622,6 +1622,7 @@ function scheduleITermTabFocus(sourcePid, pidChain) {
               repeat with s in sessions of t
                 if tty of s ends with "${ttyName}" then
                   select t
+                  select s
                   select w
                   return "ok"
                 end if

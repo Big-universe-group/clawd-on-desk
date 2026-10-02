@@ -52,6 +52,10 @@ describe("iTerm2 tab focus (macOS)", () => {
         itermScript.args.some(a => a.includes("ttys003")),
         "Should use the resolved TTY name"
       );
+      assert.ok(
+        itermScript.args.some(a => /select t\s+select s\s+select w/.test(a)),
+        "Should select the matched pane (session), not just its tab"
+      );
 
       done();
     }, 2500);
