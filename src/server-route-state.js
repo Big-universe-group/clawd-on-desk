@@ -902,7 +902,7 @@ function handleStatePost(req, res, options) {
         const pendingForSource = () => pendingForSessionAgent().filter(
           (perm) => (perm.subagentId || null) === subagentId
         );
-        // Native-fallback adapters (qwen-code, zcode, deepseek-harness) answer
+        // Native-fallback adapters (codex, qwen-code, zcode, deepseek-harness) answer
         // their hook with "{}"/no-decision when Clawd has no real user
         // decision, and the agent falls back to its own permission UI. For
         // them, a /state lifecycle sweep must NEVER fabricate a deny — the
@@ -910,7 +910,7 @@ function handleStatePost(req, res, options) {
         // keep the explicit deny: their hook transport treats the missing
         // answer as a denial of that tool call.
         const stateSweepBehaviorFor = (perm) => (
-          perm.isQwenCode || perm.isZcode || perm.isDsh ? "no-decision" : "deny"
+          perm.isCodex || perm.isQwenCode || perm.isZcode || perm.isDsh ? "no-decision" : "deny"
         );
         const resolveOnlyUnambiguous = (candidates, behaviorFor, message) => {
           if (candidates.length !== 1) {
