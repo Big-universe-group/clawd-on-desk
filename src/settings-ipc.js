@@ -758,7 +758,7 @@ function registerSettingsIpc(options = {}) {
     }
     try {
       await officialThemeMain.refreshCatalog();
-      return await officialThemeMain.listOfficialThemes();
+      return await officialThemeMain.listOfficialThemes({ catalogReady: true });
     } catch (err) {
       return {
         status: "error",

@@ -63,7 +63,7 @@ describe("durable session history", () => {
 
   // A write that happened at `eventAt`, during the boot that started at `boot`.
   function writeOpts(eventAt, boot = BOOT_A, extra = {}) {
-    return { historyDir, eventAt, uptime: () => (eventAt - boot) / 1000, ...extra };
+    return { historyDir, eventAt, uptime: () => (eventAt - boot) / 1000, env: {}, ...extra };
   }
 
   // A read taken at `now`, while running the boot that started at `boot`.
@@ -111,8 +111,13 @@ describe("durable session history", () => {
         assert.equal(recordSessionHistoryFromStateBody(body({ session_id }), writeOpts(T0)).written, false);
       }
       assert.equal(fs.readdirSync(historyDir).length, 0);
-      recordSessionHistoryFromStateBody(body({ session_title: "secret prompt", _sessionTitleFromPrompt: true }), writeOpts(T0));
+      recordSessionHistoryFromStateBody(body({ session_title: "secret prompt", session_title_from_prompt: true }), writeOpts(T0));
       assert.equal(readOne().title, null);
+    });
+
+    it("persists an unmarked formal title such as an AI title (#1125)", () => {
+      recordSessionHistoryFromStateBody(body({ session_title: "Generated Title" }), writeOpts(T0));
+      assert.equal(readOne().title, "Generated Title");
     });
 
     it("makes a terminal event win same-millisecond late active traffic", () => {
@@ -161,7 +166,7 @@ describe("durable session history", () => {
       `;
       const makeWorker = (pause) => new Worker(workerCode, { eval: true, workerData: {
         module: require.resolve("../hooks/session-history"), signal, pause,
-        opts: { historyDir, eventAt: T0 + (pause ? 1000 : 2000) },
+        opts: { historyDir, eventAt: T0 + (pause ? 1000 : 2000), env: {} },
         body: body(pause ? { state: "working" } : { event: "SessionEnd", state: "sleeping" }),
       } });
       const older = makeWorker(true);

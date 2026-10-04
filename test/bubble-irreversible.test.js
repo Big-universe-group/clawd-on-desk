@@ -246,4 +246,9 @@ describe("detectIrreversible — input robustness (attacker-influenced string)",
     const r = detectIrreversible("Bash", { command: huge });
     assert.ok(r && r.tag === "file-delete");
   });
+  it("a commit message heredoc is not a command, one fed to a shell is", () => {
+    assert.strictEqual(detectIrreversible("Bash", { command: "git commit -m \"$(cat <<'EOF'\nrm -rf /\nEOF\n)\"" }), null);
+    const r = detectIrreversible("Bash", { command: "bash <<'EOF'\nrm -rf /\nEOF" });
+    assert.ok(r && r.tag === "file-delete");
+  });
 });

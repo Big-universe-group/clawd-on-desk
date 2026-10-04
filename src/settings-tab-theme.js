@@ -2,6 +2,9 @@
 
 (function initSettingsTabTheme(root) {
   const PREVIEW_TARGET_CONTENT_RATIO = 0.55;
+  const CATALOG_AUTO_RETRY_DELAYS_MS = [10000, 30000];
+  const CATALOG_AUTO_RETRY_MAX = CATALOG_AUTO_RETRY_DELAYS_MS.length;
+  const CATALOG_UNAVAILABLE_ERROR_CODE = "OFFICIAL_THEME_CATALOG_UNAVAILABLE";
 
   let state = null;
   let runtime = null;
@@ -21,6 +24,8 @@
   let mountedThemeList = null;
   let themeListScrollTop = 0;
   let customizationReturnFocusKey = "";
+  let catalogAutoRetryTimer = null;
+  let catalogAutoRetryAttempts = 0;
 
   function getContentElement() {
     return document.getElementById("content");
@@ -82,15 +87,7 @@
     subtitle.textContent = t("themeSubtitle");
     parent.appendChild(subtitle);
     parent.appendChild(buildThemeActions());
-
-    // `offline` is a list-level condition, not a per-theme state: it only adds
-    // a note beside whatever cards are already known.
-    if (runtime.officialThemeListFetched && runtime.officialThemeCatalogStatus === "offline") {
-      const note = document.createElement("div");
-      note.className = "placeholder-desc theme-official-offline-note";
-      note.textContent = t("themeOfficialOffline");
-      parent.appendChild(note);
-    }
+    maybeScheduleCatalogAutoRetry();
 
     if (runtime.themeList === null) {
       const loading = document.createElement("div");
@@ -120,6 +117,10 @@
       title.className = "theme-section-title";
       title.textContent = section.title;
       sectionEl.appendChild(title);
+
+      if (section.id === "official" && catalogIsOffline()) {
+        sectionEl.appendChild(buildOfficialOfflineBanner());
+      }
 
       const grid = document.createElement("div");
       grid.className = "theme-grid";
@@ -157,6 +158,28 @@
       });
   }
 
+  // A local entry can still carry `officialTheme` fields from an earlier
+  // catalog that has since dropped its id. Strip them so the card renders (and
+  // can be selected/deleted) as a plain user theme.
+  function withoutStaleOfficialDecoration(theme) {
+    const next = { ...theme };
+    for (const key of [
+      "officialTheme",
+      "managedOfficialTheme",
+      "officialThemeState",
+      "officialThemeVersion",
+      "officialThemeInstalledVersion",
+      "officialThemeCatalogVersion",
+      "officialThemeBytes",
+      "officialThemeUnpackedBytes",
+      "officialThemeCanUninstall",
+      "officialThemeConflict",
+    ]) {
+      delete next[key];
+    }
+    return next;
+  }
+
   function getThemeSections(themes) {
     const officialThemes = getMergedOfficialThemes();
     const officialIds = new Set(officialThemes.map((theme) => theme && theme.id).filter(Boolean));
@@ -168,19 +191,122 @@
     };
     for (const theme of themes || []) {
       if (!theme) continue;
-      if (theme.builtin) groups.builtin.push(theme);
-      else if (theme.managedCodexPet) groups.importedCodexPets.push(theme);
-      // The official section owns every official id (installed or not); the
-      // local list entry would otherwise render a duplicate user card.
-      else if (theme.officialTheme || officialIds.has(theme.id)) continue;
-      else groups.user.push(theme);
+      if (theme.builtin) { groups.builtin.push(theme); continue; }
+      if (theme.managedCodexPet) { groups.importedCodexPets.push(theme); continue; }
+      // The official section owns a local entry only when it actually has a
+      // matching card (installed or in the catalog), or when the official
+      // manager owns it via a marker. A stale `officialTheme` flag left over
+      // from a catalog that no longer lists this id must not hide the theme:
+      // it returns to the user section as an ordinary user theme.
+      if (officialIds.has(theme.id) || theme.managedOfficialTheme === true) continue;
+      groups.user.push(theme.officialTheme === true ? withoutStaleOfficialDecoration(theme) : theme);
     }
+    // A failed catalog must still surface the official section so the offline
+    // banner and its Retry button are reachable even when no card is known.
+    const showOfficialSection = groups.official.length > 0 || catalogIsOffline();
     return [
       { id: "builtin", title: t("themeGroupBuiltIn"), themes: groups.builtin },
       { id: "official", title: t("themeGroupOfficialThemes"), themes: groups.official },
       { id: "imported-codex-pets", title: t("themeGroupImportedCodexPets"), themes: groups.importedCodexPets },
       { id: "user", title: t("themeGroupUserThemes"), themes: groups.user },
-    ].filter((section) => section.themes.length > 0);
+    ].filter((section) => section.themes.length > 0
+      || (section.id === "official" && showOfficialSection));
+  }
+
+  function catalogIsOffline() {
+    return !!runtime.officialThemeListFetched
+      && (runtime.officialThemeCatalogStatus === "offline"
+        || runtime.officialThemeCatalogStatus === "invalid");
+  }
+
+  function catalogRetrying() {
+    return !!runtime.officialThemeCatalogRetrying;
+  }
+
+  function syncCatalogRetryControls() {
+    const controls = mountedThemeList && mountedThemeList.catalogRetry;
+    if (!controls) return false;
+    const retrying = catalogRetrying();
+    controls.button.textContent = t(retrying ? "themeOfficialRetrying" : "themeOfficialRetry");
+    controls.button.disabled = retrying;
+    controls.button.classList.toggle("pending", retrying);
+    return true;
+  }
+
+  function buildOfficialOfflineBanner() {
+    const banner = document.createElement("div");
+    banner.className = "theme-official-offline-banner";
+    banner.setAttribute("role", "status");
+    const message = document.createElement("span");
+    message.className = "theme-official-offline-message";
+    message.textContent = t(getMergedOfficialThemes().length > 0
+      ? "themeOfficialOfflineWithList"
+      : "themeOfficialOfflineNoList");
+    banner.appendChild(message);
+    const retry = document.createElement("button");
+    retry.type = "button";
+    retry.className = "theme-official-offline-retry";
+    retry.setAttribute("data-settings-focus-key", "theme-official-offline-retry");
+    retry.addEventListener("click", handleCatalogRetry);
+    banner.appendChild(retry);
+    if (mountedThemeList) mountedThemeList.catalogRetry = { button: retry, message };
+    syncCatalogRetryControls();
+    return banner;
+  }
+
+  function cancelCatalogAutoRetry() {
+    if (catalogAutoRetryTimer === null) return;
+    root.clearTimeout(catalogAutoRetryTimer);
+    catalogAutoRetryTimer = null;
+  }
+
+  // The automatic budget is per failure episode: each time the catalog goes
+  // from healthy back to failing, up to two automatic retries (10s, then 30s)
+  // are scheduled. A success resets the count, so a later failure episode gets
+  // its own two attempts; with no new failure nothing is scheduled.
+  function maybeScheduleCatalogAutoRetry() {
+    if (state.activeTab !== "theme") return;
+    if (catalogRetrying()) return;
+    if (!catalogIsOffline()) {
+      catalogAutoRetryAttempts = 0;
+      cancelCatalogAutoRetry();
+      return;
+    }
+    if (catalogAutoRetryAttempts >= CATALOG_AUTO_RETRY_MAX) return;
+    if (catalogAutoRetryTimer !== null) return;
+    const delay = CATALOG_AUTO_RETRY_DELAYS_MS[Math.min(
+      catalogAutoRetryAttempts,
+      CATALOG_AUTO_RETRY_DELAYS_MS.length - 1,
+    )];
+    catalogAutoRetryTimer = root.setTimeout(() => {
+      catalogAutoRetryTimer = null;
+      if (state.activeTab !== "theme") return;
+      if (catalogRetrying()) return;
+      catalogAutoRetryAttempts += 1;
+      startCatalogRetry();
+    }, delay);
+  }
+
+  // Reuses the ordinary list request path. `fetchOfficialThemes` is
+  // single-flight, so a manual or automatic retry can never stack on top of an
+  // in-flight read.
+  function startCatalogRetry() {
+    if (catalogRetrying()) return Promise.resolve();
+    runtime.officialThemeCatalogRetrying = true;
+    syncCatalogRetryControls();
+    const local = ops.fetchThemes();
+    const official = ops.fetchOfficialThemes();
+    return Promise.allSettled([local, official]).then(() => {
+      runtime.officialThemeCatalogRetrying = false;
+      if (state.activeTab === "theme") {
+        ops.requestRender({ content: true, preserveScroll: true });
+      }
+    });
+  }
+
+  function handleCatalogRetry() {
+    cancelCatalogAutoRetry();
+    return startCatalogRetry();
   }
 
   function localizeField(value) {
@@ -893,6 +1019,15 @@
     return String(value);
   }
 
+  // A missing catalog has its own localized copy; every other failure keeps the
+  // existing "install failed: <message>" wording.
+  function formatOfficialInstallFailure(result) {
+    if (result && result.code === CATALOG_UNAVAILABLE_ERROR_CODE) {
+      return t("toastOfficialThemeCatalogUnavailable");
+    }
+    return formatOfficialMessage("toastOfficialThemeInstallFailed", (result && result.message) || "unknown error");
+  }
+
   // True while any official install is in flight. `officialThemePendingThemeId`
   // only covers installs this renderer started; the operation mirror also sees a
   // download that was already running when this Settings view was (re)opened.
@@ -1047,7 +1182,11 @@
 
     // error / unknown: surface the stable category and offer a retry.
     if (theme.officialThemeError && theme.officialThemeError.message) {
-      pushText(formatOfficialMessage("themeOfficialError", theme.officialThemeError.message));
+      if (theme.officialThemeError.code === CATALOG_UNAVAILABLE_ERROR_CODE) {
+        pushText(t("toastOfficialThemeCatalogUnavailable"));
+      } else {
+        pushText(formatOfficialMessage("themeOfficialError", theme.officialThemeError.message));
+      }
     }
     pushButton(t("themeOfficialRetry"), "theme-official-retry-btn", () => handleInstallOfficialTheme(theme), {
       disabled: officialOperationBusy(),
@@ -1202,10 +1341,7 @@
     window.settingsAPI.installOfficialTheme(theme.id)
       .then((result) => {
         if (!result || result.status !== "ok") {
-          ops.showToast(
-            formatOfficialMessage("toastOfficialThemeInstallFailed", (result && result.message) || "unknown error"),
-            { error: true }
-          );
+          ops.showToast(formatOfficialInstallFailure(result), { error: true });
           return null;
         }
         ops.showToast(formatOfficialMessage("toastOfficialThemeInstallOk", localizeField(theme.name) || theme.id));
@@ -1675,6 +1811,7 @@
         mountedThemeList = null;
         themeListScrollTop = 0;
         customizationReturnFocusKey = "";
+        cancelCatalogAutoRetry();
       },
     };
   }

@@ -44,6 +44,41 @@ test("DSH bridge maps only public session events and never copies tool arguments
   assert.strictEqual(JSON.stringify(payload).includes("never"), false);
 });
 
+test("DSH bridge flags a failed tool result from the message or its content items", async () => {
+  const { mapSessionEvent } = await bridge();
+  const failure = { event: "PostToolUseFailure", state: "error" };
+  const success = { event: "PostToolUse", state: "working" };
+  assert.deepStrictEqual(mapSessionEvent({
+    type: "tool/result",
+    data: {
+      turn: 3,
+      step: 1,
+      message: {
+        role: "tool",
+        toolCallId: "call-1",
+        content: [{ type: "text", text: "Error: the user rejected escalating this command" }],
+        isError: true,
+      },
+    },
+  }), failure);
+  assert.deepStrictEqual(mapSessionEvent({
+    type: "tool/result",
+    data: { message: { content: [{ type: "tool_result", isError: true }], isError: false } },
+  }), failure);
+  assert.deepStrictEqual(mapSessionEvent({
+    type: "tool/result",
+    data: { message: { content: [{ type: "text", text: "ok" }], isError: "true" } },
+  }), success);
+  assert.deepStrictEqual(mapSessionEvent({
+    type: "tool/result",
+    data: { message: { content: [{ type: "text", text: "ok" }] } },
+  }), success);
+  assert.deepStrictEqual(mapSessionEvent({
+    type: "tool/result",
+    data: { message: { content: [{ type: "text", text: "aborted" }] }, error: { name: "AbortError" } },
+  }), failure);
+});
+
 test("DSH projection metadata uses the same context occupancy as DSH and keeps titles bounded", async () => {
   const { contextUsageFromPressure, metadataPayload, statePayload } = await bridge();
   const pressure = { pressureTokens: 70, projectedTokens: 78, contextWindow: 100 };

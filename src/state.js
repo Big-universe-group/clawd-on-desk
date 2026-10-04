@@ -105,6 +105,11 @@ const {
 
 // Session display hints — validated against theme.displayHintMap keys
 let DISPLAY_HINT_MAP = {};
+let COMPLETION_VISUAL_MAP = {};
+
+function completionVisualForHint(hint) {
+  return typeof hint === "string" ? (COMPLETION_VISUAL_MAP[hint] || null) : null;
+}
 
 // ── Session tracking ──
 const sessions = new Map();
@@ -140,7 +145,7 @@ const COMPLETION_HOUSEKEEPING_EVENTS = new Set([
 // from a background helper (#1060), so it must not veto a completion that has
 // already reached its quiet window.
 const COMPLETION_CANCEL_EVENTS = new Set([
-  "UserPromptSubmit", "PreToolUse", "PostToolUse", "PostToolUseFailure",
+  "UserPromptSubmit", "UserPromptExpansion", "PreToolUse", "PostToolUse", "PostToolUseFailure",
   "SubagentStart", "PreCompact", "PostCompact",
   "PermissionRequest", "CodexUserInputRequest", "Elicitation", "StopFailure", "ApiError", "SessionEnd",
 ]);
@@ -534,6 +539,7 @@ function refreshTheme() {
   COLLAPSE_DURATION = theme.timings.collapseDuration || 0;
   SLEEP_MODE = theme.sleepSequence && theme.sleepSequence.mode === "direct" ? "direct" : "full";
   DISPLAY_HINT_MAP = theme.displayHintMap || {};
+  COMPLETION_VISUAL_MAP = theme.completionVisualMap || {};
   hitboxRuntime = createHitboxRuntime(theme);
   HIT_BOXES = hitboxRuntime.hitBoxes;
   FILE_HIT_BOXES = hitboxRuntime.fileHitBoxes;
@@ -1599,9 +1605,14 @@ function updateSessionMetadata(sessionId, opts = {}) {
   // freshness, and a rename must not make stale telemetry look fresh. The
   // title broadcasts anyway - sessionTitle/displayTitle are in the snapshot
   // signature, so emitSessionSnapshot below fans it out.
-  if (incomingTitle && incomingTitle !== session.sessionTitle) {
-    session.sessionTitle = incomingTitle;
-    applied = true;
+  if (incomingTitle) {
+    if (incomingTitle !== session.sessionTitle) {
+      session.sessionTitle = incomingTitle;
+      applied = true;
+    }
+    // Metadata titles are formal: a later prompt fallback must not displace
+    // them, even when the text happens to match the current prompt fallback.
+    session.sessionTitleFromPrompt = false;
   }
   // Deliberately NOT stamping metadataUpdatedAt: that field is context/quota
   // telemetry freshness, and a model switch must not make stale telemetry
@@ -1854,6 +1865,9 @@ function promoteCompletion(sessionId, completionPayload = undefined) {
       && completionPayload.truncated === true
     );
   }
+  const completionVisual = session.agentId === "claude-code"
+    ? completionVisualForHint(session.displayHint)
+    : null;
   session.subagentTracker = clearSubagentTracker(cloneSubagentTracker(session));
   // The stored session settles idle, but this Stop consumed the completion
   // attention cue. Record that distinction so a later duplicate Stop is
@@ -1890,7 +1904,7 @@ function promoteCompletion(sessionId, completionPayload = undefined) {
   // from ANOTHER session (e.g. an error) — it must win. We must NOT clear the
   // global pending queue here; pendingTimer/pendingState are process-wide, not
   // per-session, so clearing them would swallow another session's visual.
-  setState("attention");
+  setState("attention", completionVisual);
   return true;
 }
 
@@ -1965,12 +1979,25 @@ function mergeSessionProcessMetadata(existing, incoming = {}, options = {}) {
 // prompt-derived titles follow the same first-wins rule.
 const FIRST_WINS_TITLE_AGENT_IDS = new Set(["traecode", "minimax"]);
 
-function resolveIncomingSessionTitle(existing, agentId, incomingTitle) {
+function resolveIncomingSessionTitle(existing, agentId, incomingTitle, incomingFromPrompt = false) {
   const normalized = normalizeTitle(incomingTitle);
-  if (FIRST_WINS_TITLE_AGENT_IDS.has(agentId)) {
-    return (existing && existing.sessionTitle) || normalized || null;
+  const existingTitle = (existing && existing.sessionTitle) || null;
+  const existingFromPrompt = existingTitle
+    ? !!(existing && existing.sessionTitleFromPrompt)
+    : false;
+  const fromPrompt = incomingFromPrompt === true;
+  // A prompt-derived fallback (Claude Code's UserPromptSubmit first line) must
+  // not displace a formal title. Prompt still wins over an earlier prompt.
+  if (fromPrompt && existingTitle && !existingFromPrompt) {
+    return { title: existingTitle, fromPrompt: existingFromPrompt };
   }
-  return normalized || (existing && existing.sessionTitle) || null;
+  if (FIRST_WINS_TITLE_AGENT_IDS.has(agentId)) {
+    return existingTitle
+      ? { title: existingTitle, fromPrompt: existingFromPrompt }
+      : { title: normalized, fromPrompt: fromPrompt && !!normalized };
+  }
+  if (normalized) return { title: normalized, fromPrompt };
+  return { title: existingTitle, fromPrompt: existingFromPrompt };
 }
 
 function updateSession(sessionId, state, event, opts = {}) {
@@ -2005,6 +2032,7 @@ function updateSession(sessionId, state, event, opts = {}) {
     ghosttyTerminalId = null,
     displayHint = undefined,
     sessionTitle = null,
+    sessionTitleFromPrompt = false,
     contextUsage = null,
     contextUsageOrigin = null,
     assistantLastOutput = null,
@@ -2154,7 +2182,10 @@ function updateSession(sessionId, state, event, opts = {}) {
       const srcCodexOriginator = codexOriginator || (existing && existing.codexOriginator) || null;
       const srcCodexSource = codexSource || (existing && existing.codexSource) || null;
       const srcGhosttyTerminalId = normalizeGhosttyTerminalId(ghosttyTerminalId) || (existing && existing.ghosttyTerminalId) || null;
-      const srcSessionTitle = resolveIncomingSessionTitle(existing, srcAgentId, sessionTitle);
+      const {
+        title: srcSessionTitle,
+        fromPrompt: srcSessionTitleFromPrompt,
+      } = resolveIncomingSessionTitle(existing, srcAgentId, sessionTitle, sessionTitleFromPrompt);
       const permissionContext = resolveContextUsageUpdate(existing, contextUsage, contextUsageOrigin);
       const srcContextUsage = permissionContext.contextUsage;
       const srcContextUsageOrigin = permissionContext.contextUsageOrigin;
@@ -2200,6 +2231,7 @@ function updateSession(sessionId, state, event, opts = {}) {
         codexSource: srcCodexSource,
         ghosttyTerminalId: srcGhosttyTerminalId,
         sessionTitle: srcSessionTitle,
+        sessionTitleFromPrompt: srcSessionTitleFromPrompt,
         contextUsage: srcContextUsage,
         contextUsageOrigin: srcContextUsageOrigin,
         recentEvents,
@@ -2293,7 +2325,10 @@ function updateSession(sessionId, state, event, opts = {}) {
   const srcGhosttyTerminalId = normalizeGhosttyTerminalId(ghosttyTerminalId) || (existing && existing.ghosttyTerminalId) || null;
   // Sticky: empty input does not clear an existing title. A session that has
   // ever been named keeps that name until the user explicitly renames it.
-  const srcSessionTitle = resolveIncomingSessionTitle(existing, srcAgentId, sessionTitle);
+  const {
+    title: srcSessionTitle,
+    fromPrompt: srcSessionTitleFromPrompt,
+  } = resolveIncomingSessionTitle(existing, srcAgentId, sessionTitle, sessionTitleFromPrompt);
   const normalizedIncomingContextUsage = normalizeContextUsage(contextUsage);
   const effectiveContextUsageOrigin = normalizeContextUsageOrigin(contextUsageOrigin)
     || (srcAgentId === "claude-code" && normalizedIncomingContextUsage && normalizedIncomingContextUsage.source === "claude"
@@ -2333,6 +2368,9 @@ function updateSession(sessionId, state, event, opts = {}) {
     && state === "attention"
     && srcAgentId === "claude-code"
     && !normalizedSubagentId;
+  const completionVisual = isClaudeMainStop
+    ? completionVisualForHint(existing && existing.displayHint)
+    : null;
   const typedSubagentSnapshotKnown = Object.prototype.hasOwnProperty.call(
     opts,
     "backgroundSubagentsCount",
@@ -2597,7 +2635,7 @@ function updateSession(sessionId, state, event, opts = {}) {
     clearSubagentTracker(subagentTracker);
   }
 
-  const base = { sourcePid: srcPid, wtHwnd: srcWtHwnd, cwd: srcCwd, editor: srcEditor, pidChain: srcPidChain, tmuxSocket: srcTmuxSocket, tmuxClient: srcTmuxClient, orcaPaneKey: srcOrcaPaneKey, agentPid: srcAgentPid, agentId: srcAgentId, profileId: (existing && existing.profileId) || profileId || "local", rawSessionId: (existing && existing.rawSessionId) || rawSessionId || sessionId, sessionAutomationIdentity: srcSessionAutomationIdentity, host: srcHost, wslDistro: srcWslDistro, headless: srcHeadless, platform: srcPlatform, model: srcModel, provider: srcProvider, codexOriginator: srcCodexOriginator, codexSource: srcCodexSource, ghosttyTerminalId: srcGhosttyTerminalId, sessionTitle: srcSessionTitle, contextUsage: srcContextUsage, contextUsageOrigin: srcContextUsageOrigin, metadataUpdatedAt: srcMetadataUpdatedAt, assistantLastOutput: srcAssistantLastOutput, assistantLastOutputTruncated: srcAssistantLastOutputTruncated, lastToolName: srcToolName, transcriptPath: srcTranscriptPath, recentEvents, pidReachable, lastToolBoundaryAt: srcLastToolBoundaryAt, lastStopAt: srcLastStopAt, awaitingInputSinceStop: resolveAwaitingInputSinceStop(existing, event), muteNotificationSound: state === "notification" && muteNotificationSound === true, claudeBackgroundSubagentHoldAt };
+  const base = { sourcePid: srcPid, wtHwnd: srcWtHwnd, cwd: srcCwd, editor: srcEditor, pidChain: srcPidChain, tmuxSocket: srcTmuxSocket, tmuxClient: srcTmuxClient, orcaPaneKey: srcOrcaPaneKey, agentPid: srcAgentPid, agentId: srcAgentId, profileId: (existing && existing.profileId) || profileId || "local", rawSessionId: (existing && existing.rawSessionId) || rawSessionId || sessionId, sessionAutomationIdentity: srcSessionAutomationIdentity, host: srcHost, wslDistro: srcWslDistro, headless: srcHeadless, platform: srcPlatform, model: srcModel, provider: srcProvider, codexOriginator: srcCodexOriginator, codexSource: srcCodexSource, ghosttyTerminalId: srcGhosttyTerminalId, sessionTitle: srcSessionTitle, sessionTitleFromPrompt: srcSessionTitleFromPrompt, contextUsage: srcContextUsage, contextUsageOrigin: srcContextUsageOrigin, metadataUpdatedAt: srcMetadataUpdatedAt, assistantLastOutput: srcAssistantLastOutput, assistantLastOutputTruncated: srcAssistantLastOutputTruncated, lastToolName: srcToolName, transcriptPath: srcTranscriptPath, recentEvents, pidReachable, lastToolBoundaryAt: srcLastToolBoundaryAt, lastStopAt: srcLastStopAt, awaitingInputSinceStop: resolveAwaitingInputSinceStop(existing, event), muteNotificationSound: state === "notification" && muteNotificationSound === true, claudeBackgroundSubagentHoldAt };
   if (preserveCompletionAck) base.requiresCompletionAck = true;
   // #862: every branch below rebuilds the session object from `base`; carry the
   // private identity tracker through without exposing it on snapshot surfaces.
@@ -2669,6 +2707,17 @@ function updateSession(sessionId, state, event, opts = {}) {
     return;
   }
 
+  // A completion-mapped hint (such as /design) belongs to the parent
+  // turn. Temporary cues may settle the session idle without ending that turn.
+  // Keep explicit null, terminal events and ordinary per-tool hints clearing.
+  const continuationDisplayHint = srcAgentId === "claude-code"
+    && !normalizedSubagentId
+    && completionVisualForHint(existing && existing.displayHint)
+    && (["PostToolUseFailure", "Notification", "Elicitation", "PreCompact", "WorktreeCreate"].includes(event)
+      || (event === "SessionStart" && sessionStartSource === "compact"))
+    ? pickDisplayHint("working", existing, displayHint)
+    : null;
+
   if (event === "SessionEnd") {
     const endingSession = sessions.get(sessionId);
     cancelCodexExitProbe(sessionId, "SessionEnd");
@@ -2725,7 +2774,7 @@ function updateSession(sessionId, state, event, opts = {}) {
         resumeState: (existing && existing.resumeState) || null,
       });
     } else {
-      sessions.set(sessionId, { state: "idle", updatedAt: Date.now(), displayHint: null, ...base, resumeState: null });
+      sessions.set(sessionId, { state: "idle", updatedAt: Date.now(), displayHint: continuationDisplayHint, ...base, resumeState: null });
     }
   } else if (ONESHOT_STATES.has(state)) {
     if (hasSubagentHoldEvidence(subagentTracker)) {
@@ -2748,7 +2797,7 @@ function updateSession(sessionId, state, event, opts = {}) {
       Object.assign(existing, base);
       existing.state = "idle";
       existing.updatedAt = Date.now();
-      existing.displayHint = null;
+      existing.displayHint = continuationDisplayHint;
       existing.resumeState = null;
     } else {
       sessions.set(sessionId, { state: "idle", updatedAt: Date.now(), displayHint: null, ...base, resumeState: null });
@@ -2782,7 +2831,9 @@ function updateSession(sessionId, state, event, opts = {}) {
         resumeState: (existing && existing.resumeState) || null,
       });
     } else {
-      const dh = pickDisplayHint(state, existing, displayHint);
+      const dh = state === "idle"
+        ? continuationDisplayHint
+        : pickDisplayHint(state, existing, displayHint);
       sessions.set(sessionId, { state, updatedAt: Date.now(), displayHint: dh, ...base, resumeState: null });
     }
   }
@@ -2930,7 +2981,7 @@ function updateSession(sessionId, state, event, opts = {}) {
       setState(displayState, getSvgOverride(displayState));
       return;
     }
-    setState(state);
+    setState(state, state === "attention" && event === "Stop" ? completionVisual : null);
     return;
   }
 
@@ -3001,6 +3052,7 @@ function restoreSessionFromLease(lease) {
     codexSource: null,
     ghosttyTerminalId: null,
     sessionTitle: typeof lease.title === "string" ? lease.title : null,
+    sessionTitleFromPrompt: false,
     contextUsage: null,
     contextUsageOrigin: null,
     antigravityQuota: null,

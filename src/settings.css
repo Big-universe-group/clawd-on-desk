@@ -5306,9 +5306,34 @@ html, body {
 }
 
 /* Official theme cards */
-.theme-official-offline-note {
-  margin: 4px 0 12px;
+.theme-official-offline-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: color-mix(in srgb, currentColor 6%, transparent);
   color: var(--text-secondary, #8a8a8a);
+  font-size: 13px;
+  line-height: 1.4;
+}
+.theme-official-offline-retry {
+  flex: none;
+  border: 1px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--text-primary);
+  border-radius: 6px;
+  padding: 3px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.theme-official-offline-retry:disabled {
+  opacity: 0.55;
+  cursor: default;
 }
 /* One wrapper per official card row so progress patches can rebuild just that
    row. contents keeps the children participating in the footer's flex layout

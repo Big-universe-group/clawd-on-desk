@@ -183,10 +183,10 @@ beforeEach(() => {
   };
 });
 
-after(() => {
+after(async () => {
   delete globalThis.fetch;
   delete globalThis.Bun;
-  fs.rmSync(TMP_HOME, { recursive: true, force: true });
+  await fs.promises.rm(TMP_HOME, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
 });
 
 describe("opencode-family per-session /state FIFO", () => {

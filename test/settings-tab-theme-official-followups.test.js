@@ -194,13 +194,23 @@ function createHarness(options = {}) {
   content.id = "content";
   document.body.appendChild(content);
 
+  // The theme tab schedules bounded catalog auto-retries with setTimeout. This
+  // suite is not about that schedule, so timers are captured but never fire:
+  // no real timer is left alive after a test to issue late IPC requests.
+  const timers = new Map();
+  let nextTimerId = 1;
   const sandbox = {
     document,
     console,
     window: { settingsAPI: {} },
     navigator: { userAgent: "node-test", platform: "win32", language: "en" },
-    setTimeout,
-    clearTimeout,
+    setTimeout: (fn, ms) => {
+      const id = nextTimerId;
+      nextTimerId += 1;
+      timers.set(id, { fn, ms });
+      return id;
+    },
+    clearTimeout: (id) => { timers.delete(id); },
     requestAnimationFrame: (cb) => cb(),
   };
   sandbox.globalThis = sandbox;

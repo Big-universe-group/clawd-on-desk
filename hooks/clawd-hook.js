@@ -132,25 +132,35 @@ function readTranscriptTailEntries(transcriptPath) {
   return entries;
 }
 
-function extractSessionTitleFromEntries(entries) {
+function extractSessionTitleFromEntries(entries, sessionId) {
   if (!entries) return null;
-  let latest = null;
+  // Manual titles and AI titles are tracked separately: when Claude Code
+  // rewrites its metadata it appends the ai-title record after the manual
+  // custom-title one, so a single "last record wins" pass would let the AI
+  // title overwrite a manual rename.
+  let manualTitle = null;
+  let aiTitle = null;
   for (const obj of entries) {
     const type = typeof obj.type === "string" ? obj.type : "";
-    if (type !== "custom-title" && type !== "agent-name") continue;
-    latest =
-      normalizeTitle(obj.customTitle) ||
-      normalizeTitle(obj.title) ||
-      normalizeTitle(obj.custom_title) ||
-      normalizeTitle(obj.agentName) ||
-      normalizeTitle(obj.agent_name) ||
-      latest;
+    if (type === "custom-title" || type === "agent-name") {
+      manualTitle =
+        normalizeTitle(obj.customTitle) ||
+        normalizeTitle(obj.title) ||
+        normalizeTitle(obj.custom_title) ||
+        normalizeTitle(obj.agentName) ||
+        normalizeTitle(obj.agent_name) ||
+        manualTitle;
+      continue;
+    }
+    if (type === "ai-title" && entryMatchesSession(obj, sessionId)) {
+      aiTitle = normalizeTitle(obj.aiTitle) || aiTitle;
+    }
   }
-  return latest;
+  return manualTitle || aiTitle;
 }
 
-function extractSessionTitleFromTranscript(transcriptPath) {
-  return extractSessionTitleFromEntries(readTranscriptTailEntries(transcriptPath));
+function extractSessionTitleFromTranscript(transcriptPath, sessionId) {
+  return extractSessionTitleFromEntries(readTranscriptTailEntries(transcriptPath), sessionId);
 }
 
 function normalizeAssistantOutputText(value) {
@@ -182,7 +192,7 @@ function clampAssistantOutputText(text, maxLen = ASSISTANT_OUTPUT_MAX) {
   };
 }
 
-function assistantEntryMatchesSession(entry, sessionId) {
+function entryMatchesSession(entry, sessionId) {
   if (!sessionId) return true;
   if (!entry || typeof entry !== "object") return false;
   return !entry.sessionId || entry.sessionId === sessionId;
@@ -199,7 +209,7 @@ function assistantEntryLooksSubagent(entry) {
 function assistantEntryIsTurnBoundary(entry, sessionId) {
   if (!entry || typeof entry !== "object") return false;
   if (entry.type !== "user") return false;
-  return assistantEntryMatchesSession(entry, sessionId);
+  return entryMatchesSession(entry, sessionId);
 }
 
 function assistantTextPartsFromContent(content) {
@@ -263,7 +273,7 @@ function extractLastAssistantTextFromEntries(entries, sessionId, options = {}) {
     if (assistantEntryIsTurnBoundary(entry, sessionId)) break;
     if (entry.type !== "assistant") continue;
     if (entry.isApiErrorMessage === true) continue;
-    if (!assistantEntryMatchesSession(entry, sessionId)) continue;
+    if (!entryMatchesSession(entry, sessionId)) continue;
     if (assistantEntryLooksSubagent(entry)) continue;
     // The newest in-session assistant entry decides the turn. If it still
     // carries a tool_use block the turn is mid-flight — fail closed rather
@@ -351,6 +361,7 @@ const EVENT_TO_STATE = {
   SessionStart: "idle",
   SessionEnd: "sleeping",
   UserPromptSubmit: "thinking",
+  UserPromptExpansion: "thinking",
   PreToolUse: "working",
   PostToolUse: "working",
   PostToolUseFailure: "error",
@@ -371,8 +382,9 @@ const EVENT_TO_STATE = {
   WorktreeCreate: "carrying",
 };
 
-// #634: maps a Claude hook event to a shared-resolver cache lifecycle. Only the
-// three boundary events are special; every other state event is an ordinary
+// #634: maps a Claude hook event to a shared-resolver cache lifecycle.
+// SessionStart, both prompt events and SessionEnd are special; every other
+// state event is an ordinary
 // `event` (cache hit = zero spawn, miss = one fresh). Stop is deliberately NOT
 // end — it is turn completion, and dropping the cache on it would force a
 // re-resolve (flash) on the next event. SessionEnd with source=clear still maps
@@ -380,6 +392,7 @@ const EVENT_TO_STATE = {
 const EVENT_TO_LIFECYCLE = {
   SessionStart: "start",
   UserPromptSubmit: "prompt",
+  UserPromptExpansion: "prompt",
   SessionEnd: "end",
 };
 
@@ -586,6 +599,11 @@ function applyResolvedFields(body, resolved, event) {
 function buildStateBody(event, payload, resolve) {
   const state = EVENT_TO_STATE[event];
   if (!state) return null;
+  // UserPromptExpansion includes structured command metadata. Only an explicit
+  // user-typed /design should select the design visual.
+  if (event === "UserPromptExpansion" && !(
+    payload.expansion_type === "slash_command" && payload.command_name === "design"
+  )) return null;
 
   const sessionId = payload.session_id || "default";
   const cwd = payload.cwd || "";
@@ -607,6 +625,12 @@ function buildStateBody(event, payload, resolve) {
   const resolvedEvent = syntheticSubagentStart ? "SubagentStart" : event;
 
   const body = { state: resolvedState, session_id: sessionId, event: resolvedEvent };
+  if (event === "UserPromptExpansion") body.display_svg = "claude-design";
+  if (
+    event === "UserPromptSubmit"
+    && typeof payload.prompt === "string"
+    && !/^\s*\/design(?:\s|$)/.test(payload.prompt)
+  ) body.display_svg = null;
   if (syntheticSubagentStart) {
     body.subagent_lifecycle_source = "synthetic-tool";
   } else if (event === "SubagentStart" || event === "SubagentStop") {
@@ -677,18 +701,16 @@ function buildStateBody(event, payload, resolve) {
   if (contextUsage) body.context_usage = contextUsage;
   const sessionTitle =
     normalizeTitle(payload.session_title) ||
-    extractSessionTitleFromEntries(transcriptEntries);
+    extractSessionTitleFromEntries(transcriptEntries, payload.session_id || null);
   if (sessionTitle) body.session_title = sessionTitle;
   if (event === "UserPromptSubmit" && !body.session_title) {
     const promptTitle = extractPromptTitle(payload.prompt);
     if (promptTitle) {
       body.session_title = promptTitle;
-      // The fallback is derived from prompt content. It is useful for the live
-      // snapshot but must never cross the durable recovery privacy boundary.
-      Object.defineProperty(body, "_sessionTitleFromPrompt", {
-        value: true,
-        enumerable: false,
-      });
+      // The fallback is derived from prompt content. Mark it so the server
+      // never lets it replace a formal title, and so session history and
+      // recovery leases never persist it.
+      body.session_title_from_prompt = true;
     }
   }
 

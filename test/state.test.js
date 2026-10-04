@@ -143,6 +143,7 @@ function update(api, o = {}) {
       headless: o.headless || false,
       displayHint: o.displayHint,
       sessionTitle: o.sessionTitle ?? null,
+      sessionTitleFromPrompt: o.sessionTitleFromPrompt === true,
       contextUsage: o.contextUsage ?? null,
       contextUsageOrigin: o.contextUsageOrigin ?? null,
       antigravityQuota: o.antigravityQuota ?? null,
@@ -3241,6 +3242,188 @@ describe("updateSession()", () => {
     update(api, { id: "s2", state: "thinking", event: "UserPromptSubmit", agentId: "claude-code", sessionTitle: "旧标题" });
     update(api, { id: "s2", state: "thinking", event: "UserPromptSubmit", agentId: "claude-code", sessionTitle: "新标题" });
     assert.strictEqual(api.sessions.get("s2").sessionTitle, "新标题");
+  });
+
+  // ── prompt-fallback session titles (#1125) ──
+
+  it("keeps a formal title when a later prompt fallback arrives (#1125)", () => {
+    update(api, { id: "s1", state: "thinking", sessionTitle: "Formal Title" });
+    update(api, {
+      id: "s1", state: "thinking", event: "UserPromptSubmit",
+      sessionTitle: "Prompt line", sessionTitleFromPrompt: true,
+    });
+    assert.strictEqual(api.sessions.get("s1").sessionTitle, "Formal Title");
+    assert.strictEqual(api.sessions.get("s1").sessionTitleFromPrompt, false);
+  });
+
+  it("shows the latest prompt fallback when only prompt titles exist (#1125)", () => {
+    update(api, {
+      id: "s1", state: "thinking", event: "UserPromptSubmit",
+      sessionTitle: "First prompt", sessionTitleFromPrompt: true,
+    });
+    update(api, {
+      id: "s1", state: "thinking", event: "UserPromptSubmit",
+      sessionTitle: "Second prompt", sessionTitleFromPrompt: true,
+    });
+    assert.strictEqual(api.sessions.get("s1").sessionTitle, "Second prompt");
+    assert.strictEqual(api.sessions.get("s1").sessionTitleFromPrompt, true);
+  });
+
+  it("replaces a prompt fallback with a later formal title (#1125)", () => {
+    update(api, {
+      id: "s1", state: "thinking", event: "UserPromptSubmit",
+      sessionTitle: "Prompt line", sessionTitleFromPrompt: true,
+    });
+    update(api, { id: "s1", state: "thinking", sessionTitle: "Formal Title" });
+    assert.strictEqual(api.sessions.get("s1").sessionTitle, "Formal Title");
+    assert.strictEqual(api.sessions.get("s1").sessionTitleFromPrompt, false);
+  });
+
+  it("lets the latest formal title win (#1125)", () => {
+    update(api, { id: "s1", state: "thinking", sessionTitle: "Old Formal" });
+    update(api, { id: "s1", state: "thinking", sessionTitle: "New Formal" });
+    assert.strictEqual(api.sessions.get("s1").sessionTitle, "New Formal");
+    assert.strictEqual(api.sessions.get("s1").sessionTitleFromPrompt, false);
+  });
+
+  it("treats a metadata title as formal against a later prompt fallback (#1125)", () => {
+    update(api, {
+      id: "s1", state: "thinking", event: "UserPromptSubmit",
+      sessionTitle: "Prompt line", sessionTitleFromPrompt: true,
+    });
+    api.updateSessionMetadata("s1", { sessionTitle: "Metadata Title" });
+    assert.strictEqual(api.sessions.get("s1").sessionTitle, "Metadata Title");
+    assert.strictEqual(api.sessions.get("s1").sessionTitleFromPrompt, false);
+
+    update(api, {
+      id: "s1", state: "thinking", event: "UserPromptSubmit",
+      sessionTitle: "Later prompt", sessionTitleFromPrompt: true,
+    });
+    assert.strictEqual(api.sessions.get("s1").sessionTitle, "Metadata Title");
+  });
+
+  it("keeps a restored title against a later prompt fallback (#1125)", () => {
+    const restored = api.restoreSessionFromLease({
+      agentId: "claude-code",
+      sessionId: "restored-session",
+      active: true,
+      state: "thinking",
+      eventAt: 1000,
+      validUntil: null,
+      pid: process.pid,
+      sourcePid: process.pid,
+      cwd: "/tmp/project",
+      title: "Restored Title",
+    });
+    assert.strictEqual(restored, true);
+
+    const sessionId = makeSessionKey({ profileId: "local", rawSessionId: "restored-session" });
+    update(api, {
+      id: sessionId,
+      state: "thinking",
+      event: "UserPromptSubmit",
+      sessionTitle: "Prompt line",
+      sessionTitleFromPrompt: true,
+    });
+    assert.strictEqual(api.sessions.get(sessionId).sessionTitle, "Restored Title");
+  });
+
+  it("keeps the first prompt title for traecode even when marked as prompt-derived (#1125)", () => {
+    update(api, {
+      id: "s1", state: "thinking", event: "UserPromptSubmit", agentId: "traecode",
+      sessionTitle: "第一个问题", sessionTitleFromPrompt: true,
+    });
+    update(api, {
+      id: "s1", state: "thinking", event: "UserPromptSubmit", agentId: "traecode",
+      sessionTitle: "第二个问题", sessionTitleFromPrompt: true,
+    });
+    assert.strictEqual(api.sessions.get("s1").sessionTitle, "第一个问题");
+  });
+
+  it("resets the prompt-derived flag when metadata writes a title (#1125)", () => {
+    update(api, {
+      id: "s1", state: "thinking", event: "UserPromptSubmit",
+      sessionTitle: "Prompt line", sessionTitleFromPrompt: true,
+    });
+    assert.strictEqual(api.sessions.get("s1").sessionTitleFromPrompt, true);
+    api.updateSessionMetadata("s1", { sessionTitle: "Metadata Title" });
+    assert.strictEqual(api.sessions.get("s1").sessionTitleFromPrompt, false);
+  });
+
+  it("treats an identical metadata title as formal against a later prompt fallback (#1125)", () => {
+    update(api, {
+      id: "s1", state: "thinking", event: "UserPromptSubmit",
+      sessionTitle: "Same", sessionTitleFromPrompt: true,
+    });
+    api.updateSessionMetadata("s1", { sessionTitle: "Same" });
+    assert.strictEqual(api.sessions.get("s1").sessionTitleFromPrompt, false);
+
+    update(api, {
+      id: "s1", state: "thinking", event: "UserPromptSubmit",
+      sessionTitle: "Other", sessionTitleFromPrompt: true,
+    });
+    assert.strictEqual(api.sessions.get("s1").sessionTitle, "Same");
+  });
+
+  it("keeps the prompt origin across untitled events so a later prompt replaces it (#1125)", () => {
+    update(api, {
+      id: "s1", state: "thinking", event: "UserPromptSubmit",
+      sessionTitle: "A", sessionTitleFromPrompt: true,
+    });
+    for (const [state, event] of [
+      ["working", "PreToolUse"],
+      ["working", "PostToolUse"],
+      ["idle", "Stop"],
+    ]) {
+      update(api, { id: "s1", state, event });
+      assert.strictEqual(api.sessions.get("s1").sessionTitle, "A", event);
+      assert.strictEqual(api.sessions.get("s1").sessionTitleFromPrompt, true, event);
+    }
+
+    update(api, {
+      id: "s1", state: "thinking", event: "UserPromptSubmit",
+      sessionTitle: "B", sessionTitleFromPrompt: true,
+    });
+    assert.strictEqual(api.sessions.get("s1").sessionTitle, "B");
+    assert.strictEqual(api.sessions.get("s1").sessionTitleFromPrompt, true);
+  });
+
+  it("keeps the prompt origin across a Codex permission rebuild (#1125)", () => {
+    update(api, {
+      id: "s1", state: "thinking", event: "UserPromptSubmit", agentId: "codex",
+      sessionTitle: "A", sessionTitleFromPrompt: true,
+    });
+    update(api, {
+      id: "s1", state: "notification", event: "PermissionRequest", agentId: "codex",
+      transientPermissionEvent: true,
+    });
+    assert.strictEqual(api.sessions.get("s1").sessionTitle, "A");
+    assert.strictEqual(api.sessions.get("s1").sessionTitleFromPrompt, true);
+
+    update(api, {
+      id: "s1", state: "thinking", event: "UserPromptSubmit", agentId: "codex",
+      sessionTitle: "B", sessionTitleFromPrompt: true,
+    });
+    assert.strictEqual(api.sessions.get("s1").sessionTitle, "B");
+  });
+
+  it("keeps the prompt origin across subagent start and stop rebuilds (#1125)", () => {
+    update(api, {
+      id: "s1", state: "thinking", event: "UserPromptSubmit",
+      sessionTitle: "A", sessionTitleFromPrompt: true,
+    });
+    update(api, { id: "s1", state: "working", event: "PreToolUse" });
+    update(api, { id: "s1", state: "juggling", event: "SubagentStart" });
+    assert.strictEqual(api.sessions.get("s1").sessionTitleFromPrompt, true);
+    update(api, { id: "s1", state: "working", event: "SubagentStop" });
+    assert.strictEqual(api.sessions.get("s1").sessionTitle, "A");
+    assert.strictEqual(api.sessions.get("s1").sessionTitleFromPrompt, true);
+
+    update(api, {
+      id: "s1", state: "thinking", event: "UserPromptSubmit",
+      sessionTitle: "B", sessionTitleFromPrompt: true,
+    });
+    assert.strictEqual(api.sessions.get("s1").sessionTitle, "B");
   });
 
   it("stores optional platform and model metadata", () => {

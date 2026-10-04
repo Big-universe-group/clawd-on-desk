@@ -60,9 +60,9 @@ before(async () => {
   createOpencodeFamilyPlugin = core.createOpencodeFamilyPlugin;
 });
 
-after(() => {
+after(async () => {
   delete globalThis.Bun;
-  fs.rmSync(TMP_HOME, { recursive: true, force: true });
+  await fs.promises.rm(TMP_HOME, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
 });
 
 async function flush(times = 30) {

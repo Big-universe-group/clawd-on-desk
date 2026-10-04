@@ -29,6 +29,13 @@ let createOpencodeFamilyPlugin;
 const fetchCalls = [];
 let clawdResponseRecognized = false;
 
+const trackedPlugins = new Set();
+
+function trackPlugin(plugin) {
+  trackedPlugins.add(plugin);
+  return plugin;
+}
+
 before(async () => {
   delete globalThis.Bun;
   globalThis.fetch = async (url, opts) => {
@@ -50,9 +57,13 @@ before(async () => {
   ({ createOpencodeFamilyPlugin } = await import(pathToFileURL(modulePath).href));
 });
 
-after(() => {
+after(async () => {
   delete globalThis.Bun;
-  fs.rmSync(TMP_HOME, { recursive: true, force: true });
+  try {
+    await Promise.all([...trackedPlugins].map((plugin) => plugin.__test.flushDebugLog()));
+  } finally {
+    await fs.promises.rm(TMP_HOME, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
+  }
 });
 
 const OC = Object.freeze({
@@ -77,7 +88,7 @@ function createContext(directory, sdkCalls) {
   };
 }
 
-async function initNodeInstance({ plugin = createOpencodeFamilyPlugin(OC), directory = "/tmp/node-project" } = {}) {
+async function initNodeInstance({ plugin = trackPlugin(createOpencodeFamilyPlugin(OC)), directory = "/tmp/node-project" } = {}) {
   const sdkCalls = [];
   const hooks = await plugin(createContext(directory, sdkCalls));
   return { plugin, hooks, sdkCalls, directory };
@@ -215,7 +226,7 @@ describe("opencode-family Node reverse bridge", () => {
   });
 
   it("serializes concurrent directory initialization and preserves request ownership", async (t) => {
-    const plugin = createOpencodeFamilyPlugin(OC);
+    const plugin = trackPlugin(createOpencodeFamilyPlugin(OC));
     const callsA = [];
     const callsB = [];
     const [hooksA, hooksB] = await Promise.all([
@@ -265,7 +276,7 @@ describe("opencode-family Node reverse bridge", () => {
   });
 
   it("returns a structured 502 when the host SDK throws an unreadable error", async (t) => {
-    const plugin = createOpencodeFamilyPlugin(OC);
+    const plugin = trackPlugin(createOpencodeFamilyPlugin(OC));
     const hooks = await plugin({
       serverUrl: "http://127.0.0.1:1/",
       directory: "/tmp/node-throw",

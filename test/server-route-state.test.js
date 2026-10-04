@@ -860,6 +860,7 @@ describe("server-route-state POST", () => {
         ghosttyTerminalId: "ghostty-term-7",
         displayHint: "display.svg",
         sessionTitle: "Work title",
+        sessionTitleFromPrompt: false,
         contextUsage: null,
         contextUsageOrigin: null,
         assistantLastOutput: null,
@@ -3091,5 +3092,107 @@ describe("server-route-state ExitPlanMode stale sweep", () => {
     assert.strictEqual(res.statusCode, 200);
     assert.deepStrictEqual(res.calls.resolved, []);
     assert.match(res.calls.logs.join("\n"), /decision sweep ambiguous:.*candidates=2/);
+  });
+});
+
+describe("issue #1125 AI session title end to end", () => {
+  it("keeps the AI transcript title after it scrolls out of the tail window", async () => {
+    const fs = require("node:fs");
+    const os = require("node:os");
+    const path = require("node:path");
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "clawd-1125-"));
+    const file = path.join(dir, "transcript.jsonl");
+    const sessionId = "1125-session";
+    const resolve = () => ({ stablePid: null, agentPid: null, detectedEditor: null, pidChain: [] });
+
+    fs.writeFileSync(file, `${JSON.stringify({
+      type: "ai-title",
+      aiTitle: "Generated Title",
+      sessionId,
+    })}\n`);
+
+    const api = makeMetadataStateRuntime();
+    const post = (body) => callStatePost(JSON.stringify(body), {
+      ctx: {
+        sessions: api.sessions,
+        updateSession: (...args) => api.updateSession(...args),
+      },
+    });
+    const canonical = localSessionKey(sessionId);
+
+    try {
+      const startRes = await post(buildStateBody(
+        "SessionStart",
+        { session_id: sessionId, transcript_path: file },
+        resolve
+      ));
+      assert.strictEqual(startRes.statusCode, 200);
+      assert.strictEqual(api.sessions.get(canonical).sessionTitle, "Generated Title");
+
+      // Push the ai-title record out of the 256 KB tail window.
+      const pad = `${JSON.stringify({ type: "user", message: { content: "x".repeat(400) } })}\n`;
+      fs.appendFileSync(file, pad.repeat(700));
+      assert.ok(fs.statSync(file).size > 262144);
+
+      const promptBody = buildStateBody("UserPromptSubmit", {
+        session_id: sessionId,
+        prompt: "Prompt first line",
+        transcript_path: file,
+      }, resolve);
+      assert.strictEqual(promptBody.session_title, "Prompt first line");
+      assert.strictEqual(promptBody.session_title_from_prompt, true);
+
+      const promptRes = await post(promptBody);
+      assert.strictEqual(promptRes.statusCode, 200);
+      assert.strictEqual(api.sessions.get(canonical).sessionTitle, "Generated Title");
+    } finally {
+      api.cleanup();
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("treats a metadata-only title as formal even when marked prompt-derived", async () => {
+    const api = makeMetadataStateRuntime();
+    const rawId = "1125-metadata-session";
+    const canonical = localSessionKey(rawId);
+    const post = (body) => callStatePost(JSON.stringify(body), {
+      ctx: {
+        sessions: api.sessions,
+        updateSession: (...args) => api.updateSession(...args),
+        updateSessionMetadata: (...args) => api.updateSessionMetadata(...args),
+      },
+    });
+
+    try {
+      const seed = await post({
+        state: "working",
+        session_id: rawId,
+        event: "PreToolUse",
+        session_title: "Formal Title",
+      });
+      assert.strictEqual(seed.statusCode, 200);
+
+      const metadata = await post({
+        session_id: rawId,
+        metadata_only: true,
+        session_title: "Metadata Title",
+        session_title_from_prompt: true,
+      });
+      assert.strictEqual(metadata.statusCode, 204);
+      assert.strictEqual(api.sessions.get(canonical).sessionTitle, "Metadata Title");
+      assert.strictEqual(api.sessions.get(canonical).sessionTitleFromPrompt, false);
+
+      const prompt = await post({
+        state: "thinking",
+        session_id: rawId,
+        event: "UserPromptSubmit",
+        session_title: "Prompt line",
+        session_title_from_prompt: true,
+      });
+      assert.strictEqual(prompt.statusCode, 200);
+      assert.strictEqual(api.sessions.get(canonical).sessionTitle, "Metadata Title");
+    } finally {
+      api.cleanup();
+    }
   });
 });

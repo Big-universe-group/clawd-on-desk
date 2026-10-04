@@ -404,7 +404,7 @@ function recordSessionHistoryFromStateBody(body, options = {}) {
     }
 
     const cwd = normalizeCwd(body.cwd) || (existing && existing.cwd) || "";
-    const title = body._sessionTitleFromPrompt === true
+    const title = body.session_title_from_prompt === true
       ? (existing && existing.title) || null
       : normalizeTitle(body.session_title) || (existing && existing.title) || null;
     const lastState = active && SUSTAINED_STATES.has(classified.state)

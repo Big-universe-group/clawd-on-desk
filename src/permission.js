@@ -2535,10 +2535,14 @@ function showPermissionBubble(permEntry) {
       const idx = pendingPermissions.indexOf(permEntry);
       if (idx !== -1) {
         // Codex + Qwen + Copilot + ZCode + DSH can hand no-decision back to
-        // their native flow. Hermes has no native permission UI, so its opt-in
-        // plugin gate treats this as a retryable block. In every case we avoid
-        // fabricating a user denial. CC/CodeBuddy still get an explicit deny for
-        // this user-close action.
+        // their native flow. opencode-family entries do the same: OpenCode v2
+        // answers 204 on its blocking evaluate hook so the native ask UI takes
+        // over, while OpenCode v1 / MiMo silently drop the request so their
+        // built-in terminal or Desktop prompt wins. Hermes has no native
+        // permission UI, so its opt-in plugin gate treats this as a retryable
+        // block. In every case we avoid fabricating a user denial.
+        // Claude Code / CodeBuddy still get an explicit deny for this user-close
+        // action.
         const behavior = (
           permEntry.isCodex
           || permEntry.isQwenCode
@@ -2546,6 +2550,7 @@ function showPermissionBubble(permEntry) {
           || permEntry.isHermes
           || permEntry.isZcode
           || permEntry.isDsh
+          || isOpencodeFamilyEntry(permEntry)
         ) ? "no-decision" : "deny";
         resolvePermissionEntry(permEntry, behavior, "Bubble window closed by user");
       }

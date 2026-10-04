@@ -18,7 +18,7 @@ const fs = require("fs");
 const path = require("path");
 const os = require("os");
 const CodexSubagentClassifier = require("./codex-subagent-classifier");
-const { readCodexThreadName } = require("../hooks/codex-session-index");
+const { bareCodexSessionId, readCodexThreadName, readCodexThreadNames } = require("../hooks/codex-session-index");
 const {
   clampAssistantOutputText,
   extractAssistantTextFromRecord,
@@ -29,6 +29,7 @@ const {
   isFreshCodexQuotaTimestamp,
 } = require("../hooks/codex-rate-limits");
 const { parseCodexUserInputRecord } = require("../hooks/codex-user-input");
+const { getCodexLogEventKey } = require("../hooks/codex-log-event");
 const { normalizeCodexTurnId } = require("../src/codex-turn-id");
 
 const MAX_TRACKED_FILES = 50;
@@ -343,6 +344,28 @@ class CodexLogMonitor {
       this._runReadyStartupRecovery(context);
     }
     this._pruneTrackedFilesIfNeeded();
+    this._refreshSessionTitles();
+  }
+
+  _refreshSessionTitles() {
+    // Unparsed/failed replay candidates have no observed lifecycle to label.
+    const sessions = Array.from(this._tracked.values()).filter(tracked => tracked.lastState);
+    for (const [filePath, tracked] of this._retiredTracked) {
+      if (!this._tracked.has(filePath) && tracked.lastState) sessions.push(tracked);
+    }
+    const names = readCodexThreadNames(
+      sessions.map(tracked => tracked.sessionId),
+      { codexDir: this._codexDir }
+    );
+    for (const tracked of sessions) {
+      const title = names.get(bareCodexSessionId(tracked.sessionId));
+      if (!title || (title === tracked.reportedIndexTitle && title === tracked.sessionTitle)) continue;
+      tracked.sessionTitle = title;
+      tracked.reportedIndexTitle = title;
+      // An index update is metadata, including after a completed turn. Do
+      // not use _emitStateChange: it also advances lifecycle/liveness clocks.
+      this._onStateChange(tracked.sessionId, null, "session_index:title", { sessionTitle: title });
+    }
   }
 
   _insertStartupRecoveryCandidate(candidate) {
@@ -1210,6 +1233,7 @@ class CodexLogMonitor {
         fileIdentity,
         cwd: retired ? retired.cwd : "",
         sessionTitle: retired ? retired.sessionTitle : null,
+        reportedIndexTitle: retired ? retired.reportedIndexTitle || null : null,
         codexOriginator: retired ? retired.codexOriginator : null,
         codexSource: retired ? retired.codexSource : null,
         codexQuotaProviderHint: retired ? retired.codexQuotaProviderHint || null : null,
@@ -1591,11 +1615,7 @@ class CodexLogMonitor {
 
     const type = obj.type;
     const payload = obj.payload;
-    const subtype =
-      payload && typeof payload === "object" ? payload.type || "" : "";
-
-    // Build lookup key
-    const key = subtype ? type + ":" + subtype : type;
+    const key = getCodexLogEventKey(type, payload);
 
     // Turn identity is file-order bookkeeping, not a live callback. Apply it
     // before both replay guards so an old task_started seeds the active ID and
@@ -1918,9 +1938,11 @@ class CodexLogMonitor {
     if (!filePath || !tracked) return;
     this._retiredTracked.delete(filePath);
     this._retiredTracked.set(filePath, {
+      sessionId: tracked.sessionId,
       offset: Number.isFinite(tracked.offset) ? tracked.offset : 0,
       cwd: tracked.cwd || "",
       sessionTitle: tracked.sessionTitle || null,
+      reportedIndexTitle: tracked.reportedIndexTitle || null,
       codexOriginator: tracked.codexOriginator || null,
       codexSource: tracked.codexSource || null,
       codexQuotaProviderHint: tracked.codexQuotaProviderHint || null,

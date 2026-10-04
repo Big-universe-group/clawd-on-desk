@@ -10,6 +10,11 @@ const {
 } = require("../src/codex-monitor-callback");
 
 describe("Codex monitor callback helpers", () => {
+  it("keeps title refreshes metadata-only even when their payload is missing", () => {
+    assert.strictEqual(isCodexMonitorMetadataOnlyEvent("session_index:title", { sessionTitle: "Title" }), true);
+    assert.strictEqual(isCodexMonitorMetadataOnlyEvent("session_index:title", null), true);
+  });
+
   it("identifies token_count context updates as metadata-only events", () => {
     assert.strictEqual(
       isCodexMonitorMetadataOnlyEvent("event_msg:token_count", {

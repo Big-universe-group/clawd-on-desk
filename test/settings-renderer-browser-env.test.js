@@ -787,6 +787,7 @@ function loadSharedLanguagePickerForTest({
   transitionDelay = "0s",
   lockWhilePending = false,
   viewportPlacement = null,
+  revealWhenClosed,
   innerWidth = 1000,
   textZoom = 1,
 } = {}) {
@@ -880,6 +881,7 @@ function loadSharedLanguagePickerForTest({
     onChange,
     lockWhilePending,
     viewportPlacement,
+    revealWhenClosed,
   });
   boundary.appendChild(control.element);
 
@@ -10081,6 +10083,26 @@ describe("settings renderer browser environment", () => {
     }
   });
 
+  it("can preserve a closed Dashboard picker's scroll without changing tutorial reveal defaults", () => {
+    for (const revealWhenClosed of [false, undefined]) {
+      const harness = loadSharedLanguagePickerForTest({ revealWhenClosed });
+      harness.boundary.getBoundingClientRect = () => ({ top: 50, bottom: 300 });
+      harness.trigger.getBoundingClientRect = () => ({
+        top: 500 - harness.boundary.scrollTop, bottom: 526 - harness.boundary.scrollTop,
+      });
+      harness.dispatchWindowEvent("resize");
+      harness.flushAnimationFrames();
+      if (revealWhenClosed === false) assert.strictEqual(harness.boundary.scrollTop, 0);
+      else assert.ok(harness.boundary.scrollTop > 0);
+      harness.boundary.scrollTop = 0;
+      harness.trigger.dispatchEvent({ type: "click" });
+      harness.dispatchWindowEvent("resize");
+      harness.flushAnimationFrames();
+      assert.ok(harness.boundary.scrollTop > 0, "open menus still reveal their trigger");
+      harness.control.dispose();
+    }
+  });
+
   it("reflows an open tutorial picker after the window is resized", () => {
     const harness = loadSharedLanguagePickerForTest({
       options: ["en", "zh", "zh-TW", "ko", "ja"],
@@ -13052,6 +13074,70 @@ describe("settings renderer browser environment", () => {
     );
   });
 
+  it("keeps a local theme in the user section when the confirmed catalog never listed its id", () => {
+    const { content } = loadThemeTabForTest({
+      themes: [
+        { id: "clawd", name: "Clawd", builtin: true, active: true },
+        { id: "hash-sage", name: "My Local Sage", builtin: false, active: false },
+      ],
+      officialThemes: [
+        { id: "whale-chan", name: "Whale-chan", officialTheme: true, active: false, officialThemeState: "available" },
+      ],
+      officialCatalogStatus: "ok",
+    });
+
+    const sections = content.querySelectorAll(".theme-section");
+    const userSection = sections.find(
+      (section) => section.querySelector(".theme-section-title").textContent === "User Themes"
+    );
+    assert.ok(userSection, "the local theme must stay in the user section");
+    assert.strictEqual(userSection.querySelectorAll(".theme-card").length, 1);
+    assert.ok(collectText(userSection.querySelector(".theme-card")).includes("My Local Sage"));
+    assert.strictEqual(userSection.querySelector(".theme-card-footer-official"), null);
+  });
+
+  it("returns a stale official local theme to the user section once the catalog drops its id", async () => {
+    const { content, commands } = loadThemeTabForTest({
+      themes: [
+        { id: "clawd", name: "Clawd", builtin: true, active: true },
+        {
+          id: "hash-sage",
+          name: "My Local Sage",
+          builtin: false,
+          active: false,
+          // Decoration left behind by the catalog version that still listed this id.
+          officialTheme: true,
+          officialThemeState: "conflict",
+          officialThemeConflict: true,
+          officialThemeCanUninstall: false,
+        },
+      ],
+      officialThemes: [
+        { id: "whale-chan", name: "Whale-chan", officialTheme: true, active: false, officialThemeState: "available" },
+      ],
+      officialCatalogStatus: "ok",
+    });
+
+    const sections = content.querySelectorAll(".theme-section");
+    const userSection = sections.find(
+      (section) => section.querySelector(".theme-section-title").textContent === "User Themes"
+    );
+    assert.ok(userSection, "the withdrawn local theme must return to the user section");
+    const cards = userSection.querySelectorAll(".theme-card");
+    assert.strictEqual(cards.length, 1);
+    assert.ok(collectText(cards[0]).includes("My Local Sage"));
+    assert.strictEqual(cards[0].querySelector(".theme-card-footer-official"), null);
+    assert.ok(cards[0].querySelector(".theme-delete-btn"), "plain user themes offer delete");
+
+    cards[0].dispatchEvent({ type: "click" });
+    await Promise.resolve();
+    await Promise.resolve();
+    assert.deepStrictEqual(
+      JSON.parse(JSON.stringify(commands)),
+      [{ name: "setThemeSelection", payload: { themeId: "hash-sage" } }],
+    );
+  });
+
   it("shows official download, progress and uninstall affordances", async () => {
     const installCalls = [];
     const cancelCalls = [];
@@ -13152,7 +13238,88 @@ describe("settings renderer browser environment", () => {
     assert.strictEqual(retry.getAttribute("data-settings-focus-key"), "official-retry:hash-sage");
   });
 
-  it("shows a list-level offline note without hiding installed official cards", () => {
+  it("uses the localized catalog-unavailable copy for that install failure code", async () => {
+    const toasts = [];
+    const harness = loadThemeTabForTest({
+      themes: [{ id: "clawd", name: "Clawd", builtin: true, active: true }],
+      officialThemes: [{
+        id: "hash-sage",
+        name: "Hash Sage",
+        officialTheme: true,
+        active: false,
+        officialThemeState: "available",
+        officialThemeBytes: 5 * 1024 * 1024,
+      }],
+      settingsAPI: {
+        installOfficialTheme: () => Promise.resolve({
+          status: "error",
+          code: "OFFICIAL_THEME_CATALOG_UNAVAILABLE",
+          message: "official theme catalog is unavailable",
+        }),
+      },
+    });
+    harness.core.ops.showToast = (message, options) => toasts.push({ message, options });
+    harness.content.querySelector(".theme-official-download-btn").dispatchEvent({ type: "click" });
+    await Promise.resolve();
+    await Promise.resolve();
+
+    assert.strictEqual(toasts.length, 1);
+    assert.strictEqual(toasts[0].message, harness.core.helpers.t("toastOfficialThemeCatalogUnavailable"));
+    assert.ok(!toasts[0].message.includes("official theme catalog is unavailable"));
+    assert.strictEqual(toasts[0].options.error, true);
+  });
+
+  it("keeps the generic install-failure copy for other error codes", async () => {
+    const toasts = [];
+    const harness = loadThemeTabForTest({
+      themes: [{ id: "clawd", name: "Clawd", builtin: true, active: true }],
+      officialThemes: [{
+        id: "hash-sage",
+        name: "Hash Sage",
+        officialTheme: true,
+        active: false,
+        officialThemeState: "available",
+        officialThemeBytes: 5 * 1024 * 1024,
+      }],
+      settingsAPI: {
+        installOfficialTheme: () => Promise.resolve({
+          status: "error",
+          code: "OFFICIAL_THEME_INSTALL_FAILED",
+          message: "boom",
+        }),
+      },
+    });
+    harness.core.ops.showToast = (message, options) => toasts.push({ message, options });
+    harness.content.querySelector(".theme-official-download-btn").dispatchEvent({ type: "click" });
+    await Promise.resolve();
+    await Promise.resolve();
+
+    assert.strictEqual(toasts.length, 1);
+    assert.strictEqual(toasts[0].message, harness.core.helpers.t("toastOfficialThemeInstallFailed")("boom"));
+  });
+
+  it("localizes a catalog-unavailable card error instead of showing the English message", () => {
+    const { content, core } = loadThemeTabForTest({
+      themes: [{ id: "clawd", name: "Clawd", builtin: true, active: true }],
+      officialThemes: [{
+        id: "hash-sage",
+        name: "Hash Sage",
+        officialTheme: true,
+        active: false,
+        officialThemeState: "error",
+        officialThemeError: {
+          code: "OFFICIAL_THEME_CATALOG_UNAVAILABLE",
+          message: "official theme catalog is unavailable",
+        },
+      }],
+    });
+    const note = content.querySelector(".theme-official-note");
+    assert.ok(note);
+    assert.strictEqual(note.textContent, core.helpers.t("toastOfficialThemeCatalogUnavailable"));
+    assert.ok(!collectText(content).includes("official theme catalog is unavailable"));
+  });
+
+  it("shows a retry banner when the official catalog is offline without hiding installed cards", () => {
     const { content } = loadThemeTabForTest({
       themes: [{ id: "clawd", name: "Clawd", builtin: true, active: true }],
       officialCatalogStatus: "offline",
@@ -13168,8 +13335,29 @@ describe("settings renderer browser environment", () => {
         },
       ],
     });
-    assert.ok(content.querySelector(".theme-official-offline-note"));
+    const banner = content.querySelector(".theme-official-offline-banner");
+    assert.ok(banner);
+    assert.ok(content.querySelector(".theme-official-offline-retry"));
     assert.ok(content.querySelector(".theme-uninstall-btn"));
+    assert.strictEqual(content.querySelector(".theme-official-offline-note"), null);
+  });
+
+  it("keeps the official section with a no-list banner when the offline catalog returned nothing", () => {
+    const { content, core } = loadThemeTabForTest({
+      themes: [{ id: "clawd", name: "Clawd", builtin: true, active: true }],
+      officialCatalogStatus: "invalid",
+      officialThemes: [],
+    });
+    const banner = content.querySelector(".theme-official-offline-banner");
+    assert.ok(banner);
+    assert.strictEqual(
+      content.querySelector(".theme-official-offline-retry").textContent,
+      core.helpers.t("themeOfficialRetry"),
+    );
+    assert.strictEqual(
+      content.querySelector(".theme-official-offline-message").textContent,
+      core.helpers.t("themeOfficialOfflineNoList"),
+    );
   });
 
   it("renders Codex Pet atlas previews with V1, V2, and legacy grid ratios", () => {    const { content } = loadThemeTabForTest({

@@ -23,10 +23,10 @@ before(() => {
   process.env.HOME = TEMP_HOME;
   process.env.USERPROFILE = TEMP_HOME;
 });
-after(() => {
+after(async () => {
   process.env.HOME = ORIGINAL_HOME;
   process.env.USERPROFILE = ORIGINAL_USERPROFILE;
-  fs.rmSync(TEMP_HOME, { recursive: true, force: true });
+  await fs.promises.rm(TEMP_HOME, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
 });
 
 const HOOKS_DIR = path.join(__dirname, "..", "hooks");

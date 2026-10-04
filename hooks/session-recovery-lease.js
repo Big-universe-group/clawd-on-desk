@@ -587,7 +587,7 @@ function updateRecoveryLeaseFromStateBody(body, options = {}) {
       processStartIdentity: processStartIdentity || null,
       sourceProcessStartIdentity: sourceProcessStartIdentity || null,
       cwd: normalizeCwd(body.cwd) || (existing && existing.cwd) || "",
-      title: body._sessionTitleFromPrompt === true
+      title: body.session_title_from_prompt === true
         ? (existing && existing.title) || null
         : normalizeTitle(body.session_title) || (existing && existing.title) || null,
     };

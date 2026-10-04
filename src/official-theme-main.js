@@ -115,6 +115,9 @@ function createOfficialThemeMain(options = {}) {
   const commitImpl = options.commitStagedInstall || installerModule.commitStagedInstall;
   const catalogFetch = options.fetchCatalogText || catalogModule.fetchCatalogText;
   const ensurePreviewFile = options.ensurePreviewFile || previewModule.ensurePreviewFile;
+  const readCatalogSnapshot = options.readCatalogSnapshot || catalogModule.readCatalogSnapshot;
+  const readVerifiedPreview = options.readVerifiedPreview || previewModule.readVerifiedPreview;
+  const previewCachePath = options.previewCachePath || previewModule.previewCachePath;
 
   if (!themeLoader) throw new Error("createOfficialThemeMain requires themeLoader");
   if (!settingsController) throw new Error("createOfficialThemeMain requires settingsController");
@@ -136,13 +139,63 @@ function createOfficialThemeMain(options = {}) {
     maxCatalogVersion: 0,
     previewPromises: new Map(),
     builtinThemeIds: null,
+    snapshotLoaded: false,
+    snapshotCatalog: null,
   };
 
   // ── Catalog ──
 
+  // Install/commit resolve URLs from the network/cache last-known-good only.
   function catalogEntry(id) {
     if (!state.catalog) return null;
     return state.catalog.themes.find((entry) => entry.id === id) || null;
+  }
+
+  function getSnapshotCatalog() {
+    if (!state.snapshotLoaded) {
+      state.snapshotLoaded = true;
+      let snapshot = null;
+      try {
+        snapshot = readCatalogSnapshot({ fs, path }) || null;
+      } catch {
+        snapshot = null;
+      }
+      state.snapshotCatalog = snapshot;
+    }
+    return state.snapshotCatalog;
+  }
+
+  // The catalog the Settings list renders from. While the network catalog is
+  // healthy this is exactly it. When the fetch failed the list falls back to
+  // the last-known-good already loaded (in memory or adopted from the disk
+  // cache), and only uses the bundled snapshot when there is none. The list and
+  // the install path therefore share the same source; the snapshot is never an
+  // install authorization. Before the first fetch has produced a result
+  // (`uninitialized`) neither the snapshot nor the disk cache is read, so a
+  // local theme can never be decorated from a catalog the app has not yet
+  // confirmed.
+  function displayCatalog() {
+    if (state.catalogStatus === "ok") return state.catalog;
+    if (state.catalog) return state.catalog;
+    if (state.catalogStatus === "uninitialized") return null;
+    // A failed fetch normally leaves the last-known-good adopted in memory, but
+    // a direct state inspection (or a cache written after the failure) can still
+    // have it only on disk.
+    if (adoptCache()) return state.catalog;
+    return getSnapshotCatalog();
+  }
+
+  function displayCatalogEntry(id) {
+    const catalog = displayCatalog();
+    if (!catalog) return null;
+    return catalog.themes.find((entry) => entry.id === id) || null;
+  }
+
+  // Whether a *failed* fetch has anywhere to fall back to. Unlike
+  // displayCatalog(), this counts the snapshot even before any result has been
+  // produced, because it only gates the status after an attempt has resolved.
+  function hasFallbackCatalog() {
+    return !!state.catalog || !!getSnapshotCatalog();
   }
 
   function isBuiltinThemeId(themeId) {
@@ -173,7 +226,12 @@ function createOfficialThemeMain(options = {}) {
   // catalog when the disk cache holds a higher valid one.
   function adoptCatalog(nextCatalog) {
     const cache = readCache();
-    const ceiling = Math.max(state.maxCatalogVersion, cache ? cache.catalogVersion : 0);
+    const snapshot = getSnapshotCatalog();
+    const ceiling = Math.max(
+      state.maxCatalogVersion,
+      cache ? cache.catalogVersion : 0,
+      snapshot ? snapshot.catalogVersion : 0,
+    );
     if (nextCatalog.catalogVersion < ceiling) {
       // Do not overwrite the higher valid catalog; surface it so the caller can
       // report offline while the higher LKG stays in memory and on disk.
@@ -219,7 +277,7 @@ function createOfficialThemeMain(options = {}) {
         const parsed = await fetchAndValidate(undefined);
         if (!parsed.ok) {
           if (!state.catalog) adoptCache();
-          state.catalogStatus = state.catalog ? "offline" : "invalid";
+          state.catalogStatus = hasFallbackCatalog() ? "offline" : "invalid";
           return state.catalogStatus;
         }
         try {
@@ -227,7 +285,7 @@ function createOfficialThemeMain(options = {}) {
         } catch (err) {
           if (err && err.code === catalogModule.ERROR_CODES.CATALOG_REGRESSION) {
             if (!state.catalog) adoptCache();
-            state.catalogStatus = state.catalog ? "offline" : "invalid";
+            state.catalogStatus = hasFallbackCatalog() ? "offline" : "invalid";
             return state.catalogStatus;
           }
           throw err;
@@ -358,14 +416,14 @@ function createOfficialThemeMain(options = {}) {
     return { code: state.lastError.code, message: state.lastError.message };
   }
 
-  function buildOfficialCard(id, entry, installed) {
+  function buildOfficialCard(id, entry, installed, catalogVersion) {
     return {
       id,
       officialTheme: true,
       officialThemeState: null,
       officialThemeVersion: entry ? entry.version : (installed ? installed.version : null),
       officialThemeInstalledVersion: installed ? installed.version : null,
-      officialThemeCatalogVersion: state.catalog ? state.catalog.catalogVersion : null,
+      officialThemeCatalogVersion: catalogVersion == null ? null : catalogVersion,
       officialThemeBytes: entry ? entry.archive.bytes : null,
       officialThemeUnpackedBytes: entry ? entry.archive.unpackedBytes : null,
       officialThemeProgress: state.operation && state.operation.id === id ? progressSnapshot() : null,
@@ -376,8 +434,25 @@ function createOfficialThemeMain(options = {}) {
     };
   }
 
+  // A cached, digest-verified preview without touching the network. Used while
+  // the catalog is offline: the card falls back to its existing no-preview
+  // style instead of stalling the list on unverifiable downloads.
+  function readCachedPreviewPath(entry) {
+    if (!entry || !entry.preview) return null;
+    let target = null;
+    try {
+      target = previewCachePath(entry, userDataDir, path);
+    } catch {
+      return null;
+    }
+    if (!target) return null;
+    const buffer = readVerifiedPreview({ fs, target, preview: entry.preview });
+    return buffer ? target : null;
+  }
+
   async function resolvePreviewPath(entry) {
     if (!entry || !entry.preview) return null;
+    if (state.catalogStatus !== "ok") return readCachedPreviewPath(entry);
     const key = `${entry.id}:${entry.version}:${entry.preview.sha256}`;
     let pending = state.previewPromises.get(key);
     if (!pending) {
@@ -396,14 +471,18 @@ function createOfficialThemeMain(options = {}) {
     return pending;
   }
 
-  async function listOfficialThemes() {
-    await ensureCatalogReady();
+  // `catalogReady` lets the caller that already ran refreshCatalog skip a
+  // second ensureCatalogReady: one list request must never issue two catalog
+  // network fetches.
+  async function listOfficialThemes({ catalogReady = false } = {}) {
+    if (!catalogReady) await ensureCatalogReady();
     scanInstalled();
+    const catalog = displayCatalog();
     const base = themeLoader.listThemesWithMetadata();
     const baseById = new Map(base.map((theme) => [theme.id, theme]));
     const ids = new Set();
-    if (state.catalog) {
-      for (const entry of state.catalog.themes) {
+    if (catalog) {
+      for (const entry of catalog.themes) {
         if (!isBuiltinThemeId(entry.id)) ids.add(entry.id);
       }
     }
@@ -412,7 +491,7 @@ function createOfficialThemeMain(options = {}) {
     }
 
     const themes = await mapWithConcurrency([...ids], PREVIEW_RESOLVE_CONCURRENCY, async (id) => {
-      const entry = catalogEntry(id);
+      const entry = displayCatalogEntry(id);
       const installed = state.installed.get(id) || null;
       const baseTheme = baseById.get(id) || null;
       const builtinConflict = !!(baseTheme && baseTheme.builtin === true);
@@ -444,7 +523,7 @@ function createOfficialThemeMain(options = {}) {
           variants: [],
           capabilities: null,
         }),
-        ...buildOfficialCard(id, entry, installed),
+        ...buildOfficialCard(id, entry, installed, catalog ? catalog.catalogVersion : null),
       };
       if (!card.previewFileUrl && remotePreviewPath) {
         card.previewFileUrl = pathToFileURL(remotePreviewPath).href;
@@ -463,7 +542,7 @@ function createOfficialThemeMain(options = {}) {
     return {
       status: "ok",
       catalogStatus: state.catalogStatus,
-      catalogVersion: state.catalog ? state.catalog.catalogVersion : null,
+      catalogVersion: catalog ? catalog.catalogVersion : null,
       checkedAt: state.catalogCheckedAt,
       themes,
     };
@@ -478,24 +557,25 @@ function createOfficialThemeMain(options = {}) {
     ensureScan();
     const installed = state.installed.get(theme.id);
     if (installed) {
-      const entry = catalogEntry(theme.id);
+      const entry = displayCatalogEntry(theme.id);
       const derived = catalogModule.deriveOfficialThemeState({
         entry,
         installed,
         appVersion: getAppVersion(),
       });
+      const catalog = displayCatalog();
       return {
         ...theme,
         officialTheme: true,
         managedOfficialTheme: true,
         officialThemeState: entry ? derived.state : (installed.repairRequired ? "repair-required" : "installed"),
         officialThemeVersion: installed.version,
-        officialThemeCatalogVersion: state.catalog ? state.catalog.catalogVersion : null,
+        officialThemeCatalogVersion: catalog ? catalog.catalogVersion : null,
         officialThemeCanUninstall: true,
         officialThemeConflict: false,
       };
     }
-    if (state.catalog && catalogEntry(theme.id)) {
+    if (displayCatalogEntry(theme.id)) {
       return {
         ...theme,
         officialTheme: true,
@@ -533,7 +613,12 @@ function createOfficialThemeMain(options = {}) {
   // list rebuilds cannot hammer the catalog endpoint.
   function refreshCatalog({ force = false, minIntervalMs = 60 * 1000 } = {}) {
     const current = now();
-    if (!force && state.lastFetchMs && current - state.lastFetchMs < minIntervalMs) {
+    // Only a healthy catalog is worth throttling. An offline/invalid catalog
+    // must stay retryable, both from the explicit retry button and from a fresh
+    // tab-open — otherwise a failure inside the throttle window could not be
+    // retried at all.
+    const healthy = state.catalogStatus === "ok" && !!state.catalog;
+    if (!force && healthy && state.lastFetchMs && current - state.lastFetchMs < minIntervalMs) {
       return Promise.resolve(state.catalogStatus);
     }
     state.lastFetchMs = current;

@@ -107,6 +107,7 @@ logs/
 scripts/*
 # Deterministic source-backed macOS tray asset generator
 !scripts/generate-mac-tray-icons.js
+!scripts/update-official-theme-catalog-snapshot.js
 !scripts/manual/
 scripts/manual/*
 !scripts/manual/README.md

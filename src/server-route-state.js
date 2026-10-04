@@ -424,6 +424,10 @@ function handleStatePost(req, res, options) {
       // "ignore + fall back" pattern used by cwd / agent_id above.
       const rawTitle = typeof data.session_title === "string" ? data.session_title.trim() : "";
       const sessionTitle = rawTitle || null;
+      // A title derived from the prompt's first line is only a fallback: flag
+      // it so the state machine never lets it displace a formal title.
+      const sessionTitleFromPrompt =
+        sessionTitle !== null && data.session_title_from_prompt === true;
       const contextUsage = normalizeContextUsage(data.context_usage);
       const antigravityQuota = normalizeAntigravityQuota(data.antigravity_quota);
       const claudeQuota = normalizeClaudeQuota(data.claude_quota);
@@ -639,7 +643,10 @@ function handleStatePost(req, res, options) {
           // OpenCode title changes ride the same metadata-only channel (the
           // placeholder → real title swap arrives on session.updated, which
           // maps to no Clawd state). Not gated on the Claude telemetry flag —
-          // it's not Claude statusline data.
+          // it's not Claude statusline data. A metadata-only title is always
+          // formal: only hooks/clawd-hook.js sends session_title_from_prompt,
+          // and it never sends it on a metadata-only request, so any marker
+          // here is ignored.
           if (sessionTitle) metaUpdate.sessionTitle = sessionTitle;
           // DSH metadata bypasses the lifecycle sequence fence, so it must
           // only ever annotate DSH's own session. Pass the expected owner so
@@ -1040,6 +1047,7 @@ function handleStatePost(req, res, options) {
             ghosttyTerminalId,
             displayHint: display_svg,
             sessionTitle,
+            sessionTitleFromPrompt,
             contextUsage,
             contextUsageOrigin: resolveStateContextUsageOrigin(agentId, contextUsage),
             assistantLastOutput,

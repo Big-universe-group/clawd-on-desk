@@ -109,6 +109,9 @@ function createHarness(options = {}) {
       || (() => Promise.resolve(JSON.stringify(catalog))),
     downloadArchive: options.downloadArchive,
     ensurePreviewFile: options.ensurePreviewFile,
+    readCatalogSnapshot: options.readCatalogSnapshot || (() => null),
+    readVerifiedPreview: options.readVerifiedPreview,
+    previewCachePath: options.previewCachePath,
   });
   holder.manager = manager;
   return { zip, entry, catalog, manager, controller };
@@ -218,6 +221,7 @@ describe("official theme main", () => {
       fs, path, userDataDir: tmp, themeLoader, settingsController: controller,
       getActiveTheme: () => null, rebuildAllMenus: () => {}, sendToSettingsWindow: () => {},
       getAppVersion: () => APP_VERSION, fetchCatalogText: () => Promise.resolve(JSON.stringify(makeCatalog(buildZipEntry(hashSageFixture())))),
+      readCatalogSnapshot: () => null,
     });
     holder.manager = restarted;
     const listing = await restarted.listOfficialThemes();
@@ -453,6 +457,7 @@ describe("official theme uninstall", () => {
         sendToSettingsWindow: () => {},
         getAppVersion: () => APP_VERSION,
         fetchCatalogText: () => Promise.resolve(JSON.stringify(buildCatalogFor(options))),
+        readCatalogSnapshot: () => null,
       });
       holder.manager = harness.manager;
     }
@@ -567,6 +572,206 @@ describe("official theme uninstall", () => {
     const result = await controller.applyCommand("officialTheme.uninstall", { themeId: "hash-sage" });
     assert.strictEqual(result.status, "error");
     assert.ok(fs.existsSync(path.join(tmp, "themes", "hash-sage")));
+  });
+});
+
+describe("official theme catalog fallback", () => {
+  const offline = () => Object.assign(new Error("offline"), { code: catalogModule.ERROR_CODES.CATALOG_OFFLINE });
+
+  it("falls back to the bundled snapshot for the list when the fetch fails and no cache exists", async () => {
+    const entry = buildZipEntry(hashSageFixture());
+    const { manager } = createHarness({
+      readCatalogSnapshot: () => makeCatalog(entry, 8),
+      fetchCatalogText: () => Promise.reject(offline()),
+    });
+
+    const listing = await manager.listOfficialThemes();
+    assert.strictEqual(listing.catalogStatus, "offline");
+    assert.strictEqual(listing.catalogVersion, 8);
+    assert.deepStrictEqual(listing.themes.map((theme) => theme.id), ["hash-sage"]);
+
+    // The snapshot is a list fallback only: an install still needs the
+    // network/cache catalog.
+    const install = await manager.installTheme("hash-sage");
+    assert.strictEqual(install.code, MANAGER_ERROR_CODES.CATALOG_UNAVAILABLE);
+  });
+
+  it("reports an invalid catalog with an empty list when no snapshot exists either", async () => {
+    const { manager } = createHarness({
+      readCatalogSnapshot: () => null,
+      fetchCatalogText: () => Promise.resolve("not json"),
+    });
+    const listing = await manager.listOfficialThemes();
+    assert.strictEqual(listing.catalogStatus, "invalid");
+    assert.deepStrictEqual(listing.themes, []);
+  });
+
+  it("prefers the loaded last-known-good over a newer snapshot so display and install agree", async () => {
+    const entry = buildZipEntry(hashSageFixture());
+
+    const snapshotNewer = createHarness({
+      readCatalogSnapshot: () => makeCatalog(entry, 8),
+      fetchCatalogText: () => Promise.reject(offline()),
+    });
+    catalogModule.writeCatalogCache({ userDataDir: tmp, catalog: makeCatalog(entry, 3) });
+    const cached = await snapshotNewer.manager.listOfficialThemes();
+    assert.strictEqual(cached.catalogStatus, "offline");
+    assert.strictEqual(cached.catalogVersion, 3, "the cache wins even when the snapshot version is higher");
+
+    const cacheNewer = createHarness({
+      readCatalogSnapshot: () => makeCatalog(entry, 8),
+      fetchCatalogText: () => Promise.reject(offline()),
+    });
+    catalogModule.writeCatalogCache({ userDataDir: tmp, catalog: makeCatalog(entry, 9) });
+    const loaded = await cacheNewer.manager.listOfficialThemes();
+    assert.strictEqual(loaded.catalogVersion, 9);
+  });
+
+  it("never writes the bundled snapshot into the disk cache", async () => {
+    const entry = buildZipEntry(hashSageFixture());
+    const { manager } = createHarness({
+      readCatalogSnapshot: () => makeCatalog(entry, 8),
+      fetchCatalogText: () => Promise.reject(offline()),
+    });
+    await manager.listOfficialThemes();
+    assert.strictEqual(catalogModule.readCatalogCache({ userDataDir: tmp }), null);
+  });
+
+  it("treats an online catalog below the bundled snapshot as a regression", async () => {
+    const entry = buildZipEntry(hashSageFixture());
+    const { manager } = createHarness({
+      readCatalogSnapshot: () => makeCatalog(entry, 8),
+      fetchCatalogText: () => Promise.resolve(JSON.stringify(makeCatalog(entry, 7))),
+    });
+    const listing = await manager.listOfficialThemes();
+    assert.strictEqual(listing.catalogStatus, "offline");
+    assert.strictEqual(listing.catalogVersion, 8);
+    assert.strictEqual(catalogModule.readCatalogCache({ userDataDir: tmp }), null, "the regressing v7 is not cached");
+  });
+
+  it("does not fetch previews while offline and fetches them once the catalog recovers", async () => {
+    const zip = hashSageFixture();
+    const entry = buildZipEntry(zip);
+    entry.preview = {
+      url: "https://github.com/rullerzhou-afk/clawd-themes/releases/download/hash-sage-v1.0.0/hash-sage-1.0.0.preview.webp",
+      bytes: 7,
+      sha256: "b".repeat(64),
+    };
+    let online = false;
+    const previewCalls = [];
+    const { manager } = createHarness({
+      zip,
+      entry,
+      readCatalogSnapshot: () => null,
+      fetchCatalogText: () => (online
+        ? Promise.resolve(JSON.stringify(makeCatalog(entry, 1)))
+        : Promise.reject(offline())),
+      ensurePreviewFile: async (options) => {
+        previewCalls.push(options.entry.id);
+        const target = path.join(options.userDataDir, "official-theme", "previews", "hash-sage.webp");
+        fs.mkdirSync(path.dirname(target), { recursive: true });
+        fs.writeFileSync(target, "preview");
+        return { path: target, cached: false };
+      },
+    });
+    // A cached catalog keeps the entry known while the network is down; the
+    // listing must still avoid preview downloads in that state.
+    catalogModule.writeCatalogCache({ userDataDir: tmp, catalog: makeCatalog(entry, 1) });
+
+    const offlineListing = await manager.listOfficialThemes();
+    assert.strictEqual(offlineListing.catalogStatus, "offline");
+    assert.deepStrictEqual(previewCalls, [], "offline listing must not download previews");
+
+    online = true;
+    await manager.refreshCatalog({ force: true });
+    const recovered = await manager.listOfficialThemes();
+    assert.strictEqual(recovered.catalogStatus, "ok");
+    assert.deepStrictEqual(previewCalls, ["hash-sage"], "recovered listing downloads the preview");
+    assert.match(recovered.themes[0].previewFileUrl, /^file:\/\//);
+  });
+
+  it("issues at most one catalog network request per list request", async () => {
+    const entry = buildZipEntry(hashSageFixture());
+    let fetches = 0;
+    const { manager } = createHarness({
+      readCatalogSnapshot: () => makeCatalog(entry, 8),
+      fetchCatalogText: () => {
+        fetches += 1;
+        return Promise.reject(offline());
+      },
+    });
+
+    await manager.refreshCatalog();
+    await manager.listOfficialThemes({ catalogReady: true });
+    assert.strictEqual(fetches, 1);
+  });
+
+  it("shows and installs the same last-known-good version instead of a newer snapshot", async () => {
+    const zip = hashSageFixture();
+    const cachedEntry = buildZipEntry(zip); // hash-sage 1.0.0, archive matches the fixture
+    const snapshotEntry = { ...cachedEntry, version: "1.0.1" };
+    snapshotEntry.archive = {
+      ...cachedEntry.archive,
+      url: "https://github.com/rullerzhou-afk/clawd-themes/releases/download/hash-sage-v1.0.1/hash-sage-1.0.1.clawd-theme.zip",
+    };
+    const { manager } = createHarness({
+      zip,
+      entry: cachedEntry,
+      readCatalogSnapshot: () => makeCatalog(snapshotEntry, 8),
+      fetchCatalogText: () => Promise.reject(offline()),
+    });
+    catalogModule.writeCatalogCache({ userDataDir: tmp, catalog: makeCatalog(cachedEntry, 3) });
+
+    const listing = await manager.listOfficialThemes();
+    assert.strictEqual(listing.catalogStatus, "offline");
+    assert.strictEqual(listing.catalogVersion, 3, "the loaded last-known-good wins over the snapshot");
+    const card = listing.themes.find((theme) => theme.id === "hash-sage");
+    assert.strictEqual(card.officialThemeVersion, "1.0.0");
+
+    const install = await manager.installTheme("hash-sage");
+    assert.strictEqual(install.status, "ok", install.message);
+    assert.strictEqual(install.version, "1.0.0", "the install matches the version the card showed");
+
+    const after = await manager.listOfficialThemes();
+    const installed = after.themes.find((theme) => theme.id === "hash-sage");
+    assert.strictEqual(installed.officialThemeState, "installed");
+    assert.strictEqual(installed.officialThemeVersion, "1.0.0");
+  });
+
+  it("never installs from the snapshot and never starts a download without a network/cache catalog", async () => {
+    const zip = hashSageFixture();
+    const entry = buildZipEntry(zip);
+    let downloadCalls = 0;
+    const { manager } = createHarness({
+      zip,
+      entry,
+      readCatalogSnapshot: () => makeCatalog(entry, 8),
+      fetchCatalogText: () => Promise.reject(offline()),
+      downloadArchive: async () => {
+        downloadCalls += 1;
+        throw new Error("download must not start");
+      },
+    });
+
+    const listing = await manager.listOfficialThemes();
+    assert.strictEqual(listing.catalogStatus, "offline");
+    assert.ok(listing.themes.some((theme) => theme.id === "hash-sage"));
+
+    const install = await manager.installTheme("hash-sage");
+    assert.strictEqual(install.code, MANAGER_ERROR_CODES.CATALOG_UNAVAILABLE);
+    assert.strictEqual(downloadCalls, 0, "the snapshot is not an install authorization");
+  });
+
+  it("does not decorate a local theme from the snapshot before the first fetch resolves", () => {
+    const entry = buildZipEntry(hashSageFixture());
+    const { manager } = createHarness({
+      readCatalogSnapshot: () => makeCatalog(entry, 8),
+      fetchCatalogText: () => Promise.reject(offline()),
+    });
+
+    const decorated = manager.decorateThemeMetadata({ id: "hash-sage", name: "My Local Sage" });
+    assert.strictEqual(decorated.officialTheme, undefined);
+    assert.strictEqual(decorated.officialThemeConflict, undefined);
   });
 });
 

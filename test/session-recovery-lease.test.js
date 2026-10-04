@@ -99,6 +99,20 @@ describe("durable session recovery leases", () => {
     assert.ok(!serialized.includes("permission_payload"));
   });
 
+  it("persists an unmarked formal title but never a prompt-marked fallback (#1125)", () => {
+    const aiTitle = updateRecoveryLeaseFromStateBody(body({ session_title: "Generated Title" }), winOptions(1000));
+    assert.strictEqual(readLeaseFile(aiTitle.filePath).title, "Generated Title");
+
+    const marked = updateRecoveryLeaseFromStateBody(body({
+      session_id: "session-two",
+      session_title: "Secret prompt",
+      session_title_from_prompt: true,
+    }), winOptions(2000));
+    assert.strictEqual(marked.written, true);
+    assert.strictEqual(readLeaseFile(marked.filePath).title, null);
+    assert.ok(!fs.readFileSync(marked.filePath, "utf8").includes("Secret prompt"));
+  });
+
   it("keeps transient events from overwriting the last sustained state", () => {
     updateRecoveryLeaseFromStateBody(body(), winOptions(1000));
     const transient = updateRecoveryLeaseFromStateBody(body({

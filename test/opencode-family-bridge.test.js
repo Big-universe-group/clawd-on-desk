@@ -72,9 +72,9 @@ before(async () => {
   ({ createOpencodeFamilyPlugin } = await import(pathToFileURL(modulePath).href));
 });
 
-after(() => {
+after(async () => {
   delete globalThis.Bun;
-  fs.rmSync(TMP_HOME, { recursive: true, force: true });
+  await fs.promises.rm(TMP_HOME, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
 });
 
 async function initInstance(params, { sdk, plugin: existingPlugin, directory = "/tmp/proj" } = {}) {

@@ -1512,7 +1512,10 @@ test("official theme IPC is owner-gated and never reachable through settings:com
   const calls = [];
   const officialThemeMain = {
     refreshCatalog: async () => { calls.push(["refreshCatalog"]); return "ok"; },
-    listOfficialThemes: async () => ({ status: "ok", catalogStatus: "ok", catalogVersion: 1, themes: [{ id: "hash-sage" }] }),
+    listOfficialThemes: async (options) => {
+      calls.push(["listOfficialThemes", options]);
+      return { status: "ok", catalogStatus: "ok", catalogVersion: 1, themes: [{ id: "hash-sage" }] };
+    },
     installTheme: async (themeId) => { calls.push(["install", themeId]); return { status: "ok" }; },
     cancelInstall: () => { calls.push(["cancel"]); return { status: "ok", cancelled: true }; },
     decorateThemeMetadata: (theme) => ({ ...theme, officialTheme: true }),
@@ -1523,6 +1526,11 @@ test("official theme IPC is owner-gated and never reachable through settings:com
   const listing = await harness.ipcMain.invoke("settings:list-official-themes");
   assert.strictEqual(listing.status, "ok");
   assert.deepStrictEqual(calls[0], ["refreshCatalog"]);
+  // refreshCatalog already ran, so the list must not trigger a second fetch.
+  assert.deepStrictEqual(
+    calls.find((call) => call[0] === "listOfficialThemes")[1],
+    { catalogReady: true },
+  );
 
   assert.deepStrictEqual(await harness.ipcMain.invoke("settings:install-official-theme", "hash-sage"), { status: "ok" });
   assert.deepStrictEqual(calls.find((c) => c[0] === "install"), ["install", "hash-sage"]);

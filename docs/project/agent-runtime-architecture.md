@@ -13,6 +13,10 @@ Claude Code 状态同步（command hook，非阻塞）：
     → IPC state-change 事件
     → src/renderer.js（<object> SVG 预加载 + 淡入切换 + 眼球追踪）
 
+Claude Code 会话标题来源顺序：hook 输入的 `session_title`（手动改名）→ transcript 里的手动标题（`custom-title` / `agent-name`，两者之间取最后一条有效的，且不按会话过滤）→ AI 标题（`ai-title`，取本会话最新一条有效的）→ 仅 `UserPromptSubmit` 且以上都没有时用消息首行兜底。
+
+消息首行兜底会沿 body 上报 `session_title_from_prompt: true`；服务端不让它覆盖已有的正式标题（手动改名、AI 标题、metadata-only 写入的、重启恢复的），metadata-only 请求里的标题一律算正式标题、忽略该标记；消息首行派生的标题不写入会话历史和恢复记录。
+
 Copilot CLI 状态同步（command hook，非阻塞）：
   Copilot 触发事件
     → hooks/copilot-hook.js（camelCase 事件名 → agents/copilot-cli.js 映射 → HTTP POST）
@@ -33,6 +37,22 @@ Codex CLI 状态同步（official hooks primary + JSONL fallback）：
   Codex 写入 ~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl
     → agents/codex-log-monitor.js（fallback：hook 未覆盖事件、hook 禁用/不可用、历史兼容）
     → src/agent-runtime-main.js 对 hook-active session 做事件级 suppression，避免重复状态/重复气泡；本地 JSONL 路径不经过 HTTP server
+
+本机 Codex 会话标题：现有 JSONL monitor 每轮为已观察到生命周期的会话合并读取一次
+`session_index.jsonl`（沿用 512 KiB tail 上限）。新标题/改名以 `session_index:title`
+送入 `updateSessionMetadata(expectedAgentId: "codex")`，即使 rollout 未增长也刷新
+HUD/Dashboard；不创建会话、不改变状态/活跃时间/完成提醒/小结，不清空已有标题。
+尚未生成原生标题时仍使用既有文件夹 fallback；用户别名继续优先。
+monitor 当前标题与索引不一致时也会重发，覆盖索引恢复场景。
+一次快照构建最多读一次本机索引；无本机 Codex 会话时不读。
+标题通道跳过带 host 或 WSL 标记的会话；刷新覆盖仍在活动或退休记录中的会话
+（最多 50 个活动、100 个退休 rollout）。超出后与既有行为相同，标题等下一次快照广播或生命周期事件更新。
+
+Codex 压缩完成同时兼容旧 `event_msg:context_compacted` 与新版
+`event_msg:item_completed`（`payload.item.type === "ContextCompaction"`）。本地与
+Remote SSH monitor 共用 `hooks/codex-log-event.js`，把后者归一化到旧事件键，沿用
+`sweeping` 映射、timestamp/backfill 保护与 hook 仲裁；它不是 turn completion，也不清理
+待回答问题。`compacted` 检查点、`response_item:compaction` 与其他 item 事件不作为实时压缩信号。
 
 Local Codex archive lifecycle (#655)：Codex 归档会把该 thread 的 rollout 从
 `sessions/` 移入扁平的 `<CODEX_HOME>/archived_sessions/`（文件名不变，`codex archive` /
@@ -117,6 +137,7 @@ CodeBuddy 状态同步（Claude Code 兼容 hook，command）：
     → hooks/codebuddy-hook.js（PascalCase 事件 → agents/codebuddy.js 映射 → HTTP POST）
     → 同上状态机（agent_id: codebuddy）
   Hook 注册到 ~/.codebuddy/settings.json，格式与 Claude Code 完全兼容。
+  command hook 对所有事件都输出 `{}`，不做工具或权限决定；阻塞式审批只走 PermissionRequest HTTP hook。
 
 自定义 HTTP Agent（动态注册，state-only）：
   Settings 选择本机可执行文件
@@ -421,8 +442,8 @@ WSL 状态同步（本机 loopback，但 PID 属于 Linux VM）：
 
 - `hooks/session-history.js` 保存独立的本机会话索引，不能放宽 `session-recovery-lease.js` 的进程存活条件。lease 用于恢复仍在运行的状态，history 用于在进程退出或重启后找到可手动继续的旧会话；历史行本身不是 live session，不进入状态机、HUD、recap 或权限自动化。
 - Claude command hook 在 POST 前 best-effort 写入 `~/.clawd/session-history-v1/`，Clawd 离线也能记录。只覆盖本机交互式 Claude Code；remote、WSL、headless 和其他 agent 不写。保存 session ID、cwd、显式标题、状态和时间，不保存 prompt 派生标题、回复或工具内容；它是索引，不是 transcript 备份。目录 / 文件权限为 0700 / 0600（POSIX）。
-- 有效记录按 30 天 / 200 条清理，Dashboard 最多展示 25 条。每条记录复用 lease 的跨进程锁，锁内读取、合并并原子替换；同毫秒 terminal 事件优先。清理非阻塞拿锁并重读，跳过正在写入或已更新的行；无效 / foreign / future-schema 文件保留且不计入有效记录预算。主进程只回收 PID 明确已不存在的历史锁，未知 owner / 探测错误不能接管。
-- `src/session-history-loader.js` 只作 transcript 存在性提示，不读取内容；访问失败是 unknown，不能标成已丢失。历史、探测和启动共用 `hooks/claude-session-id.js` 的安全 ID 规则。boot 时间是 wall clock 与 uptime 的近似值，跨 boot 且没有 terminal 事件的行才标为中断；这不是崩溃检测器，`Stop` 也可能是正常一轮结束。debounce Stop（后台任务 + 已有最终回复）按该轮结束记录（`endedAt` 落盘，实时状态机在安静窗口内没有被后续事件取消时完成），hold 类 Stop（`stop_hook_active`、session cron、没有最终回复的后台任务、后台 typed subagent）不算结束；尾随的 SubagentStop 只是收尾证据，在 lease 和 history 里存储的状态只会从 juggling 收成 working，收尾写入时 cwd / 标题等元数据仍按原规则合并，不创建记录、不推进时间戳，因此晚到的 Stop 仍能正常结束这一轮。
+- 有效记录按 30 天 / 200 条清理，Dashboard 主列表最多展示 25 条已确认（transcript 在且 cwd 现存）的行，未确认可恢复的行进默认收起的折叠组。每条记录复用 lease 的跨进程锁，锁内读取、合并并原子替换；同毫秒 terminal 事件优先。清理非阻塞拿锁并重读，跳过正在写入或已更新的行；无效 / foreign / future-schema 文件保留且不计入有效记录预算。主进程只回收 PID 明确已不存在的历史锁，未知 owner / 探测错误不能接管。
+- `src/session-history-loader.js` 除生成显示标题外不读取内容：没有显式标题时，读取探测定位到的 transcript（记录 cwd 对应项目目录内，或跨项目目录命中的那个副本）的第一条用户输入，按 live prompt 标题的同一套规则（`hooks/cursor-session-title.js` 的 `extractPromptTitle`：第一非空行、命中密钥正则不给标题、最多 40 字）生成标题，只用于显示、不写入历史记录，提取结果按 transcript 路径 + mtime + size 缓存。标题只对最终返回的行提取（confirmed 前 `limit` 条，以及 `other` 组内探测为 present 的行），被截断或探测未确认的行不打开文件。transcript 在记录 cwd 对应的项目目录内缺失，或项目目录不存在时，按 session ID 跨项目目录查找；项目目录存在且完整扫描未命中才标为已丢失，访问失败或扫描不完整为 unknown。历史、探测和启动共用 `hooks/claude-session-id.js` 的安全 ID 规则。boot 时间是 wall clock 与 uptime 的近似值，跨 boot 且没有 terminal 事件的行才标为中断；这不是崩溃检测器，`Stop` 也可能是正常一轮结束。debounce Stop（后台任务 + 已有最终回复）按该轮结束记录（`endedAt` 落盘，实时状态机在安静窗口内没有被后续事件取消时完成），hold 类 Stop（`stop_hook_active`、session cron、没有最终回复的后台任务、后台 typed subagent）不算结束；尾随的 SubagentStop 只是收尾证据，在 lease 和 history 里存储的状态只会从 juggling 收成 working，收尾写入时 cwd / 标题等元数据仍按原规则合并，不创建记录、不推进时间戳，因此晚到的 Stop 仍能正常结束这一轮。
 - `src/session-history-runtime.js` 是唯一手动恢复 owner。只接受受信任 Dashboard 发来的 agent / session ID，在 main 重读已保存 cwd，并重新检查已安装、已启用和本机 live 状态；remote / WSL / 其他 agent 的同名 ID 不应误挡本机恢复。不会根据历史自动启动 agent。
 - 同一 session 的并发恢复合并为一次请求。启动器 `ok:false` 必须返回失败；终端成功提交只返回 `submitted`，不是“会话已恢复”。main 保留 30 秒确认窗口，页面重开也继续禁点；现有 hook/state 路径报告本机 live 后移除历史卡。超时只允许用户检查终端后手动重试，不自动重试，也不伪造 live 状态。
 
@@ -554,7 +575,7 @@ CodeBuddy 的 PermissionRequest HTTP 所有权只认严格的本机 managed URL�
 
 - 默认周期 5 分钟，不依赖任何 settings.json fs 事件——hook 脚本在其他目录（如系统 Temp）被删除也能发现，watcher 和周期巡检共用同一个 `runHealthCheck(reason)` 决策函数。
 - 判断逻辑收敛在 `src/claude-hook-health.js` 的 `inspectClaudeHookHealth()`：解析 command、校验 nodeBin/scriptPath、比对 installer 与 watcher 共用的 source/target resolver（`hooks/install.js` 的 `resolveClaudeHookPaths()`）给出的 command target 与 `CLAUDE_CORE_HOOK_EVENTS`，复用 Doctor 的 `agent-node-bin-parser.js` 解析器，不另起一套正则。resolver 是 total 的只读函数：任何 I/O / plan / 环境错误都返回结构化 `{ok:false, reason, message}`，绝不 throw，也绝不以空 expected path 伪装 healthy。
-- env-indirected state hook 先复用 `hooks/json-utils.js` 的严格 ownership classifier，再进入健康判定；它不会把未展开的 `${CLAWD_NODE_BIN}` / `${CLAWD_HOOK_PATH}` 交给普通 target validator。可安全迁移和 owned duplicate 产生专属 automatic repair class；Node 路径无法验证或 ownership 证据不足只产生 degraded 诊断，不消耗 3 次自动修复预算。watcher 的 suspicious-shrink snapshot 也复用同一 classifier，避免把待迁移的 Clawd env hook 误记成第三方 hook。
+- env-indirected state hook 先复用 `hooks/json-utils.js` 的严格 ownership classifier，再进入健康判定；它不会把未展开的 `${CLAWD_NODE_BIN}` / `${CLAWD_HOOK_PATH}` 交给普通 target validator。可安全迁移和 owned duplicate 产生专属 automatic repair class；Node 路径无法验证时，先看 env 证据给出的候选，env 证据不可用则回退到主机正常 Node 解析器（installer 用的同一个 `resolveNodeBinAsync`，由 `src/server.js` 经 `ctx.resolveTrustedNodeBin` 注入）——能解析出可用**绝对** Node 即判为可自动迁移（#874）。巡检本身保持同步、只读缓存，这次完整解析在巡检之外异步执行（绝不在主线程 `execFileSync`），单航班、只在命中 env 分支时触发、null 不缓存（每轮巡检最多重试一次），解析成功立即安排一次复查迁移。主机也解析不出，或 ownership 证据不足，才只产生 degraded 诊断、不消耗 3 次自动修复预算、不进 `manual-fix-required`。watcher 的 suspicious-shrink snapshot 也复用同一 classifier，避免把待迁移的 Clawd env hook 误记成第三方 hook。
 - 可自动修复的问题（`buildClaudeRepairSignature()` 判定）经 `src/claude-hook-operations.js` 的实例级队列串行 repair，repair 后重新读盘用同一 inspector 复验，不只信 installer 的 `updated>0`。
 - 同一 repair signature 连续 3 次修复+复验失败后进入 `manual-fix-required`，停止自动 mutation，只保留 5 分钟只读复查；健康恢复或 repair class 集合实际变化时清计数。
 - `settings.json` suspicious-shrink 期间只弹一次 `notifySuspiciousShrink`，不会每个周期重复通知。
@@ -588,7 +609,7 @@ CodeBuddy 的 PermissionRequest HTTP 所有权只认严格的本机 managed URL�
 - 全局 Allow/Deny 快捷键对已有窗口的请求，只作用于 presentation owner 选定、可见且可操作、完整处于 workArea 内并避开 HUD 的原目标卡片；ACK 前、队列失败回退与保留 crowded normal bounds 的保护项回退也必须满足这一条件。normal 模式没有窗口的请求保留既有 fallback。目标不安全时停用快捷键，不能跳过它去决定另一张卡片；Slack 只在请求窗口自身 height ACK 或已 ACK 队列的 main-owned hidden snapshot 上执行现有 once-guard。petHidden 使用 request ordinal cutoff 隔离旧请求与隐藏期间的新请求；topmost、IME overlap、HUD/update/Orbit 避让和 roam hold 都只扫描 presentation owner 返回的真实可见 permission windows（含队列及仍在 fade 的请求窗）
 - 本地详情数据与网络/决策数据分离：route 在生成有界摘要的同时保留最多 128 KiB 的仅本地显示详情；fingerprint、automation、HTTP 回包、Telegram/飞书/Slack payload 继续使用原有数据。Ask 的 wire question/answer key 保持上游原文，长正文和选项说明只影响详情显示
 - 支持 Allow / Deny / suggestion 决策，以及 `addRules` / `setMode` suggestion 类型
-- `permission-automation-policy.js` 的 off / auto-tools / unattended 与 `session-automation-coordinator.js` 的 per-session grant 会在 bubble 渲染前产生真实决定。auto-tools 对 Claude/Qwen 的未知 built-in（除有效 namespaced MCP）fail closed，但其他已知 adapter 对非空工具名不都使用逐工具 allowlist；unattended 在识别已知 decision tools 后仍有意对可作 Allow/Deny 的未知请求保留“handle every request”行为。新增 agent/tool/interaction 必须同时审查 policy 与 tests，不能笼统假设 unknown 一律 defer
+- `permission-automation-policy.js` 的 off / auto-tools / unattended 与 `session-automation-coordinator.js` 的 per-session grant 会在 bubble 渲染前产生真实决定。auto-tools 对 Claude/Qwen 的未知 built-in（除有效 namespaced MCP）fail closed，但其他已知 adapter 对非空工具名不都使用逐工具 allowlist；unattended 在识别已知 decision tools 后仍有意对可作 Allow/Deny 的未知请求保留“handle every request”行为。新增 agent/tool/interaction 必须同时审查 policy 与 tests，不能笼统假设 unknown 一律 defer。身份未核验的请求，如果它自称的 `{agentId, sessionId}` 命中单会话记录，只取该记录模式与回落模式（全局模式或 session-only `off`）里更严格的一个，所以核验失败只会收紧、不会被全局放宽
 - Telegram 与飞书 / Lark 是和本地 bubble 并行的远程决策通道；关闭本地 bubble 不等于关闭远程审批。远程 client 超时、断连、未配置或启动失败不得产生决定或 deny：本地 bubble 存在时请求继续 pending；仅在 remote-only 且所有可用 client 都无决定时，整体请求才 no-decision 并让 agent 回原生 UI 重问
 - DND 只负责“不弹 bubble”，不替用户决定权限：opencode 与 MiMo Code 分支 silent drop，让 TUI 内置权限提示接管；Claude Code 分支 `res.destroy()`，让 CC 回到内置聊天/终端确认；Codex 分支返回 no-decision `{}`；DeepSeek Harness 分支返回带 server identity 的 204，让 plugin `next()` 到原生 web answerer
 - Codex 审批只认 official `PermissionRequest` hook；JSONL fallback 不再根据 shell function_call 猜测审批，也不再创建 Codex passive approval notify bubble
@@ -620,7 +641,7 @@ opencode、MiMo Code、OpenClaw、Hermes 和 DeepSeek Harness 是 plugin 形式�
 - Hermes plugin 使用同步 POST，避免短命 `hermes -z` 进程退出前丢事件；Clawd 未启动时有短 cooldown，避免反复扫端口
 - Hermes 的 `agent_pid` 当前是 plugin worker 进程 PID；`source_pid` 来自异步进程树解析，给终端聚焦使用
 - Hermes config.yaml 是用户 YAML，不做 line-oriented 编辑；安装只复制托管 plugin 文件并调用 `hermes plugins enable clawd-on-desk`
-- DeepSeek Harness 首发只支持 web profile，并维护一张 verified 版本契约表（`0.1.5-rc.3` 优先，`0.1.5-rc.1`、`0.1.1-rc.2` 与 `0.1.0-rc.6` 保留；rc.3 已于 2026-09-27 在 macOS 源码运行版 Clawd + 真实 `dsh web` 与真实模型上验证启动同步安装、会话状态、HUD 标题/上下文与 Allow/Deny），每个版本绑定自己的 npm artifact 与 integrity；Install/Repair 按检测到的 host 版本（无 CLI 时按 owned marker）选择契约，Uninstall 与手动 npx 命令按 marker 契约选择，未列入表内的版本一律禁止 mutation。安装器按 canonical `DSH_HOME` 哈希命名空间把 bridge 复制成 immutable hash generation，再用官方 `dsh plugin --profile web add/remove` mutation；dependency、bundle row、installation-first/profile-second resolution 与 Clawd marker 必须同时验证，foreign 同名 package 永不覆盖或删除；不同 DSH_HOME 不共享可删除 generation、mutation lock 或 inspection latch
+- DeepSeek Harness 首发只支持 web profile，并维护一张 verified 版本契约表（`0.2.0-rc.2` 优先，已做静态接口核对，并在 2026-10-04 用 Clawd 安装器装出的 generation 上完成 macOS 源码运行版真机验证：启动同步换代、会话状态、HUD 标题/上下文、Allow/Deny 与消息上的失败标记，其 `tool/result` 把失败标记放在 `message.isError` 而非内容项，bridge 新旧两种都认；`0.1.5-rc.3`、`0.1.5-rc.1`、`0.1.1-rc.2` 与 `0.1.0-rc.6` 保留，rc.3 已于 2026-09-27 在 macOS 源码运行版 Clawd + 真实 `dsh web` 与真实模型上验证启动同步安装、会话状态、HUD 标题/上下文与 Allow/Deny），每个版本绑定自己的 npm artifact 与 integrity；Install/Repair 按检测到的 host 版本（无 CLI 时按 owned marker）选择契约，Uninstall 与手动 npx 命令按 marker 契约选择，未列入表内的版本一律禁止 mutation。安装器按 canonical `DSH_HOME` 哈希命名空间把 bridge 复制成 immutable hash generation，再用官方 `dsh plugin --profile web add/remove` mutation；dependency、bundle row、installation-first/profile-second resolution 与 Clawd marker 必须同时验证，foreign 同名 package 永不覆盖或删除；不同 DSH_HOME 不共享可删除 generation、mutation lock 或 inspection latch
 - DSH mutation lock 只在 owner/schema/token/PID/timestamp/owner-recorded operation timeout 全合法、年龄超过该 owner timeout 的两倍、且 PID probe 明确返回 `ESRCH` 时通过 sibling atomic rename 接管；live PID、`EPERM`、unknown、corrupt/foreign owner 均 fail closed，错误必须暴露精确 lock path。owner write/release 只允许隔离并删除 exact owner file 与空 lock dir，禁止 recursive canonical cleanup。无全局 CLI 的手动 npx generation 通过同 namespace 的 owned reference 持久保活，直到验证或显式卸载；命令显式 pin shell-quoted canonical `DSH_HOME`，malformed/foreign/concurrent anchor 一律保留 generation 并要求人工检查
 - DSH state listener 是 fire-and-forget FIFO；approval listener 是唯一例外，必须阻塞等待决定或 `next()`。`session/created` observer 顶层 non-throwing，避免同步异常 veto DSH session 创建
 - DSH projection storage 不是稳定协议：首发不读取 workspace/projcache，也不运行 fallback monitor

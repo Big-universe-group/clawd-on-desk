@@ -355,12 +355,12 @@ const SKIP_REASON_SNAPSHOT_FAILED = "snapshot-failed";
 // the wrong path.
 const SKIP_REASON_SELF_NOT_FOUND = "snapshot-self-not-found";
 
-// pidChain MUST be [] and never null: six adapters (codex, copilot, cursor,
-// kimi, kiro, codebuddy) do a bare `pidChain.length` with no Array.isArray
-// guard, and in cursor/codebuddy that TypeError would unwind past
-// writeStdoutOnce and silently downgrade their gating stdout ({"continue":true}
-// / {"decision":"allow"}) to {}. [] is falsy-length everywhere, so all 13
-// adapters skip the field cleanly. stablePid:null is safe to ship: the six
+// pidChain MUST be [] and never null: three adapters (copilot, kimi, workbuddy)
+// do a bare `pidChain.length` with no Array.isArray guard, so null would throw.
+// cursor, whose beforeSubmitPrompt gating stdout is {"continue":true}, is
+// already Array.isArray-guarded and no longer at risk. [] is falsy-length
+// everywhere, so all 18 adapters skip the field cleanly. stablePid:null is safe
+// to ship: the six
 // adapters that assign source_pid unconditionally emit an explicit null, which
 // src/server-route-state.js normalizes identically to an absent field
 // (Number.isFinite(null) === false), and src/state.js merges it as

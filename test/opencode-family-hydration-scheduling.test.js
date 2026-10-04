@@ -37,13 +37,13 @@ before(async () => {
   ).href));
 });
 
-after(() => {
+after(async () => {
   globalThis.fetch = originalFetch;
   if (originalBun === undefined) delete globalThis.Bun;
   else globalThis.Bun = originalBun;
   mock.restoreAll();
   syncBuiltinESMExports();
-  fs.rmSync(TEMP_DIR, { recursive: true, force: true });
+  await fs.promises.rm(TEMP_DIR, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
 });
 
 function deferred() {

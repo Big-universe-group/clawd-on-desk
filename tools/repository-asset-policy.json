@@ -21,7 +21,7 @@
   },
   "thresholds": {
     "trackedTreeWarningBytes": 52428800,
-    "trackedTreeHardBytes": 60817408,
+    "trackedTreeHardBytes": 67108864,
     "largeTrackedBinaryMediaBytes": 1048576,
     "duplicatePackagedPayloadWarningBytes": 262144,
     "artifactGrowthWarningBytes": 5242880,

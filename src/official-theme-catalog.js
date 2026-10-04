@@ -544,6 +544,8 @@ function fetchCatalogText({
 
 // ── Cache ──
 
+const CATALOG_SNAPSHOT_FILENAME = "official-theme-catalog-snapshot.json";
+
 function catalogCacheDir(userDataDir, pathModule = defaultPath) {
   return pathModule.join(userDataDir, "official-theme");
 }
@@ -608,6 +610,31 @@ function writeCatalogCache({ fs = defaultFs, path = defaultPath, userDataDir, ca
   }
 }
 
+// ── Bundled snapshot ──
+//
+// A byte-for-byte snapshot of the published catalog ships inside the app. It is
+// a last-resort LIST source when the network fetch fails and no valid disk
+// cache exists; it is never written to disk, never replaces the online
+// catalog, and carries no theme assets or previews. Reading it always goes
+// through the same strict parse as a network response, so a corrupt or
+// hand-edited snapshot is treated as absent.
+
+function catalogSnapshotPath(pathModule = defaultPath, dir = __dirname) {
+  return pathModule.join(dir, CATALOG_SNAPSHOT_FILENAME);
+}
+
+function readCatalogSnapshot({ fs = defaultFs, path = defaultPath, snapshotPath } = {}) {
+  const target = snapshotPath || catalogSnapshotPath(path);
+  let raw;
+  try {
+    raw = fs.readFileSync(target, "utf8");
+  } catch {
+    return null;
+  }
+  const parsed = parseCatalogText(raw);
+  return parsed.ok ? parsed.catalog : null;
+}
+
 // ── Installed-state decoration ──
 
 // Decides the per-theme officialThemeState from catalog + on-disk markers +
@@ -662,6 +689,9 @@ module.exports = {
   catalogCachePath,
   readCatalogCache,
   writeCatalogCache,
+  CATALOG_SNAPSHOT_FILENAME,
+  catalogSnapshotPath,
+  readCatalogSnapshot,
   deriveOfficialThemeState,
   isPlainObject,
 };

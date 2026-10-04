@@ -734,6 +734,100 @@ describe("Hook installer version compatibility", () => {
     assert.strictEqual(result.version, "2.1.78");
   });
 
+  it("registers design expansion on Claude Code 2.1.265 and newer", () => {
+    const settingsPath = makeTempSettings({});
+    registerHooks({
+      silent: true,
+      settingsPath,
+      claudeVersionInfo: { version: "2.1.265", source: "test", status: "known" },
+    });
+    const settings = readSettings(settingsPath);
+    assert.strictEqual(getClawdCommands(settings, "UserPromptExpansion").length, 1);
+  });
+
+  it("does not register design expansion below Claude Code 2.1.265 but keeps earlier versioned hooks", () => {
+    const settingsPath = makeTempSettings({});
+    registerHooks({
+      silent: true,
+      settingsPath,
+      claudeVersionInfo: { version: "2.1.264", source: "test", status: "known" },
+    });
+
+    const settings = readSettings(settingsPath);
+    // The gate must be per-event: a slightly old Claude Code still gets the
+    // versioned hooks it does understand.
+    assert.ok(!Object.prototype.hasOwnProperty.call(settings.hooks, "UserPromptExpansion"));
+    assert.ok(Array.isArray(settings.hooks.PreCompact));
+    assert.ok(Array.isArray(settings.hooks.PostCompact));
+    assert.ok(Array.isArray(settings.hooks.StopFailure));
+  });
+
+  it("removes a stale Clawd design expansion hook below 2.1.265 while preserving third-party entries", () => {
+    const thirdPartyEntry = {
+      matcher: "",
+      timeout: 37,
+      hooks: [{
+        type: "command",
+        command: 'node "/tmp/third-party-hook.js" UserPromptExpansion',
+        timeout: 37,
+      }],
+    };
+    const settingsPath = makeTempSettings({
+      hooks: {
+        UserPromptExpansion: [
+          {
+            matcher: "",
+            hooks: [{ type: "command", command: 'node "/tmp/clawd-hook.js" UserPromptExpansion' }],
+          },
+          thirdPartyEntry,
+        ],
+      },
+    });
+
+    const result = registerHooks({
+      silent: true,
+      settingsPath,
+      claudeVersionInfo: { version: "2.1.264", source: "test", status: "known" },
+    });
+
+    const settings = readSettings(settingsPath);
+    assert.deepStrictEqual(
+      settings.hooks.UserPromptExpansion,
+      [thirdPartyEntry],
+      "the user's own entry must survive the downgrade cleanup byte-for-byte",
+    );
+    assert.strictEqual(result.removed, 1);
+  });
+
+  it("keeps both existing design expansion entries when the Claude Code version is unknown", () => {
+    const thirdPartyEntry = {
+      matcher: "",
+      timeout: 37,
+      hooks: [{
+        type: "command",
+        command: 'node "/tmp/third-party-hook.js" UserPromptExpansion',
+        timeout: 37,
+      }],
+    };
+    const clawdEntry = {
+      matcher: "",
+      hooks: [{ type: "command", command: 'node "/tmp/clawd-hook.js" UserPromptExpansion' }],
+    };
+    const settingsPath = makeTempSettings({
+      hooks: { UserPromptExpansion: [clawdEntry, thirdPartyEntry] },
+    });
+
+    const result = registerHooks({
+      silent: true,
+      settingsPath,
+      claudeVersionInfo: { version: null, source: null, status: "unknown" },
+    });
+
+    const settings = readSettings(settingsPath);
+    assert.deepStrictEqual(settings.hooks.UserPromptExpansion, [clawdEntry, thirdPartyEntry]);
+    assert.strictEqual(result.removed, 0);
+  });
+
   it("never claims either model-switch hook", () => {
     // PreModelSwitch blocks the switch on a missed answer; PostModelSwitch
     // displaces the Done badge and the last-event row. Both stay unclaimed.
@@ -775,6 +869,7 @@ describe("Hook installer version compatibility", () => {
     assert.ok(!Object.prototype.hasOwnProperty.call(settings.hooks, "PreCompact"));
     assert.ok(!Object.prototype.hasOwnProperty.call(settings.hooks, "PostCompact"));
     assert.ok(!Object.prototype.hasOwnProperty.call(settings.hooks, "StopFailure"));
+    assert.ok(!Object.prototype.hasOwnProperty.call(settings.hooks, "UserPromptExpansion"));
     assert.strictEqual(result.versionStatus, "unknown");
   });
 
@@ -2515,6 +2610,72 @@ describe("async hook installer parity", () => {
       { type: "command", command: 'node "/tmp/user-stop.js" Stop', timeout: 33 },
     ]);
     assert.ok(!Object.prototype.hasOwnProperty.call(after.hooks, "WorktreeCreate"));
+  });
+
+  it("registerHooksAsync gates design expansion on the detected Claude Code version", async () => {
+    const oldSettingsPath = makeTempSettings({});
+    await registerHooksAsync({
+      silent: true,
+      settingsPath: oldSettingsPath,
+      platform: "linux",
+      nodeBin: "/usr/bin/node",
+      claudeVersionInfo: { version: "2.1.264", source: "test", status: "known" },
+    });
+    const oldSettings = readSettings(oldSettingsPath);
+    assert.ok(!Object.prototype.hasOwnProperty.call(oldSettings.hooks, "UserPromptExpansion"));
+    assert.ok(Array.isArray(oldSettings.hooks.PreCompact));
+
+    const newSettingsPath = makeTempSettings({});
+    await registerHooksAsync({
+      silent: true,
+      settingsPath: newSettingsPath,
+      platform: "linux",
+      nodeBin: "/usr/bin/node",
+      claudeVersionInfo: { version: "2.1.265", source: "test", status: "known" },
+    });
+    assert.strictEqual(
+      getClawdCommands(readSettings(newSettingsPath), "UserPromptExpansion").length,
+      1,
+    );
+  });
+
+  it("registerHooksAsync removes a stale Clawd design expansion hook on downgrade", async () => {
+    const thirdPartyEntry = {
+      matcher: "",
+      timeout: 37,
+      hooks: [{
+        type: "command",
+        command: 'node "/tmp/third-party-hook.js" UserPromptExpansion',
+        timeout: 37,
+      }],
+    };
+    const settingsPath = makeTempSettings({
+      hooks: {
+        UserPromptExpansion: [
+          {
+            matcher: "",
+            hooks: [{ type: "command", command: 'node "/tmp/clawd-hook.js" UserPromptExpansion' }],
+          },
+          thirdPartyEntry,
+        ],
+      },
+    });
+
+    const result = await registerHooksAsync({
+      silent: true,
+      settingsPath,
+      platform: "linux",
+      nodeBin: "/usr/bin/node",
+      claudeVersionInfo: { version: "2.1.264", source: "test", status: "known" },
+    });
+
+    const settings = readSettings(settingsPath);
+    assert.deepStrictEqual(
+      settings.hooks.UserPromptExpansion,
+      [thirdPartyEntry],
+      "the async downgrade cleanup must also preserve third-party entries byte-for-byte",
+    );
+    assert.strictEqual(result.removed, 1);
   });
 });
 

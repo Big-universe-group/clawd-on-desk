@@ -115,9 +115,10 @@ export function mapSessionEvent(event) {
   }
   if (type === 'tool/result') {
     const content = event?.data?.message?.content
-    const failed = Boolean(event?.data?.error) || (
-      Array.isArray(content) && content.some((item) => item?.isError === true)
-    )
+    // 0.2.x marks a failed result on the message; 0.1.x marks it on the content item.
+    const messageFlagged = event?.data?.message?.isError === true
+    const contentFlagged = Array.isArray(content) && content.some((item) => item?.isError === true)
+    const failed = Boolean(event?.data?.error) || messageFlagged || contentFlagged
     return failed
       ? { event: 'PostToolUseFailure', state: 'error' }
       : { event: 'PostToolUse', state: 'working' }

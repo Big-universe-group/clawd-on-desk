@@ -654,7 +654,7 @@ test("npx-only hosts get an exact manual command and can later pass read-only ve
 });
 
 test("npx-only uninstall selects the exact contract recorded by each supported marker", async (t) => {
-  for (const version of ["0.1.5-rc.3", "0.1.5-rc.1", "0.1.1-rc.2", "0.1.0-rc.6"]) {
+  for (const version of ["0.2.0-rc.2", "0.1.5-rc.3", "0.1.5-rc.1", "0.1.1-rc.2", "0.1.0-rc.6"]) {
     const harness = makeHarness();
     const cli = makeOfficialCli(harness);
     t.after(() => fs.rmSync(harness.root, { recursive: true, force: true }));
@@ -1895,15 +1895,16 @@ test("newer managed generations win and same-version hash conflicts require expl
 test("the verified-version table resolves only listed exact versions", () => {
   assert.deepStrictEqual(
     DSH_VERSION_CONTRACTS.map((contract) => contract.version),
-    ["0.1.5-rc.3", "0.1.5-rc.1", "0.1.1-rc.2", "0.1.0-rc.6"],
+    ["0.2.0-rc.2", "0.1.5-rc.3", "0.1.5-rc.1", "0.1.1-rc.2", "0.1.0-rc.6"],
   );
+  assert.strictEqual(isSupportedDshVersion("0.2.0-rc.2"), true);
   assert.strictEqual(isSupportedDshVersion("0.1.5-rc.3"), true);
   assert.strictEqual(isSupportedDshVersion("0.1.5-rc.1"), true);
   assert.strictEqual(isSupportedDshVersion("0.1.1-rc.2"), true);
   assert.strictEqual(isSupportedDshVersion("0.1.0-rc.6"), true);
   assert.strictEqual(isSupportedDshVersion("0.1.0-rc.7"), false);
   assert.strictEqual(isSupportedDshVersion("0.2.0"), false);
-  assert.strictEqual(supportedDshRangeLabel(), "=0.1.5-rc.3 or =0.1.5-rc.1 or =0.1.1-rc.2 or =0.1.0-rc.6");
+  assert.strictEqual(supportedDshRangeLabel(), "=0.2.0-rc.2 or =0.1.5-rc.3 or =0.1.5-rc.1 or =0.1.1-rc.2 or =0.1.0-rc.6");
   const metadata = readJson(path.join(SOURCE_DIR, "package.json")).clawd;
   assert.strictEqual(metadata.supportedDshRange, DSH_VERSION_CONTRACTS[0].supportedDshRange);
   assert.strictEqual(metadata.verifiedDshArtifact, DSH_VERSION_CONTRACTS[0].verifiedDshArtifact);
@@ -2031,6 +2032,138 @@ test("an rc.3 host installs under its own contract and records it", async (t) =>
     health.marker.verifiedDshArtifactIntegrity,
     "sha512-c0W6Xqc4ChjFcCJkbzPeIxZQdnbKqe+QAcJzWGtogg0ZzsnZRcw3vopMyZ5oZU6E2fmyqGcyDR1sBeiCH4yHcg==",
   );
+});
+
+test("a 0.2.0-rc.2 host installs under its own contract and records it", async (t) => {
+  const harness = makeHarness();
+  const cli = makeOfficialCli(harness);
+  t.after(() => fs.rmSync(harness.root, { recursive: true, force: true }));
+  await installDeepSeekHarnessBridge(installOptions(harness, cli, { dshVersion: "0.2.0-rc.2" }));
+  const health = await inspectDeepSeekHarnessIntegration({
+    dshHome: harness.dshHome,
+    managedRoot: harness.managedRoot,
+    resolveCommandForInspection: false,
+  });
+  assert.strictEqual(health.status, "healthy");
+  assert.strictEqual(health.marker.installedDshVersion, "0.2.0-rc.2");
+  assert.strictEqual(health.marker.supportedDshRange, "=0.2.0-rc.2");
+  assert.strictEqual(health.marker.verifiedDshArtifact, "@deepseek-ai/dsh@0.2.0-rc.2");
+  assert.strictEqual(
+    health.marker.verifiedDshArtifactIntegrity,
+    "sha512-EAJ3gPNcVt/uv8X19PMm9NkVhWgT7xXNMk0UKCVm+IQ5rpSQOcsMUa0HWlnYYVybKMsccjcRB21vVVsaXQ6IdA==",
+  );
+});
+
+test("an rc.3 generation migrates to 0.2.0-rc.2 when the host is upgraded", async (t) => {
+  const harness = makeHarness();
+  const cli = makeOfficialCli(harness);
+  t.after(() => fs.rmSync(harness.root, { recursive: true, force: true }));
+  await installDeepSeekHarnessBridge(installOptions(harness, cli, { dshVersion: "0.1.5-rc.3" }));
+  const rc3Health = await inspectDeepSeekHarnessIntegration({
+    dshHome: harness.dshHome,
+    managedRoot: harness.managedRoot,
+    resolveCommandForInspection: false,
+  });
+  const rc3Hash = rc3Health.marker.bundleHash;
+  const rc3GenerationDir = path.join(harness.managedRoot, "generations", rc3Hash);
+  assert.strictEqual(fs.existsSync(rc3GenerationDir), true);
+  const migrated = await installDeepSeekHarnessBridge(installOptions(harness, cli, {
+    dshVersion: "0.2.0-rc.2",
+    operation: "explicit-repair",
+  }));
+  assert.strictEqual(migrated.status, "ok");
+  assert.strictEqual(migrated.updated, true);
+  assert.strictEqual(cli.calls.length, 2);
+  const rc2Health = await inspectDeepSeekHarnessIntegration({
+    dshHome: harness.dshHome,
+    managedRoot: harness.managedRoot,
+    resolveCommandForInspection: false,
+  });
+  assert.strictEqual(rc2Health.status, "healthy");
+  assert.strictEqual(rc2Health.marker.installedDshVersion, "0.2.0-rc.2");
+  assert.strictEqual(rc2Health.marker.supportedDshRange, "=0.2.0-rc.2");
+  assert.notStrictEqual(rc2Health.marker.bundleHash, rc3Hash);
+  assert.strictEqual(fs.existsSync(rc3GenerationDir), false);
+  assert.strictEqual(
+    fs.existsSync(path.join(harness.managedRoot, "generations", rc2Health.marker.bundleHash)),
+    true,
+  );
+});
+
+test("startup sync replaces an rc.3 generation staged by an older Clawd", async (t) => {
+  const harness = makeHarness();
+  const cli = makeOfficialCli(harness);
+  t.after(() => fs.rmSync(harness.root, { recursive: true, force: true }));
+  await installDeepSeekHarnessBridge(installOptions(harness, cli, {
+    clawdVersion: "1.2.3",
+    dshVersion: "0.1.5-rc.3",
+  }));
+  const rc3Health = await inspectDeepSeekHarnessIntegration({
+    dshHome: harness.dshHome,
+    managedRoot: harness.managedRoot,
+    resolveCommandForInspection: false,
+  });
+  const rc3Hash = rc3Health.marker.bundleHash;
+  const rc3GenerationDir = path.join(harness.managedRoot, "generations", rc3Hash);
+  assert.strictEqual(fs.existsSync(rc3GenerationDir), true);
+  const migrated = await installDeepSeekHarnessBridge(installOptions(harness, cli, {
+    clawdVersion: "1.2.4",
+    dshVersion: "0.2.0-rc.2",
+    operation: "startup-sync",
+  }));
+  assert.strictEqual(migrated.status, "ok");
+  assert.strictEqual(migrated.updated, true);
+  const rc2Health = await inspectDeepSeekHarnessIntegration({
+    dshHome: harness.dshHome,
+    managedRoot: harness.managedRoot,
+    resolveCommandForInspection: false,
+  });
+  assert.strictEqual(rc2Health.status, "healthy");
+  assert.strictEqual(rc2Health.marker.installedDshVersion, "0.2.0-rc.2");
+  assert.strictEqual(rc2Health.marker.supportedDshRange, "=0.2.0-rc.2");
+  assert.strictEqual(rc2Health.marker.sourceClawdVersion, "1.2.4");
+  assert.notStrictEqual(rc2Health.marker.bundleHash, rc3Hash);
+  assert.strictEqual(fs.existsSync(rc3GenerationDir), false);
+  assert.strictEqual(
+    fs.existsSync(path.join(harness.managedRoot, "generations", rc2Health.marker.bundleHash)),
+    true,
+  );
+});
+
+test("startup sync keeps the rc.3 generation when only DSH is upgraded", async (t) => {
+  const harness = makeHarness();
+  const cli = makeOfficialCli(harness);
+  t.after(() => fs.rmSync(harness.root, { recursive: true, force: true }));
+  await installDeepSeekHarnessBridge(installOptions(harness, cli, {
+    clawdVersion: "1.2.3",
+    dshVersion: "0.1.5-rc.3",
+  }));
+  const rc3Health = await inspectDeepSeekHarnessIntegration({
+    dshHome: harness.dshHome,
+    managedRoot: harness.managedRoot,
+    resolveCommandForInspection: false,
+  });
+  const rc3Hash = rc3Health.marker.bundleHash;
+  const rc3GenerationDir = path.join(harness.managedRoot, "generations", rc3Hash);
+  const profileManifestPath = path.join(harness.profileDir, "package.json");
+  const profileManifestBefore = fs.readFileSync(profileManifestPath);
+  const conflict = await installDeepSeekHarnessBridge(installOptions(harness, cli, {
+    clawdVersion: "1.2.3",
+    dshVersion: "0.2.0-rc.2",
+    operation: "startup-sync",
+  }));
+  assert.strictEqual(conflict.status, "error");
+  assert.strictEqual(conflict.reason, "generation-conflict");
+  const unchanged = await inspectDeepSeekHarnessIntegration({
+    dshHome: harness.dshHome,
+    managedRoot: harness.managedRoot,
+    resolveCommandForInspection: false,
+  });
+  assert.strictEqual(unchanged.marker.installedDshVersion, "0.1.5-rc.3");
+  assert.strictEqual(unchanged.marker.bundleHash, rc3Hash);
+  assert.strictEqual(fs.existsSync(rc3GenerationDir), true);
+  assert.strictEqual(cli.calls.length, 1);
+  assert.deepStrictEqual(fs.readFileSync(profileManifestPath), profileManifestBefore);
 });
 
 test("an rc.6 generation migrates to rc.2 when the host is upgraded", async (t) => {

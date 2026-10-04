@@ -19,7 +19,9 @@ npm run audit:assets
 
 Official downloadable themes (for example Hash Sage and Whale-chan) ship as versioned GitHub
 Release assets in the separate `rullerzhou-afk/clawd-themes` repository, never
-inside Clawd. Before tagging, confirm the packaged resources still contain no
+inside Clawd. Before tagging, refresh the bundled catalog snapshot with
+`npm run update:official-theme-snapshot` and commit the diff if the snapshot
+changed. Confirm the packaged resources still contain no
 `themes/hash-sage/**` or `themes/whale-chan/**` payload and that `npm run audit:assets` reports the
 tracked-tree budget within policy. On a pull request, the
 `audit:pr-history-assets` gate additionally proves no large official-theme
@@ -267,8 +269,10 @@ Required all-platform checks:
 - Turn on the destructive-operation reminder, then exercise recognized
   destructive commands under auto-tools and unattended: each must pause for a
   person instead of auto-allowing. Turn it off and confirm normal policy
-  resumes. Include a heredoc with an odd quote count or `(#N)` in its body;
-  confirm the documented conservative hold and the Settings explanation.
+  resumes. Include a `git commit -m "$(cat <<'EOF' ... EOF)"` whose body has an
+  odd quote count or `(#N)` and confirm it is not held; then a plain
+  `cat <<EOF` heredoc with the same body, and confirm the documented
+  conservative hold and the Settings explanation.
 - Queue Slack notifications while its sender is busy; confirm none are lost
   and a permission alert can use its separate lane.
 - End a Claude turn and deliver a trailing `SubagentStop`; completion animation

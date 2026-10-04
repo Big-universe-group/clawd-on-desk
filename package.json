@@ -21,6 +21,7 @@
     "audit:assets": "node scripts/audit-repository-assets.js",
     "audit:pr-history-assets": "node scripts/audit-pr-history-assets.js",
     "audit:native-package": "node scripts/audit-packaged-native.js",
+    "update:official-theme-snapshot": "node scripts/update-official-theme-catalog-snapshot.js",
     "verify:updater-metadata": "node scripts/verify-updater-metadata.js",
     "verify:winget-arch": "node scripts/verify-winget-arch-contract.js",
     "verify:winget-manifest": "node scripts/verify-winget-generated-manifest.js",

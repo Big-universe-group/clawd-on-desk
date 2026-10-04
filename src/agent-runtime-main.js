@@ -551,8 +551,20 @@ function createAgentRuntimeMain(options = {}) {
           });
         };
         if (isCodexMonitorMetadataOnlyEvent(event, extra)) {
-          annotateCodexContextUsage();
-          annotateCodexAccountQuota();
+          if (event === "session_index:title") {
+            const stateRuntime = getStateRuntime();
+            if (stateRuntime && typeof stateRuntime.updateSessionMetadata === "function") {
+              const existing = stateRuntime.sessions && stateRuntime.sessions.get(sessionId);
+              if (existing && (existing.host || existing.wslDistro)) return;
+              stateRuntime.updateSessionMetadata(sessionId, {
+                expectedAgentId: "codex",
+                sessionTitle: sessionOptions.sessionTitle,
+              });
+            }
+          } else {
+            annotateCodexContextUsage();
+            annotateCodexAccountQuota();
+          }
           return;
         }
         // Positive archive evidence: drop the lifecycle without recreating the

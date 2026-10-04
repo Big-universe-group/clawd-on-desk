@@ -18,7 +18,11 @@ describe("session history resume owner", () => {
       isAgentEnabled: () => enabled,
       launchClaudeSession: (...args) => { launches.push(args); return launcher(...args); },
       now: () => clock,
-      historyOptions: { historyDir: path.join(root, "history"), now: clock },
+      historyOptions: {
+        historyDir: path.join(root, "history"),
+        claudeProjectsDir: path.join(root, "claude-projects"),
+        now: clock,
+      },
     });
   }
   beforeEach(() => {
@@ -31,7 +35,7 @@ describe("session history resume owner", () => {
       agent_id: identity.agentId,
       session_id: identity.sessionId,
       event: "UserPromptSubmit", state: "working", cwd: root },
-    { historyDir: path.join(root, "history"), eventAt: clock });
+    { historyDir: path.join(root, "history"), eventAt: clock, env: {} });
     payload = { agentId: identity.agentId, historyKey: recorded.record.historyKey };
     runtime = makeRuntime();
   });
@@ -112,7 +116,7 @@ describe("session history resume owner", () => {
     fs.mkdirSync(project);
     recordSessionHistoryFromStateBody({ agent_id: identity.agentId, session_id: identity.sessionId,
       event: "PreToolUse", state: "working", cwd: project },
-    { historyDir: path.join(root, "history"), eventAt: clock + 1 });
+    { historyDir: path.join(root, "history"), eventAt: clock + 1, env: {} });
     fs.rmdirSync(project);
     assert.equal((await runtime.resume(payload)).reason, "unresolvable");
     assert.equal(launches.length, 0);

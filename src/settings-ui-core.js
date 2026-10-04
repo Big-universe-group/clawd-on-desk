@@ -130,6 +130,7 @@
     officialThemeListFetched: false,
     officialThemeCatalogStatus: null,
     officialThemeCatalogVersion: null,
+    officialThemeCatalogRetrying: false,
     officialThemeOperation: null,
     officialThemePendingThemeId: null,
     // Bumped every time an operation end is observed, and mirrored onto a list
