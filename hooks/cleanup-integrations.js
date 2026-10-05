@@ -198,6 +198,8 @@ function buildCleanupOptionsForHome(homeDirInput, options = {}) {
         homeDir,
         env,
         dshHome: env.DSH_HOME || path.join(homeDir, ".dsh"),
+        // Test-only: keeps cleanup from discovering the real desktop app.
+        desktopDiscovery: options.dshDesktopDiscovery,
       },
       "gemini-cli": {
         ...common,

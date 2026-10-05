@@ -1633,6 +1633,7 @@ describe("dashboard window", () => {
     assert.match(rendererSource, /hideSession\(session\.id\)/);
     assert.match(rendererSource, /session\.canFocus !== true/);
     assert.match(rendererSource, /dashboardOpenCodexSession/);
+    assert.match(rendererSource, /dashboardOpenDshDesktop/);
     assert.doesNotMatch(rendererSource, /session\.platform === "webui"/);
     assert.match(preloadSource, /dashboard:hide-session/);
   });

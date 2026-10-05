@@ -240,6 +240,11 @@ function createHarness(overrides = {}) {
     getQuotaSourceCount: overrides.getQuotaSourceCount,
     kimiQuotaRuntime: overrides.kimiQuotaRuntime,
     detectAgentInstallations: overrides.detectAgentInstallations,
+    readDshNotices: overrides.readDshNotices,
+    acknowledgeDshNotice: overrides.acknowledgeDshNotice,
+    platform: overrides.platform,
+    refreshDshDesktopDiscovery: overrides.refreshDshDesktopDiscovery,
+    refreshWslDetection: overrides.refreshWslDetection,
     checkForUpdates: overrides.checkForUpdates || ((manual) => {
       calls.push(["checkForUpdates", manual]);
       return { state: "up-to-date", version: "1.2.3" };
@@ -1506,6 +1511,115 @@ test("settings IPC scan examines Codex locally and still withholds Claude", asyn
     runtime.dispose();
     fs.rmSync(homeDir, { recursive: true, force: true });
   }
+});
+
+test("the Agents scan preheats DSH desktop discovery only with refreshWsl on Windows", async () => {
+  const calls = [];
+  const harness = createHarness({
+    platform: "win32",
+    refreshWslDetection: async () => { calls.push("wsl"); },
+    refreshDshDesktopDiscovery: async () => { calls.push("dsh"); },
+    detectAgentInstallations: () => ({ checkedAt: 1, agents: [], skippedAgentIds: [] }),
+  });
+
+  await harness.ipcMain.invoke("settings:detect-agent-installations", { refreshWsl: true });
+  assert.deepStrictEqual(calls, ["wsl", "dsh"]);
+
+  calls.length = 0;
+  await harness.ipcMain.invoke("settings:detect-agent-installations", {});
+  assert.deepStrictEqual(calls, []);
+
+  harness.runtime.dispose();
+});
+
+test("DSH notices IPC returns only unacknowledged render fields in priority order", async () => {
+  const harness = createHarness({
+    readDshNotices: async () => ({
+      web: [
+        { id: "w-first", profile: "web", kind: "first-install", payload: {}, acknowledged: false },
+        { id: "w-manual", profile: "web", kind: "manual-command", payload: { commands: ["a", "b"] }, acknowledged: false },
+        {
+          id: "w-fail",
+          profile: "web",
+          kind: "failed-target",
+          payload: { operation: "install", reason: "r", message: "m", residuePath: "/private/x", lockPath: "/private/y" },
+          acknowledged: false,
+        },
+        { id: "w-ack", profile: "web", kind: "failed-target", payload: { operation: "install", reason: "done" }, acknowledged: true },
+      ],
+      desktop: [
+        { id: "d-restart", profile: "desktop", kind: "restart-required", payload: {}, acknowledged: false },
+        { id: "d-fail", profile: "desktop", kind: "failed-target", payload: { operation: "uninstall", reason: "r2", message: "m2" }, acknowledged: false },
+      ],
+    }),
+  });
+
+  const result = await harness.ipcMain.invoke("settings:dsh-notices");
+
+  assert.deepStrictEqual(result.notices.map((entry) => entry.id), [
+    "d-restart",
+    "w-fail",
+    "d-fail",
+    "w-manual",
+    "w-first",
+  ]);
+  assert.deepStrictEqual(result.notices.find((entry) => entry.id === "w-manual"), {
+    id: "w-manual",
+    profile: "web",
+    kind: "manual-command",
+    commands: ["a", "b"],
+  });
+  assert.deepStrictEqual(result.notices.find((entry) => entry.id === "w-fail"), {
+    id: "w-fail",
+    profile: "web",
+    kind: "failed-target",
+    operation: "install",
+    reason: "r",
+    message: "m",
+  });
+  harness.runtime.dispose();
+});
+
+test("DSH notices IPC keeps the other profile when one file is unreadable", async () => {
+  const warned = [];
+  const originalWarn = console.warn;
+  console.warn = (...args) => { warned.push(args.map(String).join(" ")); };
+  try {
+    const harness = createHarness({
+      readDshNotices: async () => ({
+        web: [{ id: "w", profile: "web", kind: "first-install", payload: {}, acknowledged: false }],
+        desktop: [],
+        errors: { web: null, desktop: "notices-invalid:/private/notices-desktop.json" },
+      }),
+    });
+    const result = await harness.ipcMain.invoke("settings:dsh-notices");
+    assert.deepStrictEqual(result.notices.map((entry) => entry.id), ["w"]);
+    assert.ok(warned.some((line) => line.includes("desktop")), "main process should warn about the broken profile");
+    harness.runtime.dispose();
+  } finally {
+    console.warn = originalWarn;
+  }
+});
+
+test("DSH notice acknowledge validates its input before calling through", async () => {
+  const calls = [];
+  const harness = createHarness({
+    acknowledgeDshNotice: async (options, { profile, id }) => {
+      calls.push({ options, profile, id });
+      return { found: true };
+    },
+  });
+
+  assert.strictEqual((await harness.ipcMain.invoke("settings:dsh-notice-ack", { profile: "nope", id: "x" })).status, "error");
+  assert.strictEqual((await harness.ipcMain.invoke("settings:dsh-notice-ack", { profile: "web", id: "" })).status, "error");
+  assert.strictEqual((await harness.ipcMain.invoke("settings:dsh-notice-ack", { profile: "web", id: "x".repeat(201) })).status, "error");
+  assert.strictEqual((await harness.ipcMain.invoke("settings:dsh-notice-ack", { profile: "web", id: 5 })).status, "error");
+  assert.strictEqual(calls.length, 0, "invalid input must not reach the acknowledge call");
+
+  const ok = await harness.ipcMain.invoke("settings:dsh-notice-ack", { profile: "desktop", id: "abc" });
+  assert.deepStrictEqual(ok, { status: "ok", found: true });
+  assert.deepStrictEqual(calls, [{ options: {}, profile: "desktop", id: "abc" }]);
+  harness.runtime.dispose();
 });
 
 test("official theme IPC is owner-gated and never reachable through settings:command", async () => {

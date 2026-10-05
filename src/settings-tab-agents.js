@@ -21,6 +21,8 @@
   let agentCleanupHintResetPending = false;
   let codexHookHealthRequestSeq = 0;
   let claudeHookHealthRequestSeq = 0;
+  let dshNoticesRequestSeq = 0;
+  const dshNoticeContainers = new Set();
 
   function t(key) {
     return helpers.t(key);
@@ -1039,6 +1041,156 @@
     });
   }
 
+  // Failure reasons a Repair run can actually resolve; anything else needs
+  // manual inspection, so promising a Fix would be misleading.
+  const DSH_REPAIRABLE_FAILURE_REASONS = new Set([
+    "plugin-disabled-in-dsh",
+    "repair-pending",
+    "inspection-required",
+    "generation-conflict",
+  ]);
+
+  function dshNoticeProfileLabel(profile) {
+    return t(profile === "desktop" ? "dshNoticeProfileDesktop" : "dshNoticeProfileWeb");
+  }
+
+  function dshNoticeBody(notice) {
+    switch (notice.kind) {
+      case "restart-required":
+        return t("dshNoticeRestartRequired");
+      case "first-install":
+        return t("dshNoticeFirstInstall");
+      case "manual-command":
+        return t("dshNoticeManualCommand");
+      case "failed-target": {
+        const message = notice.message == null ? "" : String(notice.message);
+        const key = notice.operation === "uninstall" ? "dshNoticeUninstallFailed" : "dshNoticeInstallFailed";
+        let body = t(key).replace("{message}", message);
+        if (DSH_REPAIRABLE_FAILURE_REASONS.has(notice.reason)) {
+          body = `${body} ${t("dshNoticeOpenDoctor").replace("{fix}", t("doctorFix"))}`;
+        }
+        return body;
+      }
+      default:
+        return "";
+    }
+  }
+
+  function buildDshNoticeActions(container, notice) {
+    const actions = document.createElement("div");
+    actions.className = "agent-dsh-notice-actions";
+    if (notice.kind === "manual-command") {
+      const copy = helpers.buildButton({
+        labelKey: "dshNoticeCopy",
+        size: "compact",
+        className: "agent-dsh-notice-copy",
+      });
+      copy.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        copyDshNoticeCommands(notice, copy);
+      });
+      actions.appendChild(copy);
+    }
+    const ack = helpers.buildButton({
+      labelKey: "dshNoticeAcknowledge",
+      size: "compact",
+      className: "agent-dsh-notice-ack",
+    });
+    ack.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      acknowledgeDshNoticeRow(container, notice, ack);
+    });
+    actions.appendChild(ack);
+    return actions;
+  }
+
+  function buildDshNoticeRow(container, notice) {
+    const row = document.createElement("div");
+    row.className = "agent-dsh-notice";
+    row.setAttribute("data-kind", notice.kind);
+    row.setAttribute("data-profile", notice.profile);
+    const line = document.createElement("div");
+    line.className = "agent-dsh-notice-line";
+    line.textContent = t("dshNoticeLine")
+      .replace("{profile}", dshNoticeProfileLabel(notice.profile))
+      .replace("{text}", dshNoticeBody(notice));
+    row.appendChild(line);
+    if (notice.kind === "manual-command") {
+      const commands = document.createElement("pre");
+      commands.className = "agent-dsh-notice-commands";
+      commands.textContent = (notice.commands || []).join("\n");
+      row.appendChild(commands);
+    }
+    row.appendChild(buildDshNoticeActions(container, notice));
+    container.appendChild(row);
+  }
+
+  // Copy-only by design: the command mutates the user's DSH install, so Clawd
+  // hands it over instead of running it.
+  async function copyDshNoticeCommands(notice, button) {
+    helpers.setButtonState(button, { pending: true });
+    try {
+      if (!navigator.clipboard || typeof navigator.clipboard.writeText !== "function") {
+        throw new Error("clipboard unavailable");
+      }
+      await navigator.clipboard.writeText((notice.commands || []).join("\n"));
+      ops.showToast(t("dshNoticeCopied"));
+    } catch (err) {
+      ops.showToast(t("toastSaveFailed") + (err && err.message), { error: true });
+    } finally {
+      helpers.setButtonState(button, { pending: false });
+    }
+  }
+
+  async function acknowledgeDshNoticeRow(container, notice, button) {
+    helpers.setButtonState(button, { pending: true });
+    try {
+      const result = await window.settingsAPI.acknowledgeDshNotice(notice.profile, notice.id);
+      if (!result || result.status !== "ok") throw new Error((result && result.message) || "acknowledge failed");
+      await refreshDshNotices(container);
+    } catch (err) {
+      ops.showToast(t("toastSaveFailed") + (err && err.message), { error: true });
+      helpers.setButtonState(button, { pending: false });
+    }
+  }
+
+  async function refreshDshNotices(container) {
+    // The initial fetch starts while the row is still detached, so only the
+    // response is gated on the container still being on the page.
+    if (!container) return;
+    const seq = String(++dshNoticesRequestSeq);
+    container.dataset.dshNoticeSeq = seq;
+    try {
+      const result = await window.settingsAPI.getDshNotices();
+      if (container.isConnected === false) return;
+      if (container.dataset.dshNoticeSeq !== seq) return;
+      const notices = result && Array.isArray(result.notices) ? result.notices : [];
+      container.textContent = "";
+      for (const notice of notices) buildDshNoticeRow(container, notice);
+    } catch {
+      // Keep whatever is already shown; a transient IPC failure is not a row.
+    }
+  }
+
+  function refreshMountedDshNotices() {
+    for (const container of [...dshNoticeContainers]) {
+      if (container.isConnected === false) {
+        dshNoticeContainers.delete(container);
+        continue;
+      }
+      refreshDshNotices(container);
+    }
+  }
+
+  function buildDshNotices(agent, text) {
+    if (agent.custom || agent.id !== "deepseek-harness") return;
+    const container = document.createElement("div");
+    container.className = "agent-dsh-notices";
+    text.appendChild(container);
+    dshNoticeContainers.add(container);
+    refreshDshNotices(container);
+  }
+
   function buildAgentMasterRow(agent) {
     let integrationBadge = null;
     return buildAgentSwitchRow({
@@ -1108,6 +1260,7 @@
           hint.textContent = t("minimaxEnableHint");
           text.appendChild(hint);
         }
+        buildDshNotices(agent, text);
       },
       buildExtraControls: (ctrl) => {
         if (agent.custom) {
@@ -2130,6 +2283,9 @@
         ops.showToast(t("toastSaveFailed") + (err && err.message), { error: true });
       }).finally(() => {
         syncAgentIntegrationAction(meta);
+        // Install/uninstall rewrites the notices; refresh the DSH row whether
+        // the command succeeded or failed.
+        if (agent.id === "deepseek-harness") refreshMountedDshNotices();
       });
     });
     state.mountedControls.agentIntegrationActions.set(agent.id, meta);
@@ -2310,6 +2466,11 @@
     readers = core.readers;
     helpers = core.helpers;
     ops = core.ops;
+    // Startup sync and Doctor repairs write notices while the window is open;
+    // refetching on focus is how those surface without a live push channel.
+    if (typeof window !== "undefined" && window && typeof window.addEventListener === "function") {
+      window.addEventListener("focus", () => refreshMountedDshNotices());
+    }
     core.tabs.agents = {
       render,
       patchInPlace,

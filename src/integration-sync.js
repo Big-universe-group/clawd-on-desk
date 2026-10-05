@@ -80,6 +80,18 @@ function createIntegrationSyncRuntime(options = {}) {
     : (() => ({}));
   const startClaudeSettingsWatcher = options.startClaudeSettingsWatcher;
   const stopClaudeSettingsWatcher = options.stopClaudeSettingsWatcher;
+  const platform = options.platform || process.platform;
+  // Desktop discovery is a static cache on Windows; warm it once at startup so
+  // the installation detector and Doctor can see the desktop app. This runs
+  // even when DSH is not enabled, because those surfaces exist to help users
+  // who have not enabled anything yet.
+  const preheatDshDesktopDiscovery = typeof options.preheatDshDesktopDiscovery === "function"
+    ? options.preheatDshDesktopDiscovery
+    : async () => {
+      if (platform !== "win32") return;
+      const { refreshDshDesktopDiscovery } = require("../hooks/dsh-install.js");
+      await refreshDshDesktopDiscovery({});
+    };
 
   function readAgentIntegrationOptions(agentId) {
     try {
@@ -804,6 +816,16 @@ function createIntegrationSyncRuntime(options = {}) {
   }
 
   function syncEnabledStartupIntegrations() {
+    // Fire-and-forget: the sync loop must not wait on a PowerShell read. The
+    // platform gate is here so non-Windows hosts never start one.
+    if (platform === "win32") {
+      Promise.resolve()
+        .then(() => preheatDshDesktopDiscovery())
+        .catch((err) => console.warn(
+          "Clawd: DeepSeek Harness desktop discovery preheat failed:",
+          err && err.message ? err.message : err
+        ));
+    }
     if (shouldManageClaudeHooks() && shouldSyncAgentIntegration("claude-code")) {
       const result = syncClawdHooks({ source: "startup", automatic: true });
       if (result && typeof result === "object" && typeof result.then === "function") {

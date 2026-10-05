@@ -192,6 +192,8 @@ contextBridge.exposeInMainWorld("settingsAPI", {
   listAgents: () => ipcRenderer.invoke("settings:list-agents"),
   pickAgentDiscoveryPath: (kind) => ipcRenderer.invoke("settings:pick-agent-discovery-path", { kind }),
   detectAgentInstallations: (opts) => ipcRenderer.invoke("settings:detect-agent-installations", opts),
+  getDshNotices: () => ipcRenderer.invoke("settings:dsh-notices"),
+  acknowledgeDshNotice: (profile, id) => ipcRenderer.invoke("settings:dsh-notice-ack", { profile, id }),
   getAboutInfo: () => ipcRenderer.invoke("settings:get-about-info"),
   checkForUpdates: () => ipcRenderer.invoke("settings:check-for-updates"),
   clearUpdateError: () => ipcRenderer.invoke("settings:clear-update-error"),

@@ -31,7 +31,7 @@ const path = require("path");
 const LOCATE_TIMEOUT_MS = 1500;
 const VERSION_PROBE_TIMEOUT_MS = 5000;
 
-// dsh-install parseDshVersion style: the first x.y.z token in the output,
+// The first x.y.z token in the output,
 // prerelease/build suffixes allowed. An optional lowercase "v" prefix is
 // consumed ("opencode v2.0.15" is the real 2.x output — a bare \b before the
 // digit would never match there, since v→2 is no word boundary), while a

@@ -1437,7 +1437,9 @@ function createCard(session, now) {
     const focusTargetType = session.focusTarget && session.focusTarget.type;
     button.textContent = focusTargetType === "codex-thread"
       ? t("dashboardOpenCodexSession")
-      : t("dashboardJumpTerminal");
+      : focusTargetType === "dsh-desktop"
+        ? t("dashboardOpenDshDesktop")
+        : t("dashboardJumpTerminal");
     button.disabled = session.canFocus !== true;
     if (button.disabled) {
       button.title = focusUnavailableText(session);

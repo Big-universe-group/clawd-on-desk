@@ -266,6 +266,13 @@ Required all-platform checks:
   filesystem symlink. Confirm install and Doctor both report the verified
   generation as healthy; foreign same-name packages must still fail closed.
   Check 0.1.5-rc.1 and rc.3 session titles and context usage when available.
+- Exercise the DeepSeek Harness desktop app once on macOS and once on Windows:
+  install when both carriers are present and confirm the "installed in desktop"
+  notice; confirm Doctor shows one row with both sides; run a real desktop-app
+  session and take one Allow and one Deny; after a plugin update (generation
+  change), confirm the "restart desktop" notice appears, a desktop restart keeps
+  sessions working, and the notice clears only after the user clicks "Got it";
+  with DND on, confirm the desktop app shows its own approval dialog.
 - Turn on the destructive-operation reminder, then exercise recognized
   destructive commands under auto-tools and unattended: each must pause for a
   person instead of auto-allowing. Turn it off and confirm normal policy

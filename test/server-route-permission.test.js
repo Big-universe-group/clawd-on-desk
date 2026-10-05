@@ -2498,6 +2498,36 @@ describe("server-route-permission POST", () => {
     assert.deepStrictEqual(res.ctx.calls.maybeStartRemoteApproval, [entry]);
   });
 
+  it("carries the desktop marker into the DSH permission record only for bridge-local traffic", async () => {
+    const base = {
+      agent_id: "deepseek-harness",
+      hook_source: "dsh-plugin",
+      session_id: "deepseek-harness:carrier",
+      tool_name: "execute_shell",
+      tool_input: {},
+      dsh_carrier: "desktop",
+    };
+
+    const local = await callPermissionPost(JSON.stringify(base));
+    assert.strictEqual(local.ctx.calls.updateSession[0][3].dshCarrier, "desktop");
+    assert.strictEqual(local.ctx.pendingPermissions[0].dshCarrier, "desktop");
+
+    const web = await callPermissionPost(JSON.stringify({ ...base, dsh_carrier: "web" }));
+    assert.strictEqual(web.ctx.calls.updateSession[0][3].dshCarrier, undefined);
+    assert.strictEqual(web.ctx.pendingPermissions[0].dshCarrier, undefined);
+
+    const foreignSource = await callPermissionPost(JSON.stringify({ ...base, hook_source: "external" }));
+    assert.strictEqual(foreignSource.ctx.calls.updateSession[0][3].dshCarrier, undefined);
+
+    const remote = await callPermissionPost(JSON.stringify(base), {
+      options: { remoteProfile: { profileId: "remote-1", displayHost: "remote-host" } },
+    });
+    assert.strictEqual(remote.ctx.calls.updateSession[0][3].dshCarrier, undefined);
+
+    const wsl = await callPermissionPost(JSON.stringify({ ...base, wsl_distro: "Ubuntu" }));
+    assert.strictEqual(wsl.ctx.calls.updateSession[0][3].dshCarrier, undefined);
+  });
+
   it("leaves DSH ask_user_question with the native provider", async () => {
     const res = await callPermissionPost(JSON.stringify({
       agent_id: "deepseek-harness",

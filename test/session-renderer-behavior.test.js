@@ -138,6 +138,8 @@ function translations() {
     dashboardWindowTitle: "Sessions",
     dashboardCount: "{n} active",
     dashboardJumpTerminal: "Jump",
+    dashboardOpenCodexSession: "Open Codex Session",
+    dashboardOpenDshDesktop: "Open DeepSeek Harness",
     dashboardOpenFolder: "Open Folder",
     sessionFocusUnavailableRemote: "Remote sessions cannot focus a terminal on this computer.",
     sessionFocusUnavailableWebui: "WebUI sessions do not have a local terminal window.",
@@ -334,6 +336,23 @@ test("Dashboard renders local/remote/webui reasons and only local folder action"
   assert.deepStrictEqual(jumpButtons(cards[1]), []);
   assert.deepStrictEqual(jumpButtons(cards[2]).map((button) => button.disabled), [true]);
   assert.strictEqual(byClass(root, "open-folder-button").length, 1);
+});
+
+test("Dashboard labels a DSH desktop target as opening the app, not the terminal", async () => {
+  const { root } = await loadDashboard([
+    session("dsh", {
+      canFocus: true,
+      focusTarget: { type: "dsh-desktop", url: "dsh://open" },
+    }),
+  ]);
+  const openButtons = descendants(root)
+    .filter((el) => el.tagName === "BUTTON" && el.textContent === "Open DeepSeek Harness");
+  assert.strictEqual(openButtons.length, 1);
+  assert.strictEqual(openButtons[0].disabled, false);
+  assert.strictEqual(
+    descendants(root).filter((el) => el.tagName === "BUTTON" && el.textContent === "Jump").length,
+    0
+  );
 });
 
 test("Dashboard hosts the manual Kimi quota refresh inside the Kimi quota section", async () => {

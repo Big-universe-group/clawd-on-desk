@@ -361,7 +361,7 @@ Hermes Agent 状态同步（Python plugin，Hermes SDK）：
     → 同上状态机（agent_id: hermes）
   终端聚焦 metadata 在 plugin register 时用 daemon thread 异步解析进程树；首个 hook 可不带 source_pid。
 
-DeepSeek Harness 状态同步（in-process plugin，web profile，experimental）：
+DeepSeek Harness 状态同步（in-process plugin，web profile 与桌面版两个承载方，experimental）：
   DSH 公开 session/created / session/event / session/disposed
     → @dsh-external/dsh-clawd-bridge（Node ESM plugin，运行在 DSH 进程内）
     → 每个 session 独立 FIFO POST 动态发现的 127.0.0.1:23333-23337/state
@@ -394,8 +394,9 @@ DeepSeek Harness 权限气泡（approval waterfall，阻塞）：
   DSH approval/request → bridge prepend listener 挂起 POST /permission
     → 独立 DSH adapter 创建仅 Allow Once / Deny 的 bubble（无 suggestions / Always / Go to Terminal）
     → allow / deny 分别映射为 allowed-once / rejected
-    → 204、断连、DND、disabled 或所有审批通道无决定时 bridge 调 next()，交还 DSH web answerer
+    → 204、断连、DND、disabled 或所有审批通道无决定时 bridge 调 next()，交还 DSH 原生审批流程
   ask_user_question 不进入 Clawd；DSH 原生 provider 始终是唯一 question owner。
+  web profile 与桌面版共用同一条 adapter；macOS 已真机验证开着 DND 时桌面版弹自己的原生审批框并能作答；Windows 上桌面版的会话已真机验证（宿主开着也能加载新加的插件），审批尚未真机验证（见 dsh-setup.md）。
 
 远程 SSH 状态同步（反向端口转发）：
   远程服务器上的 Claude Code / Codex CLI
@@ -440,6 +441,7 @@ WSL 状态同步（本机 loopback，但 PID 属于 Linux VM）：
 
 ## Local Claude Session History
 
+- Windows 的 inactive recovery lease 在相同的交互式 v2 PID cache 仍存在、PID 匹配且两个进程仍存活时保留启动身份，供下一轮 cache-hit hook 重用；不会刷新时间或当作活动会话恢复。缓存丢失 / 不匹配、进程退出或缺失 Windows 启动身份时仍按 10 分钟清理；100 文件预算优先清理不再承载缓存身份的 inactive 记录，必要时仍可淘汰最旧的 inactive 记录。恢复活动行时继续独立校验当前进程启动身份，不以缓存存活代替 PID 复用校验。
 - `hooks/session-history.js` 保存独立的本机会话索引，不能放宽 `session-recovery-lease.js` 的进程存活条件。lease 用于恢复仍在运行的状态，history 用于在进程退出或重启后找到可手动继续的旧会话；历史行本身不是 live session，不进入状态机、HUD、recap 或权限自动化。
 - Claude command hook 在 POST 前 best-effort 写入 `~/.clawd/session-history-v1/`，Clawd 离线也能记录。只覆盖本机交互式 Claude Code；remote、WSL、headless 和其他 agent 不写。保存 session ID、cwd、显式标题、状态和时间，不保存 prompt 派生标题、回复或工具内容；它是索引，不是 transcript 备份。目录 / 文件权限为 0700 / 0600（POSIX）。
 - 有效记录按 30 天 / 200 条清理，Dashboard 主列表最多展示 25 条已确认（transcript 在且 cwd 现存）的行，未确认可恢复的行进默认收起的折叠组。每条记录复用 lease 的跨进程锁，锁内读取、合并并原子替换；同毫秒 terminal 事件优先。清理非阻塞拿锁并重读，跳过正在写入或已更新的行；无效 / foreign / future-schema 文件保留且不计入有效记录预算。主进程只回收 PID 明确已不存在的历史锁，未知 owner / 探测错误不能接管。
@@ -562,7 +564,7 @@ CodeBuddy direct HTTP `PermissionRequest` 不经过 Clawd command hook，因此�
 
 启动链路只会自动补齐 `integrationInstalled=true` 且 `enabled=true` 的缺失集成；若 prefs 文件不可读（`locked && recovered`），内存 snapshot 只是非权威 defaults fallback，整条 prefs-backed agent runtime gate 会 fail closed，本次进程不自动同步集成、不启动 monitor、不接受 state/permission ingress，也不恢复旧 session：
 
-- `server.js` 启动后异步同步已安装且已启用的 Claude / Codex / Copilot / Gemini / Antigravity / Cursor / CodeBuddy / WorkBuddy / Kiro / Kimi / Qwen / ZCode / CodeWhale / Qoder / QoderWork / QwenWork / Reasonix hooks、opencode / MiMo Code / OpenClaw / Hermes / DeepSeek Harness plugins 和 Pi / OMP extension；Hermes 同步会先做无副作用安装探测，未安装时不创建 `~/.hermes`；DSH startup sync 不初始化缺失的 web profile，只 repair 已 opt-in 的 marker-owned entry
+- `server.js` 启动后异步同步已安装且已启用的 Claude / Codex / Copilot / Gemini / Antigravity / Cursor / CodeBuddy / WorkBuddy / Kiro / Kimi / Qwen / ZCode / CodeWhale / Qoder / QoderWork / QwenWork / Reasonix hooks、opencode / MiMo Code / OpenClaw / Hermes / DeepSeek Harness plugins 和 Pi / OMP extension；Hermes 同步会先做无副作用安装探测，未安装时不创建 `~/.hermes`；DSH startup sync 不初始化缺失的 profile，只会把插件加进已初始化的桌面版 profile、并 repair 已 opt-in 的 marker-owned entry（被 DSH 关掉的插件只报 `plugin-disabled-in-dsh`，两步修复留给显式修复）
 - Claude hook 同步时还会扫 `DEPRECATED_CORE_HOOKS`（当前含 `WorktreeCreate`）清掉旧版本留下的过时 Clawd hook。常规所有权仍认 command 中的字面 `clawd-hook.js` marker；兼容 #852 的外部 env 间接形式时，只有“单条简单 Node 调用 + 精确 `CLAWD_HOOK_PATH` token + 唯一事件参数”，且 `settings.env.CLAWD_HOOK_PATH` 的跨平台 basename 恰为 `clawd-hook.js` 才视为 owned。复合命令、间接 env 值和第三方同事件 hook 均 fail closed。deprecated / versioned / HTTP-only / uninstall 路径删除全部 owned 命中；active state hook 则按子项位置折叠成一条，优先保留已 canonical 的命令并保留 mixed wrapper 的 matcher / 第三方 sibling。迁移不会改写 `settings.env`；严格的反注入规则只校验外部 env Node 候选，不会拒绝安装器已解析/保留的绝对路径（如含括号的 Windows 路径）。若 env-only 事件无法验证可用的绝对 Node 路径，会保留一条 env hook 而不是降级成裸 `node`；若已有 literal hook，则保留 literal 而不让不可迁移的 env duplicate 取代它
 
 Settings Agent 页的 Install 会执行对应 sync 并把 `integrationInstalled=true, enabled=true` 一起提交；Uninstall 会调用 marker-scoped 卸载器，并把 `integrationInstalled=false, enabled=false` 一起提交。单独重新启用一个未安装 agent 只打开事件入口，不会写本机配置；手动安装命令主要用于调试、重装或远程机部署。
@@ -611,7 +613,7 @@ CodeBuddy 的 PermissionRequest HTTP 所有权只认严格的本机 managed URL�
 - 支持 Allow / Deny / suggestion 决策，以及 `addRules` / `setMode` suggestion 类型
 - `permission-automation-policy.js` 的 off / auto-tools / unattended 与 `session-automation-coordinator.js` 的 per-session grant 会在 bubble 渲染前产生真实决定。auto-tools 对 Claude/Qwen 的未知 built-in（除有效 namespaced MCP）fail closed，但其他已知 adapter 对非空工具名不都使用逐工具 allowlist；unattended 在识别已知 decision tools 后仍有意对可作 Allow/Deny 的未知请求保留“handle every request”行为。新增 agent/tool/interaction 必须同时审查 policy 与 tests，不能笼统假设 unknown 一律 defer。身份未核验的请求，如果它自称的 `{agentId, sessionId}` 命中单会话记录，只取该记录模式与回落模式（全局模式或 session-only `off`）里更严格的一个，所以核验失败只会收紧、不会被全局放宽
 - Telegram 与飞书 / Lark 是和本地 bubble 并行的远程决策通道；关闭本地 bubble 不等于关闭远程审批。远程 client 超时、断连、未配置或启动失败不得产生决定或 deny：本地 bubble 存在时请求继续 pending；仅在 remote-only 且所有可用 client 都无决定时，整体请求才 no-decision 并让 agent 回原生 UI 重问
-- DND 只负责“不弹 bubble”，不替用户决定权限：opencode 与 MiMo Code 分支 silent drop，让 TUI 内置权限提示接管；Claude Code 分支 `res.destroy()`，让 CC 回到内置聊天/终端确认；Codex 分支返回 no-decision `{}`；DeepSeek Harness 分支返回带 server identity 的 204，让 plugin `next()` 到原生 web answerer
+- DND 只负责“不弹 bubble”，不替用户决定权限：opencode 与 MiMo Code 分支 silent drop，让 TUI 内置权限提示接管；Claude Code 分支 `res.destroy()`，让 CC 回到内置聊天/终端确认；Codex 分支返回 no-decision `{}`；DeepSeek Harness 分支返回带 server identity 的 204，让 plugin `next()` 交还 DSH 原生审批流程
 - Codex 审批只认 official `PermissionRequest` hook；JSONL fallback 不再根据 shell function_call 猜测审批，也不再创建 Codex passive approval notify bubble
 - 涉及 Claude Code 权限 payload 的改动（`permission_suggestions`、`updatedPermissions`、elicitation 输入等）必须至少用一次真实 Claude Code 验证；`curl` 自编请求历史上掩盖过字段结构 bug
 
@@ -641,11 +643,11 @@ opencode、MiMo Code、OpenClaw、Hermes 和 DeepSeek Harness 是 plugin 形式�
 - Hermes plugin 使用同步 POST，避免短命 `hermes -z` 进程退出前丢事件；Clawd 未启动时有短 cooldown，避免反复扫端口
 - Hermes 的 `agent_pid` 当前是 plugin worker 进程 PID；`source_pid` 来自异步进程树解析，给终端聚焦使用
 - Hermes config.yaml 是用户 YAML，不做 line-oriented 编辑；安装只复制托管 plugin 文件并调用 `hermes plugins enable clawd-on-desk`
-- DeepSeek Harness 首发只支持 web profile，并维护一张 verified 版本契约表（`0.2.0-rc.2` 优先，已做静态接口核对，并在 2026-10-04 用 Clawd 安装器装出的 generation 上完成 macOS 源码运行版真机验证：启动同步换代、会话状态、HUD 标题/上下文、Allow/Deny 与消息上的失败标记，其 `tool/result` 把失败标记放在 `message.isError` 而非内容项，bridge 新旧两种都认；`0.1.5-rc.3`、`0.1.5-rc.1`、`0.1.1-rc.2` 与 `0.1.0-rc.6` 保留，rc.3 已于 2026-09-27 在 macOS 源码运行版 Clawd + 真实 `dsh web` 与真实模型上验证启动同步安装、会话状态、HUD 标题/上下文与 Allow/Deny），每个版本绑定自己的 npm artifact 与 integrity；Install/Repair 按检测到的 host 版本（无 CLI 时按 owned marker）选择契约，Uninstall 与手动 npx 命令按 marker 契约选择，未列入表内的版本一律禁止 mutation。安装器按 canonical `DSH_HOME` 哈希命名空间把 bridge 复制成 immutable hash generation，再用官方 `dsh plugin --profile web add/remove` mutation；dependency、bundle row、installation-first/profile-second resolution 与 Clawd marker 必须同时验证，foreign 同名 package 永不覆盖或删除；不同 DSH_HOME 不共享可删除 generation、mutation lock 或 inspection latch
+- DeepSeek Harness 首发在 web profile 与桌面版（macOS / Windows；Linux 只支持 web）两个承载方上集成，并按小版本族（major.minor）放行：维护一张唯一写出具体版本/npm artifact/integrity 的已验证 artifact 清单（`0.2.0-rc.2` 优先，已做静态接口核对，并在 2026-10-04 用 Clawd 安装器装出的 generation 上完成 macOS 源码运行版真机验证：启动同步换代、会话状态、HUD 标题/上下文、Allow/Deny 与消息上的失败标记，其 `tool/result` 把失败标记放在 `message.isError` 而非内容项，bridge 新旧两种都认；`0.1.5-rc.3`、`0.1.5-rc.1`、`0.1.1-rc.2` 与 `0.1.0-rc.6` 保留，rc.3 已于 2026-09-27 在 macOS 源码运行版 Clawd + 真实 `dsh web` 与真实模型上验证启动同步安装、会话状态、HUD 标题/上下文与 Allow/Deny），以及一张族表（`0.2` 下限 `0.2.0-rc.2`、`0.1` 下限 `0.1.0-rc.6`）。host 版本经严格解析（拒绝前导零、空预发布标识与 build 元数据）通过、major.minor 命中族且不低于下限即放行；同族 host 共用一个 generation，新增小版本必须重新验证并加族。旧精确 `=<version>` marker 按原 range 核对哈希，新 generation 写族 range；Install/Repair 按 host 所在的族选择目标，Uninstall 与手动 npx 命令在 marker 版本已列入清单时钉它自己的 artifact，否则钉同族最高的已验证 artifact。未命中任何族或低于下限的版本一律禁止 mutation。安装器按 canonical `DSH_HOME` 哈希命名空间把 bridge 复制成 immutable hash generation，再用官方 `dsh plugin --profile web|desktop add/remove` mutation（桌面版走 app 自带启动器，永不用 npx 或 manual reference）；dependency、bundle row、installation-first/profile-second resolution 与 Clawd marker 必须同时验证，foreign 同名 package 永不覆盖或删除；不同 DSH_HOME 不共享可删除 generation、mutation lock 或 inspection latch。一次排队操作先 web 后 desktop、一边失败不影响另一边；安装只要一边核实健康即成功（另一边变 warning + 常驻提示），卸载要所有 Clawd 注册都确认没了才成功；启动同步会把插件加进已初始化的桌面版 profile，被 DSH 关掉的插件只报 `plugin-disabled-in-dsh`、显式修复走 per-profile 的两步 remove+add（`repair-operation-<profile>.json`，中断后续做）；`generations/` 两边共享，任一边有未处理状态（检查记录、清理残留、坏修复记录或 manual reference、读不了的 profile、符号链接 profile 目录）时清理暂停但不挡安装，卸载残留进 warnings；检查记录按 profile（web `inspection-required.json`、桌面版 `inspection-required-desktop.json`）
 - DSH mutation lock 只在 owner/schema/token/PID/timestamp/owner-recorded operation timeout 全合法、年龄超过该 owner timeout 的两倍、且 PID probe 明确返回 `ESRCH` 时通过 sibling atomic rename 接管；live PID、`EPERM`、unknown、corrupt/foreign owner 均 fail closed，错误必须暴露精确 lock path。owner write/release 只允许隔离并删除 exact owner file 与空 lock dir，禁止 recursive canonical cleanup。无全局 CLI 的手动 npx generation 通过同 namespace 的 owned reference 持久保活，直到验证或显式卸载；命令显式 pin shell-quoted canonical `DSH_HOME`，malformed/foreign/concurrent anchor 一律保留 generation 并要求人工检查
 - DSH state listener 是 fire-and-forget FIFO；approval listener 是唯一例外，必须阻塞等待决定或 `next()`。`session/created` observer 顶层 non-throwing，避免同步异常 veto DSH session 创建
 - DSH projection storage 不是稳定协议：首发不读取 workspace/projcache，也不运行 fallback monitor
-- DSH Install/Repair 成功与 Doctor healthy 都是 disk-only 结论，必须提示重启正在运行的 `dsh web`。安装器/Doctor 对未列入版本契约表的 DSH 禁止 mutation 并报警（rc.1 / rc.2 / rc.6 各自按精确版本契约选择）；上游没有 external plugin 可用的公开 runtime host-version/activation seam，因此已安装 bridge 遇到 DSH 原地升级时无法在 listener 注册前可靠自禁用，这是 experimental residual，不得写成 runtime fail-closed 保证
+- DSH Install/Repair 成功与 Doctor healthy 都是 disk-only 结论，必须提示重启正在运行的 `dsh web`（桌面版开着会加载新加的插件，但换 generation 的插件更新要重启桌面版）。安装器/Doctor 对未命中族或低于下限的 DSH 禁止 mutation 并报警（历史精确 marker 按原 range 核对，新 generation 按族 range 写）；上游没有 external plugin 可用的公开 runtime host-version/activation seam，因此已安装 bridge 遇到 DSH 原地升级时无法在 listener 注册前可靠自禁用——例如 DSH 升到 0.3 后，已经装好的插件可能仍会被加载，直到启动同步或 Doctor 发现为止。这是 experimental residual，不得写成 runtime fail-closed 保证
 
 ## Pi Notes
 

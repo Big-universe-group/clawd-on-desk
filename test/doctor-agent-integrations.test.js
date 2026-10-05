@@ -48,6 +48,14 @@ const {
 } = require("../hooks/dsh-install");
 
 const DSH_BRIDGE_SOURCE_DIR = path.join(__dirname, "..", "hooks", "dsh-clawd-bridge");
+const NO_DSH_DESKTOP = Object.freeze({
+  status: "not-found",
+  appRoot: null,
+  launcherPath: null,
+  staticVersion: null,
+  checkedPaths: [],
+  reason: null,
+});
 
 // Complete healthy legacy Kimi config: every event registered, every command
 // carrying the canonical argv mode flag.
@@ -121,6 +129,11 @@ function runOne(descriptor, options = {}) {
       ? null
       : options.dshInstallRoot,
     dshManagedRoot: options.dshManagedRoot || descriptor.dshManagedRoot,
+    // Tests never read the real /Applications; the DSH descriptor defaults to
+    // "no desktop app found" unless a test injects its own discovery.
+    dshDesktopDiscovery: options.dshDesktopDiscovery === undefined && descriptor.agentId === "deepseek-harness"
+      ? NO_DSH_DESKTOP
+      : options.dshDesktopDiscovery,
   }).details[0];
 }
 

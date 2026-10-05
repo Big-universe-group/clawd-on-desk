@@ -13,6 +13,7 @@ const {
   processMetadataForState,
 } = require("./server-windows-process-metadata");
 const { isWslSourced, stripRemoteProcessMetadata } = require("./remote-process-metadata");
+const { resolveDshCarrier } = require("./dsh-carrier");
 const {
   CODEX_OFFICIAL_HOOK_SOURCE,
   CODEX_SESSION_ROLE_SUBAGENT,
@@ -414,6 +415,17 @@ function buildDshPermissionSessionOptions(data, remoteProfile, wslSourced) {
   applyTerminalSessionOptions(options, data);
   const cwd = normalizeString(data.cwd);
   if (cwd) options.cwd = cwd;
+  // The permission card may arrive before any session lifecycle event, so the
+  // desktop carrier has to land on the permission record itself. That record
+  // is what `buildPermissionFocusEntry` copies into the fallback focus entry.
+  const carrier = resolveDshCarrier({
+    agentId: "deepseek-harness",
+    hookSource: normalizeString(data.hook_source),
+    value: data.dsh_carrier,
+    remoteProfile,
+    wslSourced,
+  });
+  if (carrier) options.dshCarrier = carrier;
   return stripRemoteProcessMetadata(options, remoteProfile, wslSourced);
 }
 

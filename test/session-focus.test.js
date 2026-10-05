@@ -263,6 +263,51 @@ describe("session focus helpers", () => {
     assert.strictEqual(isFocusableLocalHudSession(remoteOrca, { osPlatform: "darwin" }), false);
   });
 
+  it("opens the DSH desktop window only for local desktop-carrier sessions on supported hosts", () => {
+    const desktop = {
+      id: "deepseek-harness:s1",
+      agentId: "deepseek-harness",
+      dshCarrier: "desktop",
+    };
+    const dshDesktopTarget = { canFocus: true, type: "dsh-desktop", url: "dsh://open" };
+    const unavailable = { canFocus: false, type: null, url: null };
+
+    assert.deepStrictEqual(getSessionFocusTarget(desktop, { osPlatform: "darwin" }), dshDesktopTarget);
+    assert.deepStrictEqual(getSessionFocusTarget(desktop, { osPlatform: "win32" }), dshDesktopTarget);
+    assert.strictEqual(isFocusableLocalHudSession(desktop, { osPlatform: "darwin" }), true);
+    assert.strictEqual(isFocusableLocalHudSession(desktop, { osPlatform: "linux" }), false);
+    assert.deepStrictEqual(getSessionFocusTarget(desktop, { osPlatform: "linux" }), unavailable);
+
+    // The carrier only counts for DSH, and only when it is exactly "desktop".
+    assert.deepStrictEqual(getSessionFocusTarget({ ...desktop, agentId: "codex" }, { osPlatform: "darwin" }), unavailable);
+    assert.deepStrictEqual(getSessionFocusTarget({ ...desktop, dshCarrier: "web" }, { osPlatform: "darwin" }), unavailable);
+    assert.deepStrictEqual(getSessionFocusTarget({ ...desktop, platform: "webui" }, { osPlatform: "darwin" }), unavailable);
+    assert.deepStrictEqual(getSessionFocusTarget({ ...desktop, host: "remote-box" }, { osPlatform: "darwin" }), unavailable);
+    // A desktop carrier never grants terminal focus.
+    assert.deepStrictEqual(getSessionFocusTarget({ ...desktop, sourcePid: 123 }, { osPlatform: "darwin" }), dshDesktopTarget);
+  });
+
+  it("keeps the DSH desktop window out of the Direct Send paste target", () => {
+    const desktop = {
+      id: "deepseek-harness:s1",
+      agentId: "deepseek-harness",
+      dshCarrier: "desktop",
+      sourcePid: 123,
+    };
+
+    assert.deepStrictEqual(getDirectSendFocusTarget(desktop, { osPlatform: "darwin" }), {
+      canFocus: false,
+      type: "dsh-desktop",
+      url: "dsh://open",
+      reason: "dsh_desktop_requires_manual_paste",
+    });
+    assert.deepStrictEqual(getDirectSendFocusTarget({ ...desktop, dshCarrier: "web" }, { osPlatform: "darwin" }), {
+      canFocus: true,
+      type: "terminal",
+      url: null,
+    });
+  });
+
   it("rejects malformed entries defensively", () => {
     assert.strictEqual(isFocusableLocalHudSession(null), false);
     assert.strictEqual(isFocusableLocalHudSession({ sourcePid: 1 }), false);

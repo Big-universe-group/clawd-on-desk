@@ -197,7 +197,7 @@ const {
   getFocusableLocalHudSessionIds: selectFocusableLocalHudSessionIds,
   getSessionFocusTarget,
 } = require("./session-focus");
-const { focusCodexThreadTarget } = require("./session-focus-handoff");
+const { focusCodexThreadTarget, focusDshDesktopTarget } = require("./session-focus-handoff");
 const { isSessionInProgress } = require("./state-session-snapshot");
 const { restoreSessionsFromRecoveryLeases } = require("./session-recovery-loader");
 const { createSessionHistoryRuntime } = require("./session-history-runtime");
@@ -2777,6 +2777,18 @@ function focusDashboardSession(sessionId, options = {}) {
       url: focusTarget.url,
       focusLog,
       focusTerminalSession,
+    });
+    return true;
+  }
+
+  if (focusTarget.type === "dsh-desktop" && focusTarget.url) {
+    focusDshDesktopTarget({
+      shell,
+      focusEntry,
+      sessionId: id,
+      requestSource,
+      url: focusTarget.url,
+      focusLog,
     });
     return true;
   }

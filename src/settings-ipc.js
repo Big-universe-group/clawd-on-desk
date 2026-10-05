@@ -4,6 +4,10 @@ const defaultFs = require("fs");
 const defaultPath = require("path");
 const { pathToFileURL } = require("url");
 const { detectAgentInstallations: defaultDetectAgentInstallations } = require("./agent-installation-detector");
+const {
+  readDeepSeekHarnessNotices: defaultReadDshNotices,
+  acknowledgeDeepSeekHarnessNotice: defaultAcknowledgeDshNotice,
+} = require("../hooks/dsh-install");
 const { DEFAULT_INTEGRATION_INSTALLED_IDS } = require("./prefs");
 const settingsThemeImporter = require("./settings-theme-importer");
 const {
@@ -48,6 +52,38 @@ const SOUND_OVERRIDE_DIALOG_STRINGS = {
   "pt-BR": { title: "Escolha um arquivo de som", filterName: "Áudio" },
   es: { title: "Elige un archivo de sonido", filterName: "Audio" },
 };
+
+// The Settings page only shows unacknowledged notices, and only the fields it
+// renders. Path fields (residues, locks) are diagnostic material that belongs
+// in logs, not in the renderer.
+const DSH_NOTICE_KIND_RANK = Object.freeze({
+  "restart-required": 0,
+  "failed-target": 1,
+  "manual-command": 2,
+  "first-install": 3,
+});
+
+function toDshNoticeView(notice) {
+  if (!notice || notice.acknowledged) return null;
+  const view = { id: notice.id, profile: notice.profile, kind: notice.kind };
+  const payload = notice.payload || {};
+  if (notice.kind === "manual-command") {
+    view.commands = Array.isArray(payload.commands) ? payload.commands.slice() : [];
+  } else if (notice.kind === "failed-target") {
+    view.operation = payload.operation;
+    view.reason = payload.reason;
+    view.message = payload.message;
+  }
+  return view;
+}
+
+function compareDshNoticeViews(left, right) {
+  const rankLeft = DSH_NOTICE_KIND_RANK[left.kind] === undefined ? 99 : DSH_NOTICE_KIND_RANK[left.kind];
+  const rankRight = DSH_NOTICE_KIND_RANK[right.kind] === undefined ? 99 : DSH_NOTICE_KIND_RANK[right.kind];
+  if (rankLeft !== rankRight) return rankLeft - rankRight;
+  if (left.profile !== right.profile) return left.profile === "web" ? -1 : 1;
+  return 0;
+}
 
 const AGENT_DISCOVERY_DIALOG_STRINGS = {
   en: { file: "Choose a tool executable", directory: "Choose a tool installation folder" },
@@ -291,6 +327,21 @@ function registerSettingsIpc(options = {}) {
   const getSizeContext = options.getSizeContext || (() => null);
   const getAllAgents = requiredDependency(options.getAllAgents, "getAllAgents");
   const detectAgentInstallations = options.detectAgentInstallations || defaultDetectAgentInstallations;
+  const readDshNotices = typeof options.readDshNotices === "function" ? options.readDshNotices : defaultReadDshNotices;
+  const acknowledgeDshNotice = typeof options.acknowledgeDshNotice === "function"
+    ? options.acknowledgeDshNotice
+    : defaultAcknowledgeDshNotice;
+  const platform = options.platform || process.platform;
+  // Injectable for tests; production refreshes the Windows registry snapshot.
+  const refreshDshDesktopDiscovery = typeof options.refreshDshDesktopDiscovery === "function"
+    ? options.refreshDshDesktopDiscovery
+    : async () => {
+      const { refreshDshDesktopDiscovery: refresh } = require("../hooks/dsh-install.js");
+      return refresh({});
+    };
+  const refreshWslDetection = typeof options.refreshWslDetection === "function"
+    ? options.refreshWslDetection
+    : require("./agent-installation-detector").refreshWslDetection;
   const getHookServerPort = options.getHookServerPort || (() => null);
   const getRecentHookEvents = options.getRecentHookEvents || (() => []);
   const checkForUpdates = options.checkForUpdates || (() => {});
@@ -972,8 +1023,15 @@ function registerSettingsIpc(options = {}) {
       const options = opts && typeof opts === "object" ? opts : {};
       const detectorOptions = { fs, path, now, snapshot: settingsController.getSnapshot() };
       if (options.refreshWsl) {
-        const { refreshWslDetection } = require("./agent-installation-detector");
         await refreshWslDetection({ ...detectorOptions, skipDefaultIntegrations: false });
+        // The manual Scan waits for the Windows registry too, so the report it
+        // returns already sees the desktop app. Opening the page without a scan
+        // skips this to avoid a PowerShell on every visit.
+        if (platform === "win32") {
+          try {
+            await refreshDshDesktopDiscovery();
+          } catch {}
+        }
         return detectAgentInstallations(detectorOptions);
       }
       return detectAgentInstallations(detectorOptions);
@@ -991,6 +1049,47 @@ function registerSettingsIpc(options = {}) {
         wslSupported: process.platform === "win32",
         error: err && err.message ? err.message : String(err),
       };
+    }
+  });
+
+  handle("settings:dsh-notices", async () => {
+    try {
+      const state = await readDshNotices({});
+      if (state && state.errors) {
+        const broken = ["web", "desktop"].filter((profile) => state.errors[profile]);
+        if (broken.length) {
+          console.warn(`Clawd: DeepSeek Harness notices unreadable for ${broken.join(", ")}`);
+        }
+      }
+      const notices = [];
+      for (const profile of ["web", "desktop"]) {
+        for (const notice of (state && state[profile]) || []) {
+          const view = toDshNoticeView(notice);
+          if (view) notices.push(view);
+        }
+      }
+      notices.sort(compareDshNoticeViews);
+      return { notices };
+    } catch (err) {
+      console.warn("Clawd: settings:dsh-notices failed:", err && err.message);
+      return { notices: [] };
+    }
+  });
+
+  handle("settings:dsh-notice-ack", async (_ev, payload) => {
+    const request = payload && typeof payload === "object" ? payload : {};
+    if (request.profile !== "web" && request.profile !== "desktop") {
+      return { status: "error", message: "invalid DeepSeek Harness notice profile" };
+    }
+    if (typeof request.id !== "string" || request.id.length < 1 || request.id.length > 200) {
+      return { status: "error", message: "invalid DeepSeek Harness notice id" };
+    }
+    try {
+      const result = await acknowledgeDshNotice({}, { profile: request.profile, id: request.id });
+      if (result && result.error) return { status: "error", message: result.error };
+      return { status: "ok", found: !!(result && result.found === true) };
+    } catch (err) {
+      return { status: "error", message: err && err.message ? err.message : String(err) };
     }
   });
 

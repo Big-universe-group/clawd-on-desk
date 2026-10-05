@@ -19,6 +19,7 @@ const {
   processMetadataForState,
 } = require("./server-windows-process-metadata");
 const { isWslSourced, stripRemoteProcessMetadata } = require("./remote-process-metadata");
+const { resolveDshCarrier } = require("./dsh-carrier");
 const {
   normalizeHookToolUseId,
   findPendingPermissionForStateEvent,
@@ -477,6 +478,17 @@ function handleStatePost(req, res, options) {
         && hookSource === "dsh-plugin"
         && Object.hasOwn(data, "context_usage")
         && data.context_usage === null;
+      // The desktop app's bridge marks its traffic with a carrier. Only the DSH
+      // bridge's own local, non-WSL requests may carry it (shared rule below);
+      // metadata-only requests never reach the lifecycle update, so they can
+      // never change where a session came from.
+      const dshCarrier = resolveDshCarrier({
+        agentId,
+        hookSource,
+        value: data.dsh_carrier,
+        remoteProfile,
+        wslSourced,
+      });
       // #406 completion-gate inputs from the Claude Stop hook. Counts / boolean
       // only — the hook never forwards task command or description text.
       const backgroundTasksCount = Number.isFinite(data.background_tasks_count)
@@ -1044,6 +1056,7 @@ function handleStatePost(req, res, options) {
             provider,
             codexOriginator,
             codexSource,
+            dshCarrier,
             ghosttyTerminalId,
             displayHint: display_svg,
             sessionTitle,

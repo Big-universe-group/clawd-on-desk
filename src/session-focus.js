@@ -24,6 +24,21 @@ function getCodexThreadUrl(entry) {
     : null;
 }
 
+// A DSH session is the desktop carrier only when the bridge said so (state or
+// approval). This checks identity alone; whether the host can open the app is
+// decided by getDshDesktopFocusUrl below.
+function isDshDesktopSession(entry) {
+  return !!entry
+    && entry.agentId === "deepseek-harness"
+    && entry.dshCarrier === "desktop";
+}
+
+function getDshDesktopFocusUrl(entry, options) {
+  if (!isDshDesktopSession(entry)) return null;
+  const osPlatform = normalizeOsPlatform(options);
+  return osPlatform === "darwin" || osPlatform === "win32" ? "dsh://open" : null;
+}
+
 function hasSupportedOrcaPaneTarget(entry, options = {}) {
   const paneKey = normalizeString(entry && entry.orcaPaneKey);
   if (!paneKey || paneKey.length > 256) return false;
@@ -49,6 +64,11 @@ function getSessionFocusTarget(entry, options = {}) {
     return { canFocus: true, type: "codex-thread", url: codexThreadUrl };
   }
 
+  const dshDesktopUrl = getDshDesktopFocusUrl(entry, options);
+  if (dshDesktopUrl) {
+    return { canFocus: true, type: "dsh-desktop", url: dshDesktopUrl };
+  }
+
   if (entry.sourcePid) {
     return { canFocus: true, type: "terminal", url: null };
   }
@@ -71,6 +91,18 @@ function getDirectSendFocusTarget(entry, options = {}) {
       type: "codex-thread",
       url: getCodexThreadUrl(entry),
       reason: "codex_desktop_requires_manual_paste",
+    };
+  }
+
+  // The desktop app window can be opened, but the OS foreground check cannot
+  // prove which conversation owns the composer, and the app is not a terminal
+  // that accepts injected text. Direct Send must therefore stay off this target.
+  if (isDshDesktopSession(entry)) {
+    return {
+      canFocus: false,
+      type: "dsh-desktop",
+      url: "dsh://open",
+      reason: "dsh_desktop_requires_manual_paste",
     };
   }
 
@@ -100,5 +132,6 @@ module.exports = {
   getDirectSendFocusTarget,
   getFocusableLocalHudSessionIds,
   getSessionFocusTarget,
+  isDshDesktopSession,
   isFocusableLocalHudSession,
 };

@@ -40,7 +40,7 @@ const { inspectManagedOpencode } = require("./opencode-managed-inspector");
 const { validateOpenClawEntry } = require("./openclaw-entry-validator");
 const { inspectGrokHookFile } = require("../../hooks/grok-install");
 const { hasIncludeDirective } = require("../../hooks/openclaw-install");
-const { inspectDeepSeekHarnessDiskSync } = require("../../hooks/dsh-install");
+const { inspectDshTargetsSync } = require("../../hooks/dsh-install");
 const minimaxInstall = require("../../hooks/minimax-install");
 
 const REPAIRABLE_AGENT_STATUSES = new Set([
@@ -2746,6 +2746,139 @@ function checkExtensionMode(descriptor, options) {
   });
 }
 
+// DeepSeek Harness has two independent carriers (web profile and desktop app)
+// that share one Doctor row. Each side gets its own status from the static
+// target; the row takes the worst side, and the Fix button is decided
+// separately so a fixable side is still repairable when the other is foreign.
+const DSH_DOCTOR_SIDES = Object.freeze(["web", "desktop"]);
+const DSH_DOCTOR_STATUS_RANK = Object.freeze({
+  "needs-review": 3,
+  "broken-path": 2,
+  "not-connected": 1,
+  ok: 0,
+});
+const DSH_DOCTOR_REVIEW_DETAILS = Object.freeze({
+  "foreign-package": "A foreign or conflicting DeepSeek Harness plugin uses the Clawd bridge package name; Clawd will not replace it",
+  "profile-entry-foreign-or-conflicting": "A foreign or conflicting DeepSeek Harness plugin uses the Clawd bridge package name; Clawd will not replace it",
+  "integrity-failed": "The managed DeepSeek Harness bridge bytes no longer match their ownership marker; inspect them manually",
+  "generation-integrity-failed": "The managed DeepSeek Harness bridge bytes no longer match their ownership marker; inspect them manually",
+  "source-unavailable": "Clawd's packaged DeepSeek Harness bridge source is unavailable; repair the Clawd installation",
+  "profile-corrupt": "The DeepSeek Harness {profile} profile manifest is unreadable; Clawd will not rewrite it automatically",
+  "carrier-unavailable": "The DeepSeek Harness desktop app was not found, but its profile still has a Clawd registration; install or locate the app and Repair",
+  "desktop-unverifiable": "Clawd could not verify whether the DeepSeek Harness desktop app is installed; manual inspection is required",
+  "multiple-desktop-installs": "More than one DeepSeek Harness desktop app was found; Clawd will not guess which one to use",
+});
+const DSH_DOCTOR_NOT_APPLICABLE_DETAILS = Object.freeze({
+  "web-not-used": "not used",
+  "desktop-not-installed": "desktop app not installed",
+  "desktop-profile-uninitialized": "open the DeepSeek Harness desktop app once to initialize its profile",
+});
+
+// A side is shown from its on-disk health when it may be attempted: a mutable
+// target, or web's manual fallback (macOS app PATH often cannot see a login
+// shell dsh, so a healthy web is still reported from disk). Any other diagnose
+// reason is a review finding.
+function dshSideCanAttemptFix(target) {
+  return target.role === "mutable" || (target.profile === "web" && target.manualFallback === true);
+}
+
+function dshSideStatus(target) {
+  if (target.role === "not-applicable") return null;
+  if (!dshSideCanAttemptFix(target)) return "needs-review";
+  const status = target.health && target.health.status;
+  if (status === "healthy") return "ok";
+  if (status === "absent" || status === "profile-missing") return "not-connected";
+  return "broken-path";
+}
+
+function dshSideDetail(target, status) {
+  if (status === null) {
+    return DSH_DOCTOR_NOT_APPLICABLE_DETAILS[target.reason] || "not used";
+  }
+  if (status === "ok") {
+    return target.profile === "web"
+      ? "managed bridge verified on disk; restart any running dsh web process to load a new plugin generation"
+      : "managed bridge verified on disk";
+  }
+  if (status === "not-connected" || status === "broken-path") {
+    return `managed bridge is ${target.health && target.health.status}`;
+  }
+  if (target.reason === "version-unsupported") {
+    const detected = (target.health && target.health.detectedDshVersion)
+      || (target.discovery && target.discovery.staticVersion)
+      || "or its bridge marker";
+    const range = (target.health && target.health.supportedDshRange) || "the supported range";
+    return `DeepSeek Harness ${detected} is outside ${range}; Clawd will not activate it automatically`;
+  }
+  const template = DSH_DOCTOR_REVIEW_DETAILS[target.reason];
+  if (template) return template.replace("{profile}", target.profile);
+  return `needs manual attention (${target.reason || "unknown"})`;
+}
+
+function dshRowStatus(sides) {
+  const counted = sides.filter((side) => side.status !== null);
+  if (!counted.length) return "not-connected";
+  return counted.reduce(
+    (worst, side) => (DSH_DOCTOR_STATUS_RANK[side.status] > DSH_DOCTOR_STATUS_RANK[worst] ? side.status : worst),
+    "ok"
+  );
+}
+
+function checkDshPluginMode(descriptor, options, prefs) {
+  const targets = inspectDshTargetsSync({
+    fs: options.fs,
+    dshHome: descriptor.parentDir,
+    managedRoot: options.dshManagedRoot,
+    dshInstallRoot: options.dshInstallRoot,
+    homeDir: options.homeDir,
+    env: options.env,
+    platform: options.platform,
+    desktopDiscovery: options.dshDesktopDiscovery,
+    windowsRegistrySnapshot: options.windowsRegistrySnapshot,
+  }, { operation: "doctor" });
+  const sides = DSH_DOCTOR_SIDES.map((profile) => {
+    const target = targets[profile];
+    return { profile, target, status: dshSideStatus(target) };
+  });
+  const byProfile = Object.fromEntries(sides.map((side) => [side.profile, side]));
+  const rowStatus = dshRowStatus(sides);
+  const counted = sides.filter((side) => side.status !== null);
+  // `sides` keeps web first, so the reduce tie-break prefers web as required.
+  const deciding = counted.length
+    ? counted.reduce((worst, side) => (
+      DSH_DOCTOR_STATUS_RANK[side.status] > DSH_DOCTOR_STATUS_RANK[worst.status] ? side : worst
+    ))
+    : byProfile.web;
+  const fields = {
+    level: rowStatus === "ok" ? null : "warning",
+    detail: sides.map((side) => `${side.profile}: ${dshSideDetail(side.target, side.status)}`).join("; "),
+    bridgeHealth: deciding.target.health ? deciding.target.health.status : null,
+    configPath: deciding.target.profileDir,
+  };
+  if (rowStatus === "ok") {
+    const pluginSide = byProfile.web.status !== null ? byProfile.web : byProfile.desktop;
+    const resolved = pluginSide.target.health && pluginSide.target.health.resolved;
+    if (resolved && resolved.packageDir) fields.pluginPath = resolved.packageDir;
+  }
+  fields.dshTargets = Object.fromEntries(sides.map((side) => [side.profile, {
+    role: side.target.role,
+    reason: side.target.reason,
+    status: side.status,
+  }]));
+  const detail = makeDetail(descriptor, rowStatus, fields);
+  // Fix eligibility is decided from the sides, not from the row status: a
+  // foreign side pushes the row to needs-review while the other side is still
+  // repairable, so the button must stay even though "needs-review" is not in
+  // REPAIRABLE_AGENT_STATUSES.
+  const fixable = !!descriptor.autoInstall && sides.some((side) => (
+    dshSideCanAttemptFix(side.target) && side.status !== null && side.status !== "ok"
+  ));
+  const withFix = fixable
+    ? { ...detail, fixAction: { type: "agent-integration", agentId: descriptor.agentId } }
+    : detail;
+  return withAgentBubbleNote(withFix, prefs, descriptor.agentId);
+}
+
 function checkAgent(descriptor, options) {
   const prefs = options.prefs || {};
   if (!isAgentIntegrationInstalled(prefs, descriptor.agentId)) {
@@ -2779,56 +2912,7 @@ function checkAgent(descriptor, options) {
   }
 
   if (descriptor.configMode === "dsh-plugin") {
-    const health = inspectDeepSeekHarnessDiskSync({
-      fs: options.fs,
-      dshHome: descriptor.parentDir,
-      dshInstallRoot: options.dshInstallRoot,
-      managedRoot: options.dshManagedRoot,
-      homeDir: options.homeDir,
-      env: options.env,
-      platform: options.platform,
-    });
-    let detail;
-    if (health.status === "healthy") {
-      detail = makeDetail(descriptor, "ok", {
-        level: null,
-        detail: `${health.profileDir} managed bridge verified on disk; restart any running dsh web process to load this plugin generation`,
-        configPath: health.profileDir,
-        pluginPath: health.resolved && health.resolved.packageDir,
-        bridgeHealth: health.status,
-      });
-    } else if (
-      health.status === "profile-entry-foreign-or-conflicting"
-      || health.status === "version-unsupported"
-      || health.status === "host-version-unsupported"
-      || health.status === "generation-integrity-failed"
-      || health.status === "source-unavailable"
-      || health.status === "profile-corrupt"
-    ) {
-      detail = makeDetail(descriptor, "needs-review", {
-        level: "warning",
-        detail: health.status === "version-unsupported" || health.status === "host-version-unsupported"
-          ? `DeepSeek Harness ${health.detectedDshVersion || "or its bridge marker"} is outside ${health.supportedDshRange || "the supported range"}; Clawd will not activate it automatically`
-          : (health.status === "generation-integrity-failed"
-            ? "The managed DeepSeek Harness bridge bytes no longer match their ownership marker; inspect them manually"
-            : (health.status === "source-unavailable"
-              ? "Clawd's packaged DeepSeek Harness bridge source is unavailable; repair the Clawd installation"
-              : (health.status === "profile-corrupt"
-                ? "The DeepSeek Harness web profile manifest is unreadable; Clawd will not rewrite it automatically"
-                : "A foreign or conflicting DeepSeek Harness plugin uses the Clawd bridge package name; Clawd will not replace it"))),
-        configPath: health.profileDir,
-        bridgeHealth: health.status,
-      });
-    } else {
-      const broken = health.status !== "absent" && health.status !== "profile-missing";
-      detail = makeDetail(descriptor, broken ? "broken-path" : "not-connected", {
-        level: "warning",
-        detail: `DeepSeek Harness managed bridge is ${health.status}`,
-        configPath: health.profileDir,
-        bridgeHealth: health.status,
-      });
-    }
-    return withAgentFixAction(withAgentBubbleNote(detail, prefs, descriptor.agentId), descriptor);
+    return checkDshPluginMode(descriptor, options, prefs);
   }
 
   if (descriptor.configMode === "grok-hooks") {
@@ -3035,6 +3119,10 @@ function checkAgentIntegrations(options = {}) {
     validateTarget: options.validateTarget || validateHookTarget,
     dshInstallRoot: options.dshInstallRoot,
     dshManagedRoot: options.dshManagedRoot,
+    // Static desktop discovery for tests; production reads the Windows registry
+    // cache that the Doctor preheat fills.
+    dshDesktopDiscovery: options.dshDesktopDiscovery,
+    windowsRegistrySnapshot: options.windowsRegistrySnapshot,
     homeDir: options.homeDir,
     // opencode v2 host verdict for the managed inspector (upstream PR #1045
     // review); undefined in production → the inspector probes the real binary.

@@ -152,6 +152,23 @@ describe("state stale cleanup decisions", () => {
     })).result, { action: "delete", reason: "no-source" });
   });
 
+  it("does not change DSH idle cleanup when the desktop carrier is present", () => {
+    const base = {
+      agentId: "deepseek-harness",
+      agentPid: 50,
+      sourcePid: null,
+      updatedAt: 1000000 - SESSION_STALE_MS - 1,
+    };
+    const alivePids = new Set([50]);
+    const carrier = decision(session({ ...base, dshCarrier: "desktop" }), { alivePids });
+    const plain = decision(session(base), { alivePids });
+
+    // The carrier is a focus hint only: it adds no source pid and must not
+    // change liveness or idle retention for the session.
+    assert.deepStrictEqual(carrier.result, plain.result);
+    assert.deepStrictEqual(carrier.result, { action: "delete", reason: "no-source" });
+  });
+
   it("handles working stale timeout source exit and idle downgrade", () => {
     assert.deepStrictEqual(decision(session({
       state: "working",

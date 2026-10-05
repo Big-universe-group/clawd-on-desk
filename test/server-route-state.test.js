@@ -419,6 +419,116 @@ describe("server-route-state POST", () => {
     assert.strictEqual(enabled.statusCode, 200);
   });
 
+  it("accepts the desktop carrier only from a local DSH bridge lifecycle event and never sticks", async () => {
+    const api = makeMetadataStateRuntime();
+    const rawId = "deepseek-harness:carrier";
+    const sessionId = localSessionKey(rawId);
+    const ctx = { updateSession: api.updateSession, updateSessionMetadata: api.updateSessionMetadata };
+    const options = { dshStateSequenceFence: createDshStateSequenceFence() };
+    const post = (body) => callStatePost(JSON.stringify(body), { ctx, options });
+    try {
+      const started = await post({
+        agent_id: "deepseek-harness",
+        hook_source: "dsh-plugin",
+        session_id: rawId,
+        event: "SessionStart",
+        state: "idle",
+        session_seq: 0,
+        dsh_carrier: "desktop",
+      });
+      assert.strictEqual(started.statusCode, 200);
+      assert.strictEqual(api.sessions.get(sessionId).dshCarrier, "desktop");
+
+      // Metadata-only traffic annotates the session but cannot change its source.
+      const annotated = await post({
+        agent_id: "deepseek-harness",
+        hook_source: "dsh-plugin",
+        session_id: rawId,
+        metadata_only: true,
+        session_title: "still desktop",
+      });
+      assert.strictEqual(annotated.headers[CLAWD_METADATA_ACCEPTED_HEADER], "1");
+      assert.strictEqual(api.sessions.get(sessionId).dshCarrier, "desktop");
+
+      // The next lifecycle event states its own carrier; a missing value clears it.
+      const cleared = await post({
+        agent_id: "deepseek-harness",
+        hook_source: "dsh-plugin",
+        session_id: rawId,
+        event: "UserPromptSubmit",
+        state: "thinking",
+        event_seq: 0,
+      });
+      assert.strictEqual(cleared.statusCode, 200);
+      assert.strictEqual(api.sessions.get(sessionId).dshCarrier, null);
+
+      // A metadata-only request can never upgrade a session to the desktop carrier.
+      const metadataCarrier = await post({
+        agent_id: "deepseek-harness",
+        hook_source: "dsh-plugin",
+        session_id: rawId,
+        metadata_only: true,
+        dsh_carrier: "desktop",
+        session_title: "metadata cannot upgrade",
+      });
+      assert.strictEqual(metadataCarrier.headers[CLAWD_METADATA_ACCEPTED_HEADER], "1");
+      assert.strictEqual(api.sessions.get(sessionId).dshCarrier, null);
+    } finally {
+      api.cleanup();
+    }
+  });
+
+  it("rejects the desktop carrier from non-DSH, non-bridge, Remote SSH, and WSL state requests", async () => {
+    const body = {
+      session_id: "deepseek-harness:src",
+      event: "SessionStart",
+      state: "idle",
+      session_seq: 0,
+      dsh_carrier: "desktop",
+    };
+    const foreignAgent = await callStatePost(JSON.stringify({
+      ...body,
+      agent_id: "claude-code",
+      hook_source: "clawd-hook",
+    }));
+    assert.strictEqual(foreignAgent.calls.updateSession[0][3].dshCarrier, null);
+
+    // The bridge hook source alone must not be enough: the agent has to be DSH.
+    const foreignAgentWithBridgeSource = await callStatePost(JSON.stringify({
+      ...body,
+      agent_id: "claude-code",
+      hook_source: "dsh-plugin",
+    }));
+    assert.strictEqual(foreignAgentWithBridgeSource.calls.updateSession[0][3].dshCarrier, null);
+
+    const foreignSource = await callStatePost(JSON.stringify({
+      ...body,
+      agent_id: "deepseek-harness",
+      hook_source: "external",
+    }), { options: { dshStateSequenceFence: createDshStateSequenceFence() } });
+    assert.strictEqual(foreignSource.calls.updateSession[0][3].dshCarrier, null);
+
+    const remote = await callStatePost(JSON.stringify({
+      ...body,
+      agent_id: "deepseek-harness",
+      hook_source: "dsh-plugin",
+    }), {
+      options: {
+        dshStateSequenceFence: createDshStateSequenceFence(),
+        remoteProfile: { profileId: "remote-1", displayHost: "remote-host" },
+      },
+    });
+    assert.strictEqual(remote.calls.updateSession[0][3].dshCarrier, null);
+
+    const wsl = await callStatePost(JSON.stringify({
+      ...body,
+      agent_id: "deepseek-harness",
+      hook_source: "dsh-plugin",
+      wsl_distro: "Ubuntu",
+    }), { options: { dshStateSequenceFence: createDshStateSequenceFence() } });
+    assert.strictEqual(wsl.calls.updateSession[0][3].dshCarrier, null);
+  });
+
   it("relays a normalized test result after the lifecycle update", async () => {
     const res = await callStatePost(JSON.stringify({
       state: "working",
@@ -857,6 +967,7 @@ describe("server-route-state POST", () => {
         provider: "openai",
         codexOriginator: "codex_work_desktop",
         codexSource: "vscode",
+        dshCarrier: null,
         ghosttyTerminalId: "ghostty-term-7",
         displayHint: "display.svg",
         sessionTitle: "Work title",
