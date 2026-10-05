@@ -38,6 +38,8 @@ const AUTO_HIDE_POLL_MS = 200;
 const HIDE_GRACE_MS = 500;
 const HIDDEN_WINDOW_DESTROY_MS = 30000;
 const HUD_WIDTH_GROWTH_RATIO = 0.4;
+// 1px rule between the sessions section and the quota section.
+const HUD_SECTION_DIVIDER = 1;
 
 function clampToWorkArea(value, min, max) {
   if (max < min) return min;
@@ -73,14 +75,12 @@ function evaluateBaseEligible({
   if (!snapshot) return false;
   if (petHidden) return false;
   if (miniMode || miniTransitioning) return false;
-  // The Session HUD (session cards) and the quota ring are INDEPENDENT: the
-  // HUD is gated by its own master switch, the ring by the quota switch. Either
-  // one being eligible reveals the floating UI on a pet click — so the ring can
-  // still be checked ("a remote's quota before starting work") even with the
-  // Session HUD turned off.
+  // The sessions and quota sections are independent: sessions follow the HUD
+  // master switch, quota follows the quota switch. Either can make the
+  // floating UI eligible on a pet click.
   const hudEligible = sessionHudEnabled !== false && snapshotHasVisibleSessions(snapshot);
-  const ringEligible = countQuotaCoins(snapshot, showQuota, hiddenQuotaProviders) > 0;
-  return hudEligible || ringEligible;
+  const quotaEligible = countQuotaCoins(snapshot, showQuota, hiddenQuotaProviders) > 0;
+  return hudEligible || quotaEligible;
 }
 
 function pointInExpandedRect(point, rect, pad) {
@@ -92,21 +92,16 @@ function pointInExpandedRect(point, rect, pad) {
     && point.y <= rect.bottom + p;
 }
 
-function computeAutoHideHotZone({ petHitRect, expectedHudContentBounds, expectedRingContentBounds, pad }) {
+function computeAutoHideHotZone({ petHitRect, expectedHudContentBounds, pad }) {
   const rects = [];
   if (isScreenRect(petHitRect)) rects.push(petHitRect);
-  // Both the HUD (below the pet) and the quota ring (beside the pet) are part
-  // of the hot zone: the cursor moving from the pet onto either one must keep
-  // the whole floating UI alive.
-  for (const r of [expectedHudContentBounds, expectedRingContentBounds]) {
-    if (!r) continue;
-    if (Number.isFinite(r.x) && Number.isFinite(r.y)
-        && Number.isFinite(r.width) && Number.isFinite(r.height)
-        && r.width > 0 && r.height > 0) {
-      rects.push({ left: r.x, top: r.y, right: r.x + r.width, bottom: r.y + r.height });
-    } else if (isScreenRect(r)) {
-      rects.push(r);
-    }
+  const r = expectedHudContentBounds;
+  if (r && Number.isFinite(r.x) && Number.isFinite(r.y)
+      && Number.isFinite(r.width) && Number.isFinite(r.height)
+      && r.width > 0 && r.height > 0) {
+    rects.push({ left: r.x, top: r.y, right: r.x + r.width, bottom: r.y + r.height });
+  } else if (isScreenRect(r)) {
+    rects.push(r);
   }
   return { rects, pad: Number.isFinite(pad) ? pad : 0 };
 }
@@ -178,12 +173,9 @@ function computeHudLayout(snapshot, options = {}) {
   return { expanded, folded, rowCount };
 }
 
-// One coin per (source, provider) with drawable quota. The pet-attached quota
-// ring lives in its OWN window (quota-ring.html), sized and placed by
-// quota-ring-geometry; the HUD no longer carries a quota strip. Here we only
-// need the count — quota alone can keep the pet's floating UI up (the "check a
-// remote's quota before starting work" moment), and the ring window is sized
-// from it.
+// One quota-section row per (source, provider) with drawable quota. Quota
+// alone can keep the pet's floating UI eligible even when the Session HUD's
+// sessions section is disabled.
 function countQuotaCoins(snapshot, showQuota, hiddenQuotaProviders) {
   return ringGeom.countQuotaCoins(snapshot, showQuota, hiddenQuotaProviders);
 }
@@ -191,6 +183,22 @@ function countQuotaCoins(snapshot, showQuota, hiddenQuotaProviders) {
 function computeHudHeight(rowCount) {
   if (!Number.isFinite(rowCount) || rowCount <= 0) return HUD_ROW_HEIGHT;
   return rowCount * HUD_ROW_HEIGHT + HUD_BORDER_Y;
+}
+
+// CSS px content height of the one HUD box: session rows, then quota rows,
+// with a divider only when both sections are present.
+function computeHudBoxHeight({ sessionRows = 0, quotaRows = 0 } = {}) {
+  const s = Number.isFinite(sessionRows) && sessionRows > 0 ? sessionRows : 0;
+  const q = Number.isFinite(quotaRows) && quotaRows > 0 ? quotaRows : 0;
+  if (s === 0 && q === 0) return HUD_ROW_HEIGHT;
+  return s * HUD_ROW_HEIGHT
+    + q * ringGeom.constants.QUOTA_ROW_HEIGHT
+    + (s > 0 && q > 0 ? HUD_SECTION_DIVIDER : 0)
+    + HUD_BORDER_Y;
+}
+
+function getHudBoxWidth(sessionWidth, quotaRows) {
+  return quotaRows > 0 ? Math.max(sessionWidth, ringGeom.constants.QUOTA_MIN_WIDTH) : sessionWidth;
 }
 
 function computeHudReservedOffset(cardHeight) {
@@ -308,13 +316,10 @@ module.exports = function initSessionHud(ctx) {
   let latestSnapshot = null;
   let hudFlippedAbove = false;
   let lastReservedOffset = 0;
-  const hiddenDestroyTimers = { hud: null, ring: null };
-  // Pet-attached quota ring — a sibling floating window (quota-ring.html) that
-  // shares this module's reveal / pin / grace / hot-zone lifecycle. The HUD now
-  // shows sessions only; the ring shows account quota beside the pet.
-  let ringWindow = null;
-  let ringDidFinishLoad = false;
-  let ringSide = "left";
+  let hiddenDestroyTimer = null;
+  // Section shape last sent to the renderer; a change forces a resend even on
+  // reposition-only syncs so the rows always match the window height.
+  let sectionKey = null;
 
   function getTextScale() {
     return clampTextScale(typeof ctx.getTextScale === "function" ? ctx.getTextScale() : 1);
@@ -362,33 +367,30 @@ module.exports = function initSessionHud(ctx) {
     return clickRevealed === true;
   }
 
-  function collectRingAvoidRects(hudContentBounds) {
-    const rects = [];
-    if (hudContentBounds) rects.push(hudContentBounds);
-
-    if (typeof ctx.getPermissionBubbleBounds === "function") {
-      try {
-        const permissionBounds = ctx.getPermissionBubbleBounds();
-        if (Array.isArray(permissionBounds)) rects.push(...permissionBounds);
-      } catch {}
-    }
-
-    if (typeof ctx.getUpdateBubbleWindow === "function") {
-      try {
-        const updateWindow = ctx.getUpdateBubbleWindow();
-        if (updateWindow
-            && !updateWindow.isDestroyed()
-            && updateWindow.isVisible()
-            && typeof updateWindow.getBounds === "function") {
-          rects.push(updateWindow.getBounds());
-        }
-      } catch {}
-    }
-    return rects;
+  // Which sections the box carries for this snapshot. The sessions section
+  // follows the Session HUD master switch; the quota section follows the quota
+  // switch and hidden-provider list, so either can appear alone.
+  function resolveSections(snapshot) {
+    const sessionRows = ctx.sessionHudEnabled !== false && snapshotHasVisibleSessions(snapshot)
+      ? computeHudLayout(snapshot, { showStateLabels: ctx.sessionHudShowStateLabels !== false }).rowCount
+      : 0;
+    const quota = ringGeom.computeQuotaSectionLayout(
+      countQuotaCoins(snapshot, ctx.sessionHudShowQuota !== false, ctx.quotaRingHiddenProviders)
+    );
+    return { sessionRows, quota };
   }
 
-  function computeExpectedHudContentBounds(snapshot, scale = getTextScale()) {
+  function getPetHitRect() {
     if (!ctx.win || ctx.win.isDestroyed()) return null;
+    const petBounds = typeof ctx.getPetWindowBounds === "function" ? ctx.getPetWindowBounds() : null;
+    if (!petBounds || typeof ctx.getHitRectScreen !== "function") return null;
+    return ctx.getHitRectScreen(petBounds);
+  }
+
+  function computeBoxLayout(snapshot, scale = getTextScale()) {
+    if (!ctx.win || ctx.win.isDestroyed()) return null;
+    const sections = resolveSections(snapshot);
+    if (sections.sessionRows === 0 && sections.quota.visibleRows === 0) return null;
     const petBounds = typeof ctx.getPetWindowBounds === "function" ? ctx.getPetWindowBounds() : null;
     if (!petBounds) return null;
     const hitRect = typeof ctx.getHitRectScreen === "function"
@@ -402,36 +404,19 @@ module.exports = function initSessionHud(ctx) {
     const workArea = typeof ctx.getNearestWorkArea === "function"
       ? ctx.getNearestWorkArea(cx, cy)
       : { x: 0, y: 0, width: 1280, height: 800 };
-    const width = getHudWidth(
+    const height = computeHudBoxHeight({
+      sessionRows: sections.sessionRows,
+      quotaRows: sections.quota.visibleRows,
+    });
+    const width = getHudBoxWidth(getHudWidth(
       ctx.sessionHudShowElapsed !== false,
       ctx.sessionHudShowStateLabels !== false,
       ctx.sessionHudShowContextUsage !== false
-    );
+    ), sections.quota.visibleRows);
     const widthScale = getHudWidthScale(scale);
-    // Must carry the SAME scale the visible HUD was laid out with — an
-    // unscaled expectation makes the auto-hide hot zone smaller than the
-    // real window, so the cursor "leaves" while still visually over it.
-    const hudEnabled = ctx.sessionHudEnabled !== false;
-    const hasSessions = snapshotHasVisibleSessions(snapshot);
-    let contentBounds = null;
-    if (hudEnabled && hasSessions) {
-      const layout = computeHudLayout(snapshot, { showStateLabels: ctx.sessionHudShowStateLabels !== false });
-      const height = computeHudHeight(layout.rowCount);
-      const computed = computeSessionHudBounds({ hitRect, anchorRect, workArea, width, height, scale, widthScale });
-      contentBounds = computed && computed.contentBounds;
-    }
-    const coinCount = countQuotaCoins(snapshot, ctx.sessionHudShowQuota !== false, ctx.quotaRingHiddenProviders);
-    const ring = coinCount > 0
-      ? ringGeom.computeQuotaRingBounds({
-        hitRect,
-        anchorRect,
-        workArea,
-        coinCount,
-        scale,
-        avoidRects: collectRingAvoidRects(contentBounds),
-      })
-      : null;
-    return { hitRect, contentBounds, ringContentBounds: ring && ring.contentBounds };
+    const computed = computeSessionHudBounds({ hitRect, anchorRect, workArea, width, height, scale, widthScale });
+    if (!computed) return null;
+    return { ...computed, hitRect, height, sections };
   }
 
   function evaluateAutoHideCursorNow({ syncOnChange = true } = {}) {
@@ -447,14 +432,15 @@ module.exports = function initSessionHud(ctx) {
     }
     let inHotZone = false;
     if (cursor) {
-      // Single scale resolve for the whole evaluation: expected bounds and
-      // pad must describe the same (scaled) HUD the user actually sees.
+      // Single scale resolve for the whole evaluation: the expected box must
+      // carry the SAME scale the visible HUD was laid out with — an unscaled
+      // expectation makes the hot zone smaller than the real window, so the
+      // cursor "leaves" while still visually over it.
       const scale = getTextScale();
-      const expected = computeExpectedHudContentBounds(latestSnapshot, scale);
+      const expected = computeBoxLayout(latestSnapshot, scale);
       const hotZone = computeAutoHideHotZone({
-        petHitRect: expected && expected.hitRect,
+        petHitRect: expected ? expected.hitRect : getPetHitRect(),
         expectedHudContentBounds: expected && expected.contentBounds,
-        expectedRingContentBounds: expected && expected.ringContentBounds,
         pad: Math.round(HOT_ZONE_PAD * scale),
       });
       inHotZone = pointInHotZone(cursor, hotZone);
@@ -520,34 +506,24 @@ module.exports = function initSessionHud(ctx) {
     visibleHoldUntil = 0;
   }
 
-  function managedWindow(kind) {
-    return kind === "ring" ? ringWindow : hudWindow;
+  function cancelHiddenDestroy() {
+    if (!hiddenDestroyTimer) return;
+    clearTimeout(hiddenDestroyTimer);
+    hiddenDestroyTimer = null;
   }
 
-  function cancelHiddenDestroy(kind) {
-    const kinds = kind ? [kind] : ["hud", "ring"];
-    for (const key of kinds) {
-      const timer = hiddenDestroyTimers[key];
-      if (!timer) continue;
-      clearTimeout(timer);
-      hiddenDestroyTimers[key] = null;
-    }
-  }
-
-  function scheduleHiddenDestroy(kind) {
-    // Reclaiming a hidden HUD/ring renderer is a low-power-idle-mode behavior;
-    // default mode keeps both windows warm so reveals stay instant.
+  function scheduleHiddenDestroy() {
+    // Reclaiming a hidden HUD renderer is a low-power-idle-mode behavior;
+    // default mode keeps the window warm so reveals stay instant.
     if (!ctx.lowPowerIdleMode) return;
-    const win = managedWindow(kind);
-    if (!win || win.isDestroyed() || win.isVisible()) return;
-    if (hiddenDestroyTimers[kind]) return;
-    hiddenDestroyTimers[kind] = setTimeout(() => {
-      hiddenDestroyTimers[kind] = null;
+    if (!hudWindow || hudWindow.isDestroyed() || hudWindow.isVisible()) return;
+    if (hiddenDestroyTimer) return;
+    hiddenDestroyTimer = setTimeout(() => {
+      hiddenDestroyTimer = null;
       // Re-check the flag: the user may have left low-power mode while hidden.
       if (!ctx.lowPowerIdleMode) return;
-      const current = managedWindow(kind);
-      if (!current || current.isDestroyed() || current.isVisible()) return;
-      current.destroy();
+      if (!hudWindow || hudWindow.isDestroyed() || hudWindow.isVisible()) return;
+      hudWindow.destroy();
     }, HIDDEN_WINDOW_DESTROY_MS);
   }
 
@@ -563,9 +539,9 @@ module.exports = function initSessionHud(ctx) {
 
   // Public API: user clicked the pet to reveal HUD.
   function revealFromPet() {
-    // Quota can expire while both overlay windows are hidden and no session
-    // event arrives. Re-read before deciding eligibility so a stale cached
-    // snapshot cannot resurrect a dead Orbit coin.
+    // Quota can expire while the HUD is hidden and no session event arrives.
+    // Re-read before deciding eligibility so a stale cached snapshot cannot
+    // resurrect a stale provider row.
     latestSnapshot = getCurrentSnapshot();
     if (!baseEligible(latestSnapshot)) return;
     if (ctx.sessionHudPinned === true) return;     // pinned already always-show
@@ -594,9 +570,7 @@ module.exports = function initSessionHud(ctx) {
     // unpin transition — read real window state, NOT shouldShow() (router
     // already mirrored sessionHudPinned=false so shouldShow would return
     // false and cause the HUD to flash hidden).
-    const wasVisible =
-      (hudWindow && !hudWindow.isDestroyed() && hudWindow.isVisible())
-      || (ringWindow && !ringWindow.isDestroyed() && ringWindow.isVisible());
+    const wasVisible = !!hudWindow && !hudWindow.isDestroyed() && hudWindow.isVisible();
     if (wasVisible && baseEligible(latestSnapshot)) {
       // Seed revealed state so the HUD stays visible until the user moves
       // away (grace period), preserving the on-screen experience.
@@ -614,17 +588,30 @@ module.exports = function initSessionHud(ctx) {
     else stopAutoHidePoll();
   }
 
-  function sendSnapshot(snapshot = latestSnapshot) {
-    if (!snapshot || !hudWindow || hudWindow.isDestroyed() || !didFinishLoad) return;
-    if (!hudWindow.webContents || hudWindow.webContents.isDestroyed()) return;
+  function sendSnapshot(snapshot, sections) {
+    if (!snapshot || !sections || !hudWindow || hudWindow.isDestroyed() || !didFinishLoad) return false;
+    if (!hudWindow.webContents || hudWindow.webContents.isDestroyed()) return false;
     hudWindow.webContents.send("session-hud:session-snapshot", {
       ...snapshot,
+      hudShowSessions: sections.sessionRows > 0,
       hudShowStateLabels: ctx.sessionHudShowStateLabels !== false,
       hudShowElapsed: ctx.sessionHudShowElapsed !== false,
       hudShowContextUsage: ctx.sessionHudShowContextUsage !== false,
-      hudShowQuota: ctx.sessionHudShowQuota !== false,
       hudPinned: ctx.sessionHudPinned === true,
+      // The quota section's own payload. visibleRows/overflow come from the
+      // same count that sized the window, so rows and height never disagree.
+      quota: {
+        accountQuota: Array.isArray(snapshot.accountQuota) ? snapshot.accountQuota : [],
+        quotaAgentIcons: snapshot.quotaAgentIcons || {},
+        displayMode: ctx.quotaRingDisplayMode === "remaining" ? "remaining" : "used",
+        hiddenQuotaProviders: Array.isArray(ctx.quotaRingHiddenProviders)
+          ? ctx.quotaRingHiddenProviders
+          : [],
+        visibleRows: sections.quota.visibleRows,
+        overflow: sections.quota.overflow,
+      },
     });
+    return true;
   }
 
   function sendI18n() {
@@ -634,154 +621,16 @@ module.exports = function initSessionHud(ctx) {
         && hudWindow.webContents && !hudWindow.webContents.isDestroyed()) {
       hudWindow.webContents.send("session-hud:lang-change", payload);
     }
-    if (ringWindow && !ringWindow.isDestroyed() && ringDidFinishLoad
-        && ringWindow.webContents && !ringWindow.webContents.isDestroyed()) {
-      ringWindow.webContents.send("quota-ring:lang-change", payload);
-    }
-  }
-
-  function sendRingSnapshot(snapshot = latestSnapshot, side = ringSide) {
-    if (!snapshot || !ringWindow || ringWindow.isDestroyed() || !ringDidFinishLoad) return;
-    if (!ringWindow.webContents || ringWindow.webContents.isDestroyed()) return;
-    ringWindow.webContents.send("quota-ring:snapshot", {
-      accountQuota: Array.isArray(snapshot.accountQuota) ? snapshot.accountQuota : [],
-      quotaAgentIcons: snapshot.quotaAgentIcons || {},
-      displayMode: ctx.quotaRingDisplayMode === "remaining" ? "remaining" : "used",
-      // The same list quota-ring-geometry.js used to size this window. Sent
-      // rather than pre-filtered out of accountQuota so the renderer's own draw
-      // rule stays the single place that decides whether a coin exists — and so
-      // the two filters cannot drift into sizing for coins nobody draws.
-      hiddenQuotaProviders: Array.isArray(ctx.quotaRingHiddenProviders)
-        ? ctx.quotaRingHiddenProviders
-        : [],
-      side,
-    });
-  }
-
-  // The quota ring window mirrors the HUD window's chrome (transparent,
-  // non-focusable, always-on-top panel) — only the preload/page and the
-  // snapshot channel differ.
-  function ensureQuotaRing() {
-    cancelHiddenDestroy("ring");
-    if (ringWindow && !ringWindow.isDestroyed()) return ringWindow;
-    if (!ctx.win || ctx.win.isDestroyed()) return null;
-
-    ringDidFinishLoad = false;
-    const scale = getTextScale();
-    const provisional = ringGeom.constants;
-    ringWindow = new BrowserWindow({
-      parent: ctx.win,
-      width: scaleHeight(provisional.COIN_SIZE + provisional.READOUT_W + 40, scale),
-      height: scaleHeight(provisional.COIN_SIZE * 2 + 40, scale),
-      show: false,
-      frame: false,
-      transparent: true,
-      resizable: false,
-      movable: false,
-      minimizable: false,
-      maximizable: false,
-      fullscreenable: false,
-      skipTaskbar: true,
-      alwaysOnTop: !isMac,
-      focusable: false,
-      hasShadow: false,
-      backgroundColor: "#00000000",
-      ...(isLinux ? { type: LINUX_WINDOW_TYPE } : {}),
-      ...(isMac ? { type: "panel" } : {}),
-      webPreferences: {
-        preload: path.join(__dirname, "preload-quota-ring.js"),
-        nodeIntegration: false,
-        contextIsolation: true,
-      },
-    });
-
-    if (isWin) ringWindow.setAlwaysOnTop(true, WIN_TOPMOST_LEVEL);
-    if (typeof ctx.guardAlwaysOnTop === "function") ctx.guardAlwaysOnTop(ringWindow);
-
-    ringWindow.loadFile(path.join(__dirname, "quota-ring.html"));
-    ringWindow.webContents.once("did-finish-load", () => {
-      ringDidFinishLoad = true;
-      applyZoomToWindow(ringWindow, getTextScale());
-      sendI18n();
-      // Correct the renderer's optimistic default before any snapshot lands:
-      // the window is created hidden, and a flashback armed while nobody can
-      // see it would be spent on an empty screen.
-      sendRingVisibility(ringWindow.isVisible());
-      syncSessionHud();
-    });
-    ringWindow.on("closed", () => {
-      cancelHiddenDestroy("ring");
-      ringWindow = null;
-      ringDidFinishLoad = false;
-    });
-
-    return ringWindow;
-  }
-
-  // The renderer replays the rolling-window number when the cluster appears
-  // after that number moved, so it needs the appear/disappear edges — which it
-  // cannot observe itself (a hidden Electron window does not reliably flip
-  // document.visibilityState, and a pinned cluster never hides).
-  function sendRingVisibility(visible) {
-    if (!ringWindow || ringWindow.isDestroyed() || !ringDidFinishLoad) return;
-    if (!ringWindow.webContents || ringWindow.webContents.isDestroyed()) return;
-    ringWindow.webContents.send("quota-ring:visibility", visible);
-  }
-
-  function hideQuotaRing() {
-    if (ringWindow && !ringWindow.isDestroyed()) {
-      // Only the notification is conditional. hide() stays unconditional and
-      // idempotent: isVisible() can report false while the window is merely
-      // occluded (app hidden on macOS, another Space, parent state), and
-      // skipping the real hide there would let the system surface it again.
-      if (ringWindow.isVisible()) sendRingVisibility(false);
-      ringWindow.hide();
-    }
-    scheduleHiddenDestroy("ring");
-  }
-
-  function showQuotaRing(win) {
-    if (!win || win.isDestroyed() || !ringDidFinishLoad) return;
-    cancelHiddenDestroy("ring");
-    if (!win.isVisible()) {
-      win.showInactive();
-      keepOutOfTaskbar(win);
-      if (isMac) deferMacFloatingVisibility(ctx, win);
-      else if (typeof ctx.reapplyMacVisibility === "function") ctx.reapplyMacVisibility();
-      sendRingVisibility(true);
-    }
-  }
-
-  function computeRingBounds(snapshot, scale = getTextScale(), avoidRects = []) {
-    if (!ctx.win || ctx.win.isDestroyed()) return null;
-    const coinCount = countQuotaCoins(snapshot, ctx.sessionHudShowQuota !== false, ctx.quotaRingHiddenProviders);
-    if (coinCount <= 0) return null;
-    const petBounds = typeof ctx.getPetWindowBounds === "function" ? ctx.getPetWindowBounds() : null;
-    if (!petBounds) return null;
-    const hitRect = typeof ctx.getHitRectScreen === "function" ? ctx.getHitRectScreen(petBounds) : null;
-    const anchorRect = typeof ctx.getSessionHudAnchorRect === "function" ? ctx.getSessionHudAnchorRect(petBounds) : null;
-    const cx = petBounds.x + petBounds.width / 2;
-    const cy = petBounds.y + petBounds.height / 2;
-    const workArea = typeof ctx.getNearestWorkArea === "function"
-      ? ctx.getNearestWorkArea(cx, cy)
-      : { x: 0, y: 0, width: 1280, height: 800 };
-    return ringGeom.computeQuotaRingBounds({
-      hitRect,
-      anchorRect,
-      workArea,
-      coinCount,
-      scale,
-      avoidRects,
-    });
   }
 
   function ensureSessionHud() {
-    cancelHiddenDestroy("hud");
+    cancelHiddenDestroy();
     if (hudWindow && !hudWindow.isDestroyed()) return hudWindow;
     if (!ctx.win || ctx.win.isDestroyed()) return null;
 
     didFinishLoad = false;
     hudFlippedAbove = false;
+    sectionKey = null;
     const hudWidth = getHudWidth(
       ctx.sessionHudShowElapsed !== false,
       ctx.sessionHudShowStateLabels !== false,
@@ -830,10 +679,11 @@ module.exports = function initSessionHud(ctx) {
       syncSessionHud();
     });
     hudWindow.on("closed", () => {
-      cancelHiddenDestroy("hud");
+      cancelHiddenDestroy();
       hudWindow = null;
       didFinishLoad = false;
       hudFlippedAbove = false;
+      sectionKey = null;
       notifyReservedOffsetIfChanged();
     });
 
@@ -844,39 +694,12 @@ module.exports = function initSessionHud(ctx) {
     hudFlippedAbove = false;
     if (hudWindow && !hudWindow.isDestroyed()) hudWindow.hide();
     notifyReservedOffsetIfChanged();
-    scheduleHiddenDestroy("hud");
-  }
-
-  function computeBounds(snapshot, scale = getTextScale()) {
-    if (!ctx.win || ctx.win.isDestroyed()) return null;
-    const petBounds = typeof ctx.getPetWindowBounds === "function" ? ctx.getPetWindowBounds() : null;
-    if (!petBounds) return null;
-    const hitRect = typeof ctx.getHitRectScreen === "function"
-      ? ctx.getHitRectScreen(petBounds)
-      : null;
-    const anchorRect = typeof ctx.getSessionHudAnchorRect === "function"
-      ? ctx.getSessionHudAnchorRect(petBounds)
-      : null;
-    const cx = petBounds.x + petBounds.width / 2;
-    const cy = petBounds.y + petBounds.height / 2;
-    const workArea = typeof ctx.getNearestWorkArea === "function"
-      ? ctx.getNearestWorkArea(cx, cy)
-      : { x: 0, y: 0, width: 1280, height: 800 };
-    const layout = computeHudLayout(snapshot, { showStateLabels: ctx.sessionHudShowStateLabels !== false });
-    const height = computeHudHeight(layout.rowCount);
-    const width = getHudWidth(
-      ctx.sessionHudShowElapsed !== false,
-      ctx.sessionHudShowStateLabels !== false,
-      ctx.sessionHudShowContextUsage !== false
-    );
-    const widthScale = getHudWidthScale(scale);
-    lastHudHeight = height;
-    return computeSessionHudBounds({ hitRect, anchorRect, workArea, width, height, scale, widthScale });
+    scheduleHiddenDestroy();
   }
 
   function showSessionHud(win) {
     if (!win || win.isDestroyed() || !didFinishLoad) return;
-    cancelHiddenDestroy("hud");
+    cancelHiddenDestroy();
     if (!win.isVisible()) {
       win.showInactive();
       keepOutOfTaskbar(win);
@@ -884,26 +707,6 @@ module.exports = function initSessionHud(ctx) {
       else if (typeof ctx.reapplyMacVisibility === "function") ctx.reapplyMacVisibility();
     }
     notifyReservedOffsetIfChanged();
-  }
-
-  function syncQuotaRing(snapshot, scale, hudContentBounds, options = {}) {
-    const ring = shouldShow(snapshot)
-      ? computeRingBounds(snapshot, scale, collectRingAvoidRects(hudContentBounds))
-      : null;
-    if (!ring) {
-      hideQuotaRing();
-      return;
-    }
-    const rwin = ensureQuotaRing();
-    if (!rwin || rwin.isDestroyed()) return;
-    applyZoomToWindow(rwin, scale);
-    rwin.setBounds(ring.bounds);
-    // Send the side whenever it flips (edge crossing) even on a
-    // reposition-only sync, or the renderer keeps the stale layout.
-    const sideChanged = ring.side !== ringSide;
-    ringSide = ring.side;
-    if (options.sendSnapshot !== false || sideChanged) sendRingSnapshot(snapshot, ring.side);
-    showQuotaRing(rwin);
   }
 
   function syncSessionHud(snapshot = latestSnapshot || getCurrentSnapshot(), options = {}) {
@@ -916,31 +719,27 @@ module.exports = function initSessionHud(ctx) {
     }
     syncAutoHidePollLifecycle();
 
-    const show = shouldShow(snapshot);
-    // Resolve the scale ONCE per sync and feed the same value to both windows
+    // Resolve the scale ONCE per sync and feed the same value to the window
     // and the bounds math — separate reads could disagree mid-display-crossing.
     const scale = getTextScale();
-
-    // ── Session HUD (sessions only; gated by its own master, independent of
-    // the quota ring) ──
-    const hudEnabled = ctx.sessionHudEnabled !== false;
-    const hasSessions = snapshotHasVisibleSessions(snapshot);
-    const hudComputed = show && hudEnabled && hasSessions ? computeBounds(snapshot, scale) : null;
-    if (!hudComputed) {
+    const layout = shouldShow(snapshot) ? computeBoxLayout(snapshot, scale) : null;
+    if (!layout) {
       hideSessionHud();
-    } else {
-      const win = ensureSessionHud();
-      if (win && !win.isDestroyed()) {
-        applyZoomToWindow(win, scale);
-        hudFlippedAbove = !!hudComputed.flippedAbove;
-        win.setBounds(hudComputed.bounds);
-        if (options.sendSnapshot !== false) sendSnapshot(snapshot);
-        showSessionHud(win);
-      }
+      return;
     }
-
-    // ── Quota ring (quota only; attached beside the pet) ──
-    syncQuotaRing(snapshot, scale, hudComputed ? hudComputed.contentBounds : null, options);
+    const win = ensureSessionHud();
+    if (!win || win.isDestroyed()) return;
+    applyZoomToWindow(win, scale);
+    hudFlippedAbove = !!layout.flippedAbove;
+    lastHudHeight = layout.height;
+    win.setBounds(layout.bounds);
+    const { sessionRows, quota } = layout.sections;
+    const nextSectionKey = `${sessionRows}|${quota.visibleRows}|${quota.overflow}`;
+    if ((options.sendSnapshot !== false || nextSectionKey !== sectionKey)
+        && sendSnapshot(snapshot, layout.sections)) {
+      sectionKey = nextSectionKey;
+    }
+    showSessionHud(win);
   }
 
   function broadcastSessionSnapshot(snapshot) {
@@ -949,19 +748,6 @@ module.exports = function initSessionHud(ctx) {
 
   function repositionSessionHud() {
     syncSessionHud(latestSnapshot || getCurrentSnapshot(), { sendSnapshot: false });
-  }
-
-  function repositionQuotaRing() {
-    const snapshot = latestSnapshot || getCurrentSnapshot();
-    const scale = getTextScale();
-    const hudComputed = shouldShow(snapshot)
-      && ctx.sessionHudEnabled !== false
-      && snapshotHasVisibleSessions(snapshot)
-      ? computeBounds(snapshot, scale)
-      : null;
-    syncQuotaRing(snapshot, scale, hudComputed ? hudComputed.contentBounds : null, {
-      sendSnapshot: false,
-    });
   }
 
   function getHudReservedOffset() {
@@ -990,9 +776,7 @@ module.exports = function initSessionHud(ctx) {
     hudWindow = null;
     didFinishLoad = false;
     hudFlippedAbove = false;
-    if (ringWindow && !ringWindow.isDestroyed()) ringWindow.destroy();
-    ringWindow = null;
-    ringDidFinishLoad = false;
+    sectionKey = null;
     lastHudHeight = HUD_ROW_HEIGHT;
     notifyReservedOffsetIfChanged();
   }
@@ -1001,13 +785,11 @@ module.exports = function initSessionHud(ctx) {
     ensureSessionHud,
     broadcastSessionSnapshot,
     repositionSessionHud,
-    repositionQuotaRing,
     syncSessionHud,
     sendI18n,
     getHudReservedOffset,
     cleanup,
     getWindow: () => hudWindow,
-    getQuotaRingWindow: () => ringWindow,
     // v5 three-state API
     revealFromPet,
     handlePinnedChanged,
@@ -1017,6 +799,8 @@ module.exports = function initSessionHud(ctx) {
 
 module.exports.__test = {
   computeSessionHudBounds,
+  computeHudBoxHeight,
+  getHudBoxWidth,
   computeHudLayout,
   getHudMaxExpandedRows,
   computeHudHeight,
@@ -1052,5 +836,6 @@ module.exports.__test = {
     HIDE_GRACE_MS,
     HIDDEN_WINDOW_DESTROY_MS,
     HUD_WIDTH_GROWTH_RATIO,
+    HUD_SECTION_DIVIDER,
   },
 };

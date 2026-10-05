@@ -12,7 +12,7 @@
 
 ### Claude Code 使用信息：官方状态栏，不抓取网页
 
-本机 Claude 使用信息采集**默认关闭**。可在 **Settings → General → 额度环 → 采集本机 Claude 使用信息** 中显式开启；开启后，Clawd 会把自己的可见 `statusLine.command` 添加到 `~/.claude/settings.json`。
+本机 Claude 使用信息采集**默认关闭**。可在 **Settings → Agent 管理 → Claude Code → 采集本机 Claude 使用信息** 中显式开启；开启后，Clawd 会把自己的可见 `statusLine.command` 添加到 `~/.claude/settings.json`。
 
 这里使用的是 Claude Code 官方扩展机制，不是私有或逆向接口。Claude Code 的[官方 statusline 文档](https://code.claude.com/docs/en/statusline)会向状态栏命令提供 `context_window.current_usage`、`context_window.context_window_size`，以及可用时的 `rate_limits`；命令在本机执行，不消耗额外 API token。
 
@@ -22,7 +22,7 @@
 2. Clawd 读取输入 token 用量与上报的上下文窗口大小，并在 Claude Code 提供时读取订阅额度；终端中仍会显示一条简短、可见的状态栏。
 3. Clawd 只把规范化后的上下文快照和可用额度发送到自身的 `127.0.0.1:23333-23337` loopback 服务。显式部署的 SSH profile 则通过用户配置的反向 SSH 隧道回到本机 Clawd。
 
-此功能**不会**额外请求 Anthropic、抓取 `claude.ai`、调用 `/usage`，也不会读取 Claude 的认证 cookie/token。转发内容只有规范化的 token 数、窗口大小，以及可用额度的百分比/重置时间，不包含 prompt 或 transcript 正文。即使 context window 可用，`rate_limits` 仍可能缺失。
+此功能**不会**额外请求 Anthropic、抓取 `claude.ai`、调用 `/usage`，也不会读取 Claude 的认证 cookie/token。转发内容只有规范化的 token 数、窗口大小，以及可用额度的百分比/重置时间，不包含 prompt 或 transcript 正文。即使 context window 可用，`rate_limits` 仍可能缺失。（额度显示另有一个只读的“登录用量”来源会读取 Claude Code 的登录凭据，见[额度：用量聚合](#额度用量聚合)。）
 
 #### 模型范围的 Claude 额度（例如 Fable）
 
@@ -30,7 +30,7 @@
 
 截至 2026 年 8 月 15 日，Claude Code 官方 statusline 合约只公开 `rate_limits.five_hour` 与 `rate_limits.seven_day`。本次调查观察到 Claude Code 的内部本地缓存会在 `cachedUsageUtilization.utilization.limits` 下以 `weekly_scoped` 条目表示 Fable，官方客户端自身也会通过内部 `/api/oauth/usage` 请求取得更完整的用量数据；但该缓存 schema 与接口都没有被文档化为稳定的第三方集成合约。
 
-因此 Clawd 有意**不**读取 Claude Code 的内部用量缓存、不读取或刷新 Claude OAuth 凭据，也不调用未公开的 usage endpoint。结果是：Fable / 模型范围额度可能出现在 Claude 自己的 Usage 设置中，却不出现在 Clawd。这是上游可见性边界，不是 Clawd 漏解析了官方 `rate_limits` 对象；在没有受支持的数据源提供额外 bucket 时，单独增加一个展示 provider 也无法解决。
+因此 statusline 集成无法显示它，Clawd 也不读取 Claude Code 的内部用量缓存。额度显示的“登录用量”来源（见[额度：用量聚合](#额度用量聚合)）会用 Claude Code 自己的登录凭据只读调用 `/api/oauth/usage`，但只映射通用的 `five_hour` 与 `seven_day` 窗口，该未公开响应中的模型范围 bucket 不显示。结果是：Fable / 模型范围额度可能出现在 Claude 自己的 Usage 设置中，却不出现在 Clawd。
 
 技术上可行不等同于平台支持。只有当 Anthropic 通过官方 statusline payload 暴露模型范围额度、公开只读的第三方 usage 接口，或以其他方式明确支持该集成时，Clawd 才会重新评估接入。在此之前，Clawd 不显示 Fable 额度属于预期行为。参见 Anthropic 的 [Fable 套餐说明](https://support.claude.com/en/articles/15424964-claude-fable-5-on-your-plan)与 Claude Code [官方 statusline schema](https://code.claude.com/docs/en/statusline)。
 
@@ -39,6 +39,25 @@ Claude Code 只有一个用户级 statusline 槽位，因此 Clawd 绝不会静�
 没有 Clawd statusline 时，普通 Claude hooks 仍会从 transcript 上报输入 token 用量。Clawd 只对封闭列表里的标准 Claude ID 使用兼容性分母；模型为空、自定义或未知时只显示 used，不再猜成 200K。要让自定义 provider 的真实上限与 Claude Code `/context` 一致，需要开启此开关，让 Claude Code 自己上报的 `context_window_size` 持有分母，同时 transcript hooks 继续刷新 used。
 
 普通本机修复命令 `npm run install:claude-hooks` 不会开启采集。显式调试命令 `npm run install:claude-hooks -- --statusline` 可以安装并显示 Clawd 状态栏，但 Settings 开关关闭时，应用仍会把其本机 context/quota POST 当作成功 no-op；下次本机启动 reconcile 也会移除这个 Clawd 管理的调试槽位。Remote SSH 部署是另一项显式操作；若远端已有自己的 statusline，请在 profile 中开启 **部署时串联远端已有的 statusline**，以便保留并在卸载时恢复原注册。
+
+### 额度：用量聚合
+
+**Settings → 通用 → 会话管理 → 额度 → 采集并显示额度** 同时是显示开关和采集开关。开启后，Clawd 会为 **Settings → Agent 管理** 中每个已启用的 Agent 只读查询一个用量来源，并与被动来源（在 Claude 卡片上开启的 statusline、Codex rollout `token_count` 速率限制、手动 Kimi Key、Antigravity、Remote SSH）合并：
+
+| 来源 | Agent | 做什么 |
+|---|---|---|
+| Claude Code · 登录用量 | Claude Code | 只读 Claude Code 自己的 OAuth 登录（`~/.claude/.credentials.json`，遵循 `CLAUDE_CONFIG_DIR`；macOS 还会读钥匙串项 `Claude Code-credentials`），调用 `GET https://api.anthropic.com/api/oauth/usage` 取 5 小时与每周窗口。 |
+| Codex · app-server | Codex | 启动 `codex app-server`，请求 `account/rateLimits/read` 后关闭。需要 ChatGPT 登录；API Key 账号没有订阅额度。 |
+| OMP · omp usage | OMP | 执行 `omp usage --json --redact`。Anthropic、OpenAI Codex 的报告进入 Claude、Codex 行；其他 provider（DeepSeek 余额、Command Code、OpenCode Go 等）各自成为独立 provider 行和 Dashboard 行。 |
+
+- **凭据只读。** Clawd 从不刷新、轮换或写回 token；登录过期时显示“需要登录”，直到 Agent 自己的 CLI 续期。钥匙串只在用户触发的刷新（单击桌宠、打开 Dashboard、“立即刷新”）时读取，启动和后台从不读取；macOS 可能询问一次，请选“始终允许”。token、响应正文、邮箱和账号 ID 从不写日志或落盘。
+- **何时刷新。** 启动后不久一次、单击桌宠、打开 Dashboard、打开开关或启用 Agent 时，以及分组内“数据来源”的“立即刷新”。每个来源最多 5 分钟一次（“立即刷新”为 60 秒）；HTTP 429 会退避。没有周期轮询，所以两次查看之间数值会变旧。
+- **OMP 映射。** 已用为 0 且没有重置时间的窗口额度不含信息（例如某 provider 的“状态栏占位”或 Anthropic 尚未开始的窗口），直接丢弃——但有真实容量的窗口（容量为正、单位不是百分比，例如 Command Code 尚未开始的 5 小时窗口）按已用 0% 保留；按模型分档的额度（Opus/Sonnet/Fable）忽略。
+- **可见性。** 通用 provider 出现在“在会话 HUD 中显示”中，key 为 `extra:<providerId>`，可像内置 provider 一样从会话 HUD 的额度区隐藏；Dashboard 仍全部列出。
+- **布局与读数。** 额度是会话 HUD 盒子内的第二个分区：会话行在上，额度行在 1px 分隔线下方，每个 provider 一行。会话分区为空或会话 HUD 被关闭时，盒子只显示额度区。PLAN 先显示长窗口（`7d 33%`），再显示短窗口（`5h 11%`）；单窗口只显示一个值，API-only provider 只显示格式化余额。通用 provider 还可以在最前面多显示一个值：剩下最长的窗口（日历月显示为 `1mo`），没有时显示余额——例如 OpenCode Go `1mo 85% 7d 100% 5h 100%`、Command Code `23.80 cr 7d 0% 5h 100%`。身份色区分 provider 和窗口；警告 / 高危状态覆盖身份色，重置值使用 muted 色，浅色主题会加深文字，过期行会变淡。
+- **位置与交互。** 盒子沿用会话 HUD 的位置：显示在桌宠下方，空间不足时翻到桌宠上方；不会为腾出空间而移动桌宠。最多显示六行；超出部分合并成 `+N` 行。点击任意额度行或 `+N` 都会打开 Dashboard。
+- **数据来源** 列出每个来源的状态（已关闭、Agent 已关闭、不可用、需要登录、等待交互、正常、被限流、出错、尚未检查）、上次成功时间和它上报的 provider。
+- **托盘用量列表。** 在同一分组开启“在托盘菜单显示额度”。只有此开关和“采集并显示额度”都开启且至少有一个可绘制 provider 时才会显示；列表包含所有未隐藏的 provider，不受额度区六行上限影响，遵循已用／剩余显示方式，并在远程 provider 名称后附加主机名。额度快照变化时菜单最多每 30 秒刷新一次，不会增加用量轮询。
 
 **Codex CLI** — 开箱即用。Clawd 会在检测到 Codex 时自动注册 official hooks 到 `~/.codex/hooks.json`，并在用户没有显式关闭 hooks 时启用 `[features].hooks = true`。Installer 会把已废弃的 `[features].codex_hooks` 迁移到 `hooks`，同时保留用户显式设置的 false。Official hooks 提供实时状态和真实 Allow/Deny 权限气泡。**Settings → Agents → Codex → 随 Codex 启动** 单独控制本机 Codex 的 `SessionStart` 能否在 Clawd 未运行时拉起桌宠；关闭它不会停用状态或审批接入，Clawd 已运行时仍然正常工作。全新安装默认关闭，升级用户则保留此前的开启行为；Remote SSH 与 WSL hook 永远不会冷启动桌面应用。`~/.codex/sessions/` JSONL 轮询只保留为状态 / metadata fallback，用于 hook 被禁用或 hook 未覆盖事件；审批不再从 JSONL 猜测。Codex 发出 `request_user_input` 时，Clawd 会从 transcript 中识别该调用，播放通知反应并显示问题/选项的只读预览。回答仍在 Codex 原生界面中完成，卡片不会注入选择；匹配的工具输出写入后会自动关闭。
 

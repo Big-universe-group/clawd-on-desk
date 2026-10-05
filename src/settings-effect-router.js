@@ -33,6 +33,8 @@ const MENU_AFFECTING_KEYS = new Set([
   "showDock",
   "theme",
   "size",
+  "quotaRingDisplayMode",
+  "quotaRingHiddenProviders",
   "sessionAliases",
   "disableMiniMode",
 ]);
@@ -92,6 +94,7 @@ function createSettingsEffectRouter(options = {}) {
   const repositionFloatingBubbles = options.repositionFloatingBubbles || noop;
   const applyTextScale = options.applyTextScale || noop;
   const syncSessionHudVisibility = options.syncSessionHudVisibility || noop;
+  const refreshQuotaTrayMenu = options.refreshQuotaTrayMenu || noop;
   const handleSessionHudPinnedChanged = options.handleSessionHudPinnedChanged || noop;
   const reclampPetAfterEdgePinningChange = options.reclampPetAfterEdgePinningChange || noop;
   const exitMiniMode = options.exitMiniMode || noop;
@@ -155,6 +158,9 @@ function createSettingsEffectRouter(options = {}) {
 
     // 1. Update mirror caches first so any side-effect handler reads fresh values.
     updateMirrors(changes);
+    if ("quotaTrayEnabled" in changes || "sessionHudShowQuota" in changes) {
+      safeCall(logWarn, "Clawd: quota tray menu refresh failed:", refreshQuotaTrayMenu);
+    }
 
     if ("showTray" in changes) {
       safeCall(

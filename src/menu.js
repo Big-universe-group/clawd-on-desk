@@ -28,6 +28,7 @@ const SIZES = {
 // i18n string pool + translator factory live in src/i18n.js so the future
 // settings panel can share them. menu.js binds the translator to ctx.lang.
 const { createTranslator } = require("./i18n");
+const { buildQuotaTrayLines } = require("./quota-tray-lines");
 
 // Concatenate menu groups into one Electron template, inserting exactly one
 // separator between non-empty groups. Empty groups are dropped entirely so no
@@ -256,6 +257,19 @@ module.exports = function initMenu(ctx) {
       buildMiniModeMenuItem(),
     ];
 
+    const quotaGroup = [];
+    if (ctx.quotaTrayEnabled === true && ctx.sessionHudShowQuota === true) {
+      const snapshot = typeof ctx.getQuotaSnapshot === "function" ? ctx.getQuotaSnapshot() : null;
+      const lines = buildQuotaTrayLines(snapshot, {
+        displayMode: ctx.quotaRingDisplayMode,
+        hiddenProviders: ctx.quotaRingHiddenProviders,
+      });
+      if (lines.length) {
+        quotaGroup.push({ label: t("quotaTrayHeader"), enabled: false });
+        for (const label of lines) quotaGroup.push({ label, enabled: false });
+      }
+    }
+
     // Quick noise toggles (bubbles + sound) kept together.
     const noiseGroup = [
       {
@@ -347,7 +361,7 @@ module.exports = function initMenu(ctx) {
       { label: t("quit"), click: () => requestAppQuit() },
     ];
 
-    const items = joinGroups([stateGroup, noiseGroup, workGroup, systemGroup, appGroup, quitGroup]);
+    const items = joinGroups([stateGroup, quotaGroup, noiseGroup, workGroup, systemGroup, appGroup, quitGroup]);
     ctx.tray.setContextMenu(Menu.buildFromTemplate(items));
   }
 

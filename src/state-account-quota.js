@@ -88,6 +88,137 @@ const PROVIDER_RETENTION_MS = 14 * 24 * 60 * 60 * 1000;
 // broadcast storm that value-change dedup exists to close.
 const SEEN_QUANTUM_MS = 60 * 1000;
 
+// ── Generic ("extra") providers ──
+// Command-style usage sources (e.g. `omp usage --json`) report providers
+// Clawd has no fixed slot for (DeepSeek balance, Command Code, OpenCode Go…).
+// They live under record.extraQuota[providerId] as a COMPLETE snapshot per
+// provider: a report replaces that provider's limits (no per-limit merge),
+// ordered by the provider-level capturedAt exactly like window-aware Codex.
+// Window limits follow the fixed-bucket expiry contract; balance limits never
+// expire on wall clock and are only retired by PROVIDER_RETENTION_MS.
+const EXTRA_PROVIDER_ID_RE = /^[a-z0-9][a-z0-9._-]{0,47}$/;
+const EXTRA_LABEL_MAX_LENGTH = 48;
+const EXTRA_LIMIT_ID_MAX_LENGTH = 64;
+const EXTRA_UNIT_MAX_LENGTH = 12;
+const MAX_EXTRA_PROVIDERS = 16;
+const MAX_EXTRA_LIMITS = 8;
+// Bound the work done on a hostile/buggy report before the per-provider cap.
+const MAX_EXTRA_LIMIT_CANDIDATES = 64;
+
+function isPlainObject(value) {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function finiteNumber(value) {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+// Control chars stripped, code-point-safe length cap (never splits a
+// surrogate pair, so CJK/emoji labels stay valid UTF-16).
+function sanitizeText(value, maxLength) {
+  if (typeof value !== "string") return "";
+  const cleaned = value.replace(/[\x00-\x1f\x7f]/g, "").trim();
+  const chars = Array.from(cleaned);
+  return (chars.length > maxLength ? chars.slice(0, maxLength).join("") : cleaned).trim();
+}
+
+// rejectReset: incoming reports drop windows that already reset (the number
+// is wrong, not merely stale); persisted data keeps them so snapshot() can
+// flag them expired until pruneStale retires them.
+function normalizeExtraLimit(value, nowMs, rejectReset) {
+  if (!isPlainObject(value)) return null;
+  const id = sanitizeText(value.id, EXTRA_LIMIT_ID_MAX_LENGTH);
+  if (!id) return null;
+  const label = sanitizeText(value.label, EXTRA_LABEL_MAX_LENGTH)
+    || sanitizeText(id, EXTRA_LABEL_MAX_LENGTH);
+  if (value.kind === "window") {
+    const usedPercent = finiteNumber(value.usedPercent);
+    if (usedPercent === null) return null;
+    const out = {
+      id,
+      label,
+      kind: "window",
+      usedPercent: Math.max(0, Math.min(100, Math.round(usedPercent))),
+    };
+    const windowMinutes = finiteNumber(value.windowMinutes);
+    if (windowMinutes !== null && windowMinutes > 0) out.windowMinutes = Math.round(windowMinutes);
+    const resetAt = finiteNumber(value.resetAt);
+    if (resetAt !== null) {
+      if (resetAt > nowMs + MAX_RESET_AHEAD_MS) return null;
+      if (rejectReset && resetAt <= nowMs) return null;
+      out.resetAt = Math.round(resetAt);
+    }
+    return out;
+  }
+  if (value.kind === "balance") {
+    const remaining = finiteNumber(value.remaining);
+    if (remaining === null) return null;
+    const unit = sanitizeText(value.unit, EXTRA_UNIT_MAX_LENGTH).toLowerCase() || "credits";
+    // 4 decimals: sub-cent float noise must not count as a value change.
+    return { id, label, kind: "balance", remaining: Math.round(remaining * 10000) / 10000, unit };
+  }
+  return null;
+}
+
+function normalizeExtraProvider(value, providerId, nowMs, rejectReset) {
+  if (!isPlainObject(value) || !Array.isArray(value.limits)) return null;
+  const seenIds = new Set();
+  const windows = [];
+  const balances = [];
+  for (const raw of value.limits.slice(0, MAX_EXTRA_LIMIT_CANDIDATES)) {
+    const limit = normalizeExtraLimit(raw, nowMs, rejectReset);
+    if (!limit || seenIds.has(limit.id)) continue;
+    seenIds.add(limit.id);
+    (limit.kind === "window" ? windows : balances).push(limit);
+  }
+  // Stable sort: windows by duration ascending (unknown duration last), then
+  // balances, so renderers can rely on the order without re-sorting.
+  windows.sort((a, b) => (a.windowMinutes || Infinity) - (b.windowMinutes || Infinity));
+  const limits = windows.concat(balances).slice(0, MAX_EXTRA_LIMITS);
+  if (!limits.length) return null;
+  const out = {
+    label: sanitizeText(value.label, EXTRA_LABEL_MAX_LENGTH) || providerId,
+    limits,
+  };
+  const capturedAt = finiteNumber(value.capturedAt);
+  if (capturedAt !== null) out.capturedAt = Math.round(capturedAt);
+  return out;
+}
+
+function comparableExtraProvider(provider) {
+  return JSON.stringify({ label: provider.label, limits: provider.limits });
+}
+
+function isExpiredWindowLimit(limit, nowMs) {
+  return limit.kind === "window" && Number.isFinite(limit.resetAt) && limit.resetAt <= nowMs;
+}
+
+function loadExtraQuota(stored, nowMs) {
+  if (!isPlainObject(stored)) return null;
+  const out = {};
+  let count = 0;
+  for (const [providerId, raw] of Object.entries(stored)) {
+    if (count >= MAX_EXTRA_PROVIDERS) break;
+    if (!EXTRA_PROVIDER_ID_RE.test(providerId)) continue;
+    const provider = normalizeExtraProvider(raw, providerId, nowMs, false);
+    if (!provider) continue;
+    const updatedAt = finiteNumber(raw.updatedAt);
+    const lastSeenAt = finiteNumber(raw.lastSeenAt);
+    out[providerId] = {
+      ...provider,
+      updatedAt: updatedAt !== null ? updatedAt : nowMs,
+      lastSeenAt: lastSeenAt !== null ? lastSeenAt : (updatedAt !== null ? updatedAt : nowMs),
+    };
+    count++;
+  }
+  return count ? out : null;
+}
+
+function hasAnyProvider(record) {
+  return QUOTA_PROVIDER_KEYS.some((key) => !!record[key])
+    || (!!record.extraQuota && Object.keys(record.extraQuota).length > 0);
+}
+
 function normalizeSourceHost(host) {
   if (typeof host !== "string") return null;
   const cleaned = host.replace(/[\x00-\x1f\x7f]/g, "").trim();
@@ -236,6 +367,11 @@ function createAccountQuotaStore(options = {}) {
         };
         hasAny = true;
       }
+      const extraQuota = loadExtraQuota(entry.extraQuota, nowMs);
+      if (extraQuota) {
+        record.extraQuota = extraQuota;
+        hasAny = true;
+      }
       if (hasAny) sources.set(sourceKey || "", record);
     }
     pruneStale(nowMs);
@@ -272,6 +408,30 @@ function createAccountQuotaStore(options = {}) {
         );
         hasProvider = true;
       }
+      if (record.extraQuota) {
+        for (const [providerId, provider] of Object.entries(record.extraQuota)) {
+          const seenAt = Number(provider.lastSeenAt);
+          if (!Number.isFinite(seenAt) || seenAt + PROVIDER_RETENTION_MS <= nowMs) {
+            delete record.extraQuota[providerId];
+            pruned = true;
+            continue;
+          }
+          // Balances carry no resetAt and stay until provider retention.
+          const kept = provider.limits.filter((limit) => !(limit.kind === "window"
+            && Number.isFinite(limit.resetAt)
+            && limit.resetAt + EXPIRED_BUCKET_DROP_AFTER_MS <= nowMs));
+          if (kept.length !== provider.limits.length) {
+            provider.limits = kept;
+            pruned = true;
+          }
+          if (!kept.length) {
+            delete record.extraQuota[providerId];
+            continue;
+          }
+          hasProvider = true;
+        }
+        if (!Object.keys(record.extraQuota).length) delete record.extraQuota;
+      }
       if (!hasProvider) {
         sources.delete(key);
         pruned = true;
@@ -283,7 +443,8 @@ function createAccountQuotaStore(options = {}) {
   function persistNow() {
     if (!persistPath) return true;
     const body = JSON.stringify({
-      version: 6,
+      // v7 adds the optional per-source extraQuota map; v6 files load as-is.
+      version: 7,
       sources: Array.from(sources.entries()).map(([sourceKey, record]) => ({
         sourceKey,
         ...record,
@@ -391,6 +552,44 @@ function createAccountQuotaStore(options = {}) {
       };
       if (valueChanged) changed = true;
     }
+    if (isPlainObject(quotas.extraQuota)) {
+      for (const [providerId, rawProvider] of Object.entries(quotas.extraQuota)) {
+        if (!EXTRA_PROVIDER_ID_RE.test(providerId)) continue;
+        const incoming = normalizeExtraProvider(rawProvider, providerId, nowMs, true);
+        if (!incoming) continue;
+        const existingExtra = record && record.extraQuota ? record.extraQuota[providerId] : null;
+        if (!existingExtra && record && record.extraQuota
+          && Object.keys(record.extraQuota).length >= MAX_EXTRA_PROVIDERS) {
+          logWarn("Clawd: account-quota extra provider cap reached, dropping:", providerId);
+          continue;
+        }
+        // Complete snapshot: an older observation must not replace a newer one.
+        if (existingExtra && Number.isFinite(existingExtra.capturedAt)
+          && Number.isFinite(incoming.capturedAt)
+          && incoming.capturedAt < existingExtra.capturedAt) continue;
+        acceptedAny = true;
+        if (!record) {
+          record = { host: sourceHost };
+          sources.set(key, record);
+        }
+        if (!record.extraQuota) record.extraQuota = {};
+        const valueChanged = !existingExtra
+          || comparableExtraProvider(existingExtra) !== comparableExtraProvider(incoming);
+        if (!valueChanged) {
+          const priorSeenAt = Number(existingExtra.lastSeenAt);
+          if (!Number.isFinite(priorSeenAt)
+            || Math.floor(nowMs / SEEN_QUANTUM_MS) > Math.floor(priorSeenAt / SEEN_QUANTUM_MS)) {
+            seenAdvanced = true;
+          }
+        }
+        record.extraQuota[providerId] = {
+          ...incoming,
+          updatedAt: valueChanged ? nowMs : existingExtra.updatedAt,
+          lastSeenAt: nowMs,
+        };
+        if (valueChanged) changed = true;
+      }
+    }
     if (changed || seenAdvanced) schedulePersist();
     return { accepted: acceptedAny, changed: changed || seenAdvanced };
   }
@@ -411,7 +610,7 @@ function createAccountQuotaStore(options = {}) {
       if (!record[providerKey] || !predicate(sourceKey, record)) continue;
       delete record[providerKey];
       cleared++;
-      if (!QUOTA_PROVIDER_KEYS.some((key) => !!record[key])) sources.delete(sourceKey);
+      if (!hasAnyProvider(record)) sources.delete(sourceKey);
     }
     if (cleared) schedulePersist();
     return cleared;
@@ -455,6 +654,26 @@ function createAccountQuotaStore(options = {}) {
         };
         entry[providerKey] = provider;
         hasAny = true;
+      }
+      if (record.extraQuota) {
+        const extraQuota = {};
+        for (const [providerId, stored] of Object.entries(record.extraQuota)) {
+          // Cloned so consumers never hold live references into the store.
+          const provider = {
+            label: stored.label,
+            updatedAt: stored.updatedAt,
+            lastSeenAt: Math.floor(stored.lastSeenAt / SEEN_QUANTUM_MS) * SEEN_QUANTUM_MS,
+            limits: stored.limits.map((limit) => (isExpiredWindowLimit(limit, nowMs)
+              ? { ...limit, expired: true }
+              : { ...limit })),
+          };
+          rawSeenByBucket.set(provider, Number(stored.lastSeenAt));
+          extraQuota[providerId] = provider;
+        }
+        if (Object.keys(extraQuota).length) {
+          entry.extraQuota = extraQuota;
+          hasAny = true;
+        }
       }
       if (hasAny) out.push(entry);
     }
@@ -522,6 +741,36 @@ function createAccountQuotaStore(options = {}) {
         hasAny = true;
       }
     }
+    // Extra providers are complete per-provider snapshots, so arbitration is
+    // per provider (never mixing limits from two sources): a report with any
+    // live limit beats a fully-expired one, then the freshest observation wins.
+    const extraIds = new Set();
+    for (const entry of out) {
+      if (entry.extraQuota) for (const providerId of Object.keys(entry.extraQuota)) extraIds.add(providerId);
+    }
+    const mergedExtra = {};
+    for (const providerId of Array.from(extraIds).sort()) {
+      let best = null;
+      let bestLive = false;
+      let bestSeenAt = -Infinity;
+      for (const entry of out) {
+        const candidate = entry.extraQuota && entry.extraQuota[providerId];
+        if (!candidate) continue;
+        const live = candidate.limits.some((limit) => limit.expired !== true);
+        const rawSeenAt = Number(rawSeenByBucket.get(candidate));
+        const seenAt = Number.isFinite(rawSeenAt) ? rawSeenAt : Number(candidate.lastSeenAt);
+        if (!best || (live && !bestLive) || (live === bestLive && seenAt > bestSeenAt)) {
+          best = candidate;
+          bestLive = live;
+          bestSeenAt = seenAt;
+        }
+      }
+      if (best) mergedExtra[providerId] = best;
+    }
+    if (Object.keys(mergedExtra).length) {
+      merged.extraQuota = mergedExtra;
+      hasAny = true;
+    }
     return hasAny ? [merged] : [];
   }
 
@@ -553,4 +802,7 @@ module.exports = {
   EXPIRED_BUCKET_DROP_AFTER_MS,
   PROVIDER_RETENTION_MS,
   SEEN_QUANTUM_MS,
+  MAX_EXTRA_PROVIDERS,
+  MAX_EXTRA_LIMITS,
+  EXTRA_PROVIDER_ID_RE,
 };

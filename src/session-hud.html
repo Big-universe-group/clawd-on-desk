@@ -17,6 +17,24 @@
   --done: #2563eb;
   --interrupted: #d97706;
   --idle: #9ca3af;
+  /* Quota section palette. dashboard.html mirrors these provider identity and
+     severity hues (test/quota-palette.test.js), so a HUD value and a Dashboard
+     bar name the same provider/window/state with the same color. */
+  --sev-warn: #fbbf24;
+  --sev-hot: #f87171;
+  --sev-reset: #9096a1;
+  --id-outer: #2dd4bf;
+  --id-inner: #6489f7;
+  --id-claude-outer: #2dd4bf;
+  --id-claude-inner: #6489f7;
+  --id-codex-outer: #a78bfa;
+  --id-codex-inner: #22d3ee;
+  --id-antigravity-outer: #38bdf8;
+  --id-antigravity-inner: #6366f1;
+  --id-kimi-outer: #3b93f7;
+  --id-kimi-inner: #e27aeb;
+  --id-extra-outer: #c084fc;
+  --id-extra-inner: #6ee7b7;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -56,6 +74,21 @@ body { padding: 2px 3px 8px; }
   box-shadow: 0 8px 18px -12px var(--shadow), 0 2px 4px rgba(0, 0, 0, 0.10);
   overflow: hidden;
   position: relative;
+}
+
+.hud-section {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.hud-section:empty { display: none; }
+
+/* 1px rule between the sessions and quota sections; session-hud.js counts it
+   (HUD_SECTION_DIVIDER) only when both sections have rows. */
+.hud-sessions:not(:empty) + .hud-quota:not(:empty) {
+  border-top: 1px solid var(--hud-border);
 }
 
 .hud.has-pin .row {
@@ -334,11 +367,132 @@ body { padding: 2px 3px 8px; }
     animation: none;
   }
 }
+
+.quota-row {
+  min-width: 0;
+  height: 26px;
+  flex: 0 0 26px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  cursor: pointer;
+  transition: background 80ms ease;
+}
+
+.quota-row:hover { background: rgba(0, 0, 0, 0.06); }
+.quota-row:active { background: rgba(0, 0, 0, 0.10); }
+@media (prefers-color-scheme: dark) {
+  .quota-row:hover { background: rgba(255, 255, 255, 0.08); }
+  .quota-row:active { background: rgba(255, 255, 255, 0.12); }
+}
+
+.quota-row.is-stale { opacity: 0.6; }
+.provider-glyph {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  display: block;
+  object-fit: contain;
+  overflow: hidden;
+  border-radius: 50%;
+  background: #f4f4f6;
+}
+.extra-glyph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #3a3d46;
+  font-size: 10px;
+  font-weight: 700;
+}
+.provider-identity {
+  min-width: 0;
+  flex: 1 1 auto;
+  display: flex;
+  align-items: baseline;
+  overflow: hidden;
+  white-space: nowrap;
+  line-height: 1;
+}
+.provider-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.provider-host {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-muted);
+  font-weight: 400;
+}
+.quota-values {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.quota-value { color: var(--quota-hue, var(--id-outer)); }
+.quota-value.sev-warn { color: var(--sev-warn); }
+.quota-value.sev-hot { color: var(--sev-hot); }
+.quota-value.sev-reset { color: var(--sev-reset); }
+
+.pv-claudeQuota.rg-outer { --quota-hue: var(--id-claude-outer); }
+.pv-claudeQuota.rg-inner { --quota-hue: var(--id-claude-inner); }
+.pv-codexQuota.rg-outer { --quota-hue: var(--id-codex-outer); }
+.pv-codexQuota.rg-inner { --quota-hue: var(--id-codex-inner); }
+.pv-antigravityQuota.rg-outer { --quota-hue: var(--id-antigravity-outer); }
+.pv-antigravityQuota.rg-inner { --quota-hue: var(--id-antigravity-inner); }
+.pv-kimiQuota.rg-outer { --quota-hue: var(--id-kimi-outer); }
+.pv-kimiQuota.rg-inner { --quota-hue: var(--id-kimi-inner); }
+.pv-extraQuota.rg-outer { --quota-hue: var(--id-extra-outer); }
+.pv-extraQuota.rg-inner { --quota-hue: var(--id-extra-inner); }
+
+@media (prefers-color-scheme: light) {
+  .quota-value {
+    color: var(--quota-hue, var(--id-outer));
+    color: color-mix(in oklab, var(--quota-hue, var(--id-outer)) 60%, #0b1220);
+  }
+  .quota-value.sev-warn {
+    color: var(--sev-warn);
+    color: color-mix(in oklab, var(--sev-warn) 60%, #0b1220);
+  }
+  .quota-value.sev-hot {
+    color: var(--sev-hot);
+    color: color-mix(in oklab, var(--sev-hot) 60%, #0b1220);
+  }
+  .quota-value.sev-reset {
+    color: var(--sev-reset);
+    color: color-mix(in oklab, var(--sev-reset) 60%, #0b1220);
+  }
+}
+
+.quota-overflow {
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
 </style>
 </head>
 <body>
-  <div id="hud" class="hud"></div>
+  <div id="hud" class="hud">
+    <div id="hud-sessions" class="hud-section hud-sessions"></div>
+    <div id="hud-quota" class="hud-section hud-quota" aria-label="Quota"></div>
+  </div>
   <script src="./session-focus-unavailable.js"></script>
+  <script src="./quota-ring-renderer.js"></script>
   <script src="./session-hud-renderer.js"></script>
 </body>
 </html>

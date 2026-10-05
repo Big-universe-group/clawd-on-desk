@@ -11645,7 +11645,7 @@ describe("settings renderer browser environment", () => {
     assert.deepStrictEqual(updateCalls, [{ key: "sessionHudShowElapsed", value: false }]);
   });
 
-  it("keeps the quota ring as an independent sibling of the Session HUD", async () => {
+  it("keeps the quota group as an independent sibling of the Session HUD", async () => {
     const harness = loadGeneralTabForTest({
       snapshot: makeGeneralSnapshot({
         sessionHudEnabled: false,
@@ -11669,13 +11669,12 @@ describe("settings renderer browser environment", () => {
     assert.ok(ringEnabled);
     assert.ok(mergeSources);
     // Per-provider collection is NOT here. It lives on each provider's own card
-    // under Agents (Claude alongside Kimi), so this group stays about what the
-    // ring looks like and "which providers am I reading" has one place to look.
-    // Pin the absence: re-adding it here would silently re-split the setting
-    // across two tabs, which is the state this move existed to end.
+    // under Agents (Claude alongside Kimi), so this group controls panel display
+    // and provider visibility while each source's collection opt-in stays in one place.
+    // Pin the absence: re-adding it here would split the setting across tabs.
     assert.ok(
       !harness.getSwitch("claudeQuotaCollectionEnabled"),
-      "Claude quota collection must not be back in General's quota-ring group"
+      "Claude quota collection must not be back in General's panel group"
     );
     assert.ok(ringOptions);
     assert.ok(hudOptions);
@@ -11687,9 +11686,8 @@ describe("settings renderer browser environment", () => {
     assert.strictEqual(summary.children[0].textContent, "HUD: off");
   });
 
-  it("lets the user pick which providers draw beside the pet, hiding by exception", async () => {
-    // The cluster caps at four coins and the renderer takes the first four in
-    // provider order, so without this the user has no say over which survive.
+  it("lets the user choose which providers appear in the Session HUD quota section", async () => {
+    // Six rows fit; any excess is summarized by a +N row in provider order.
     const updateCalls = [];
     const harness = loadGeneralTabForTest({
       snapshot: makeGeneralSnapshot({ quotaRingHiddenProviders: ["codexQuota"] }),
@@ -11824,6 +11822,118 @@ describe("settings renderer browser environment", () => {
     assert.ok(harness.getSwitch("sessionHudShowQuota"), "the ring group still renders");
     const block = harness.content.querySelector(".quota-ring-providers");
     assert.strictEqual(block.style.display, "none");
+  });
+
+  it("hides the data-sources block on a preload without the usage status IPC", async () => {
+    const harness = loadGeneralTabForTest({
+      snapshot: makeGeneralSnapshot({ sessionHudShowQuota: true }),
+      settingsAPI: { getQuotaSourceCount: async () => 1 },
+    });
+    harness.renderContent();
+    await new Promise((resolve) => setImmediate(resolve));
+
+    assert.ok(harness.getSwitch("sessionHudShowQuota"), "the ring group still renders");
+    const block = harness.content.querySelector(".quota-ring-usage-sources");
+    assert.strictEqual(block.style.display, "none");
+    assert.strictEqual(block.querySelectorAll(".quota-ring-usage-source-row").length, 0);
+    assert.strictEqual(block.querySelector(".quota-ring-usage-sources-refresh"), null);
+  });
+
+  it("lists every usage source with a localized state, freshness and providers", async () => {
+    const states = [
+      "off", "agent-disabled", "unavailable", "needs-login", "waiting-interaction",
+      "ok", "rate-limited", "error", "idle",
+    ];
+    const now = Date.now();
+    const statuses = states.map((state, index) => ({
+      id: ["claude-oauth", "codex-app-server", "omp-usage"][index % 3],
+      agentId: ["claude-code", "codex", "omp"][index % 3],
+      state,
+      lastSuccessAt: state === "ok" ? now - 5 * 60000 : null,
+      lastAttemptAt: null,
+      detail: state === "needs-login" ? "ChatGPT login required" : null,
+      providers: state === "ok" ? ["DeepSeek", "Command Code"] : [],
+    }));
+    const harness = loadGeneralTabForTest({
+      snapshot: makeGeneralSnapshot({ sessionHudShowQuota: true }),
+      settingsAPI: {
+        getQuotaSourceCount: async () => 1,
+        getUsageSourcesStatus: async () => statuses,
+      },
+    });
+    harness.renderContent();
+    await new Promise((resolve) => setImmediate(resolve));
+
+    const strings = loadSettingsI18nForTest().en;
+    const block = harness.content.querySelector(".quota-ring-usage-sources");
+    assert.strictEqual(block.style.display, "");
+    const rows = block.querySelectorAll(".quota-ring-usage-source-row");
+    assert.deepStrictEqual(rows.map((row) => row.dataset.state), states);
+    for (const row of rows) {
+      const stateText = row.querySelector(".quota-ring-usage-source-state").textContent;
+      assert.ok(stateText && stateText !== row.dataset.state, `state ${row.dataset.state} must be localized`);
+    }
+    const byState = new Map(rows.map((row) => [row.dataset.state, row]));
+    assert.match(byState.get("agent-disabled").textContent, /Agents/);
+    const ok = byState.get("ok");
+    assert.match(ok.textContent, /5 min ago/);
+    assert.match(ok.textContent, /DeepSeek, Command Code/);
+    assert.strictEqual(byState.get("idle").querySelector(".quota-ring-usage-source-meta").textContent,
+      strings.usageSourceUpdatedNever);
+    assert.strictEqual(byState.get("needs-login").title, "ChatGPT login required");
+    assert.strictEqual(rows[0].querySelector(".row-label").textContent, strings.usageSourceNameClaudeOauth);
+  });
+
+  it("refreshes usage sources on demand and recovers from a failed refresh", async () => {
+    const toasts = [];
+    let resolveRefresh = null;
+    let refreshCalls = 0;
+    let failNext = false;
+    const harness = loadGeneralTabForTest({
+      snapshot: makeGeneralSnapshot({ sessionHudShowQuota: true }),
+      settingsAPI: {
+        getQuotaSourceCount: async () => 1,
+        getUsageSourcesStatus: async () => ([
+          { id: "omp-usage", agentId: "omp", state: "idle", lastSuccessAt: null, lastAttemptAt: null, detail: null, providers: [] },
+        ]),
+        refreshUsageSources: () => {
+          refreshCalls++;
+          if (failNext) return Promise.reject(new Error("IPC unavailable"));
+          return new Promise((resolve) => { resolveRefresh = resolve; });
+        },
+      },
+    });
+    harness.core.ops.showToast = (message) => toasts.push(message);
+    harness.renderContent();
+    await new Promise((resolve) => setImmediate(resolve));
+
+    const button = harness.content.querySelector(".quota-ring-usage-sources-refresh");
+    button.dispatchEvent({ type: "click" });
+    await Promise.resolve();
+    assert.strictEqual(button.disabled, true, "pending refresh disables the button");
+    button.dispatchEvent({ type: "click" });
+    await Promise.resolve();
+    assert.strictEqual(refreshCalls, 1, "pending must suppress duplicate refreshes");
+
+    resolveRefresh([
+      { id: "omp-usage", agentId: "omp", state: "ok", lastSuccessAt: Date.now(), lastAttemptAt: Date.now(), detail: null, providers: ["DeepSeek"] },
+    ]);
+    await new Promise((resolve) => setImmediate(resolve));
+    const rows = harness.content.querySelectorAll(".quota-ring-usage-source-row");
+    assert.deepStrictEqual(rows.map((row) => row.dataset.state), ["ok"]);
+    assert.strictEqual(button.disabled, false);
+    assert.strictEqual(toasts.length, 0);
+
+    failNext = true;
+    button.dispatchEvent({ type: "click" });
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.strictEqual(toasts.length, 1);
+    assert.strictEqual(button.disabled, false, "a failed refresh must release pending");
+    assert.deepStrictEqual(
+      harness.content.querySelectorAll(".quota-ring-usage-source-row").map((row) => row.dataset.state),
+      ["ok"],
+      "a failed refresh keeps the last statuses"
+    );
   });
 
   it("keeps an enabled merge-sources switch visible with only one source", async () => {
@@ -12693,11 +12803,8 @@ describe("settings renderer browser environment", () => {
   it("keeps every provider's quota collection opt-in on its own Agents card", () => {
     const generalSource = fs.readFileSync(path.join(SRC_DIR, "settings-tab-general.js"), "utf8");
     const agentsSource = fs.readFileSync(path.join(SRC_DIR, "settings-tab-agents.js"), "utf8");
-    // Claude's collection switch used to live in General's quota-ring group
-    // while Kimi's equivalent lived on its agent card, so turning collection
-    // off meant a different tab depending on the provider and no page could
-    // answer "which providers am I reading from". Pin the single rule: the
-    // ring group is about what the ring looks like, collection is per-card.
+    // Collection switches belong to provider cards; General controls panel
+    // visibility and display mode only, not which sources are queried.
     assert.ok(!generalSource.includes('key: "claudeQuotaCollectionEnabled"'));
     assert.ok(agentsSource.includes('key: "claudeQuotaCollectionEnabled"'));
     assert.ok(agentsSource.includes("rowClaudeQuotaCollection"));

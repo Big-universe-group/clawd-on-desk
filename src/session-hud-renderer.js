@@ -8,7 +8,7 @@ const HUD_TITLE_MAX_UNITS = 15;
 const RECENT_DONE_UNREAD_MS = 60 * 1000;
 const SESSION_ACTION_FEEDBACK_MS = 4000;
 
-let snapshot = { sessions: [], orderedIds: [], hudTotalNonIdle: 0, hudLastTitle: null, hudShowStateLabels: true, hudShowElapsed: true, hudShowContextUsage: true, hudShowQuota: true, hudPinned: false, accountQuota: [] };
+let snapshot = { sessions: [], orderedIds: [], hudTotalNonIdle: 0, hudLastTitle: null, hudShowSessions: true, hudShowStateLabels: true, hudShowElapsed: true, hudShowContextUsage: true, hudPinned: false, accountQuota: [], quota: null };
 let i18nPayload = { lang: "en", translations: {} };
 
 const unreadSessions = new Set();
@@ -18,6 +18,9 @@ let sessionActionFeedback = null;
 let sessionActionFeedbackTimer = null;
 
 const hudEl = document.getElementById("hud");
+// One box, two sections: session rows on top, quota rows below.
+const sessionsEl = document.getElementById("hud-sessions");
+const quotaEl = document.getElementById("hud-quota");
 
 function isHudSession(session) {
   return !!session && !session.headless && session.state !== "sleeping" && !session.hiddenFromHud;
@@ -462,23 +465,23 @@ function render() {
     sessionActionFeedback = null;
   }
   updateUnread(sessions);
-  hudEl.replaceChildren();
-  hudEl.classList.add("has-pin");
-  // The HUD shows sessions only; account quota now lives in the pet-attached
-  // quota ring window (quota-ring.html).
-  if (!sessions.length) return;
+  sessionsEl.replaceChildren();
+  const showSessions = snapshot.hudShowSessions !== false && sessions.length > 0;
+  hudEl.classList.toggle("has-pin", showSessions);
+  if (showSessions) {
+    const now = Date.now();
+    const { expanded, folded } = splitHudLayout(sessions);
 
-  const now = Date.now();
-  const { expanded, folded } = splitHudLayout(sessions);
+    for (const session of expanded) {
+      sessionsEl.appendChild(createRowForSession(session, now));
+    }
+    if (folded.length > 0) {
+      sessionsEl.appendChild(createFoldedRow(folded.length));
+    }
 
-  for (const session of expanded) {
-    hudEl.appendChild(createRowForSession(session, now));
+    sessionsEl.appendChild(createPinButton(snapshot.hudPinned === true));
   }
-  if (folded.length > 0) {
-    hudEl.appendChild(createFoldedRow(folded.length));
-  }
-
-  hudEl.appendChild(createPinButton(snapshot.hudPinned === true));
+  globalThis.ClawdHudQuota.update(quotaEl, snapshot.quota);
 }
 
 function updateElapsedLabels() {
@@ -506,5 +509,5 @@ async function init() {
 }
 
 init().catch((err) => {
-  hudEl.textContent = err && err.message ? err.message : String(err);
+  sessionsEl.textContent = err && err.message ? err.message : String(err);
 });

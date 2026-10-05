@@ -41,7 +41,7 @@ describe("permission bubble height clamp", () => {
   });
 });
 
-describe("permission bubble Orbit avoidance bounds", () => {
+describe("permission bubble avoidance bounds for the update bubble", () => {
   it("keeps only live visible window bounds, including a fading request removed from pending state", () => {
     const rect = { x: 100, y: 200, width: 340, height: 180 };
     const makeWindow = ({ destroyed = false, visible = true, bounds = rect } = {}) => ({

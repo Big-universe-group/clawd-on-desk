@@ -108,7 +108,7 @@ Settings 是独立 `BrowserWindow`，采用 5 层结构：
 - `bubbleFollowPet` 只选择跟随桌宠或固定在主屏，不影响 permission、notification、update 的显示 gate。
 - 跟随模式读取 `bubbleFollowPreference=auto|left|right`。`auto` 保持下方优先；左右值是安全偏好，空间不足时按候选顺序回退，绝不强制放到工作区外。
 - 固定模式读取 `bubbleFixedCorner=top-left|top-right|bottom-left|bottom-right`，锚定 primary display 的 `workArea`。主屏查询不可用时回退桌宠所在显示器，再失败才使用 synthetic work area。
-- permission stack 先定位并避让可见 Session HUD；update bubble 随后读取真实可见 permission/HUD 外窗矩形再定位；Orbit 最后读取更新后的几何。
+- permission stack 先定位并避让可见 Session HUD；update bubble 随后读取真实可见 permission/HUD 外窗矩形再定位。
 - 跟随模式使用桌宠所在显示器的 text scale；固定模式使用主屏 text scale。窗口 bounds、CSS px → DIP 与 renderer zoom 必须基于同一个目标显示器。
 - 权限气泡默认是约 340 CSS px 的三行摘要卡；普通工具在摘要态保留原有 Allow/Deny、Always/suggestion 和会话授权快捷操作，长正文经「查看详情」进入约 500 CSS px 的详情卡。Plan 摘要同时保留「查看计划」和快速批准，反馈/回终端等次级操作在展开后出现；Ask 摘要只可「回答」。详情正文滚动，标题和全部决定区固定，不提供自由拖拽改尺寸。
 - 桌面同时最多一个权限详情卡，切换时其他气泡恢复摘要，但各自 BrowserWindow/DOM 不销毁，因此 Ask 选择、Other 文本、Plan 修改草稿、步骤和滚动位置保留；IME composition 未结束时拒绝切换详情。petHidden 只隐藏窗口，不清空详情 owner 或草稿。
@@ -220,6 +220,21 @@ Mini 状态映射：
 - **页面缩放跟随 active host 的显示器**：quick 宿主的 `move` / `resize` 都会按它当前的 bounds 重算页面 scale；借用期间 Settings 触发的 `applyTextScaleToWindow()` 同样用 active host 解析页面 scale，不会把借出的页面按停放中的普通窗（或 default bounds）重新缩放。窗口的 minimum size、programmatic baseline 与 pendingUserBounds/retry debt 仍然只针对普通宿主，不写 quick bounds；退出借用按普通宿主的显示器恢复 scale。renderer 崩溃、页面关闭、ordinary open、dispose、应用退出都必须归还 view 并恢复 opacity/input，唯一的 webContents 恰好关闭一次。
 - **quick 宿主的 close handler 不得拦下应用退出**：它平时无条件 `preventDefault()`（关掉的只是借用外壳，不该销毁 Dashboard），但 Electron 在 `will-quit` **之前**关闭所有窗口，所以只在 `will-quit` dispose 会把正常 Quit 卡死——Windows 实测菜单 Quit 后进程仍在，只剩一个隐藏的 quick BaseWindow。`main.js` 因此在 `before-quit` 就 dispose（`will-quit` 保留为幂等兜底），并把「应用正在退出」传给 owner，让 close handler 在退出中直接归还页面、放行关闭。用户自己关 quick 宿主仍然只是取消该轮并归还页面，不销毁普通 Dashboard。该 handler 与平台无关，macOS 的菜单 Quit 同样要真机复验。
 - 两种 Dock 设置下的数字输入、取消、Terminal / Codex task 返回，以及 Windows Alt+Tab 与 cancel 归还，都必须真机验收，**不能从 unit tests 推断**。「普通 Dashboard 当前聚焦 + 数字 → 真实目标 → 返回」是独立一条 gate。
+
+### Account Quota（用量聚合 / Session HUD 额度区）
+
+- `sessionHudShowQuota`（Settings → 通用 → 会话管理 → 额度 →「采集并显示额度」）同时是显示开关和**主动采集总闸**。`src/usage-collector.js` 在入队和提交时都重读该值；每个来源再按 agent-gate 判断对应 Agent 是否启用。主动来源：`claude-oauth`（Claude Code，只读 OAuth 登录 + `/api/oauth/usage` → `claudeQuota`）、`codex-app-server`（Codex，`account/rateLimits/read` → `codexQuota` / `codexSparkQuota`）、`omp-usage`（OMP，`omp usage --json --redact`；`anthropic` → `claudeQuota`，`openai-codex` → `codexQuota`，其余 → `extraQuota[providerId]`）。结果写入 `state-account-quota.js` 的本机 source（key `""`），与 statusline、Codex rollout、Kimi、Antigravity、Remote SSH 等被动来源共用同一 store。
+- 凭据只读：不刷新、不轮换、不回写 token；过期即 `needs-login`。macOS 钥匙串（`Claude Code-credentials`）只在 `interactive: true` 的刷新（单击桌宠、打开 Dashboard、Settings「立即刷新」）读取，启动与后台从不读取，只有钥匙串可用而本次非交互时状态为 `waiting-interaction`。token、响应正文、邮箱、账号/组织 ID 不写日志、不落盘。
+- 触发：启动约 15 秒后一次（非交互）、单击桌宠、打开 Dashboard、打开总闸或启用 Agent（非交互）、Settings「立即刷新」（交互 + force）。每个来源最小间隔 5 分钟（force 60 秒），单飞；429 退避 Retry-After 或 15 分钟。**没有周期轮询**，数值在两次查看之间会变旧。`codex` / `omp` 二进制在 PATH 之外还查 `/opt/homebrew/bin`、`/usr/local/bin`、`~/.local/bin`、`~/.bun/bin`、`~/.npm-global/bin`（Windows 为 `%APPDATA%\\npm`），因为从 Dock 启动的 app 没有 shell PATH。
+- OMP 映射：有有限 `usedFraction` 的是窗口额度，`used = 0` 且没有有限 `window.resetsAt` 时**丢弃**（无信息，例如 provider 的“状态栏占位”、Anthropic 尚未开始的窗口）——除非该窗口有真实容量（有限且大于 0、单位不是 `percent` 的 `amount.limit`，例如 Command Code 尚未开始的 14 credits 5h 窗口），此时按 0% 保留；按档位（tier）划分的额度在所有 provider 上都忽略；没有 `usedFraction` 但有 `remaining` 的是余额。同一 provider 的一次报告是完整快照，整体替换旧 limits。
+- `snapshot.accountQuota[].extraQuota[providerId] = { label, updatedAt, lastSeenAt, limits[] }`：窗口额度按 `windowMinutes` 升序在前，余额在后；过期窗口标 `expired`，余额只按 provider 保留期退役。每个 source 最多 16 个 extra provider、每个最多 8 条 limit。
+- 额度是 Session HUD 盒子内的第二个分区：会话行在上，额度区在下，中间用 1px 分隔线隔开；没有独立的额度窗口。盒子沿用 Session HUD 的定位（桌宠下方，放不下时翻到桌宠上方），展开时不移动桌宠。
+- 额度区的显示由 `sessionHudShowQuota` 与 `quotaRingHiddenProviders` 决定，独立于 Session HUD 主开关 `sessionHudEnabled`：会话分区为空或被关闭时，盒子只显示额度区。固定（pin）按钮只随会话分区出现。
+- 有额度行时盒子宽度取 max(HUD 宽度, 280 CSS px)；额度行高 26 px，最多 6 行。多于 6 个 provider 时保留前 5 行，最后一行显示 `+N` 并打开 Dashboard。每行可点击打开 Dashboard，固定 provider 使用图标，extra provider 使用首字母；远程 source 附加 host。
+- PLAN 行先显示长窗口再显示短窗口（例如 `7d 33%`、`5h 11%`），单窗口仅显示一个值；API-only provider 只显示格式化余额。extra provider 最多显示三个值：`selectExtraRingLimits()` 在短窗口、周窗口之外再取剩下最长的窗口（没有固定时长的日历月窗口算最长，标签缩写为 `1mo`），没有第三个窗口时用余额代替，第三个值排在最前（例如 OpenCode Go `1mo 85% 7d 100% 5h 100%`、Command Code `23.80 cr 7d 0% 5h 100%`）；托盘列表同样排序。剩余模式只翻转百分比，余额不变。健康值使用 provider/window identity hue；警告与高危值覆盖为 severity hue，重置值使用 muted 色，浅色主题以深色混合提高对比，过期 provider 行降低透明度。
+- 固定 provider 的隐藏 key 为 `claudeQuota` 等，extra provider 为 `extra:<providerId>`；`listQuotaRingProviders()` 只列出实际上报的 provider。Dashboard 始终显示全部。
+- Settings「数据来源」块通过 `settingsAPI.getUsageSourcesStatus()`（`settings:usage-sources-status`）读取 `UsageSourceStatus[]`，「立即刷新」调用 `refreshUsageSources()`（`settings:usage-sources-refresh`，等刷新结束后返回最新状态）。旧 preload 没有该 IPC 时整块隐藏；总闸在原地切换时重新读取状态。每行显示来源名、本地化状态（`off` / `agent-disabled` / `unavailable` / `needs-login` / `waiting-interaction` / `ok` / `rate-limited` / `error` / `idle`）、上次成功时间与上报的 provider；`detail` 只作为英文诊断 tooltip。
+- 托盘列表是可选的：`quotaTrayEnabled` 默认关闭，必须与 `sessionHudShowQuota` 同时开启才显示。列表为每个可绘制且未隐藏的 provider 各列一行（不受额度区六行上限影响），遵循已用／剩余显示方式，并在远程 provider 名称后附加主机名。只有 account-quota 快照变化会触发更新；菜单最多每 30 秒刷新一次，任一开关变化时立即重建。这不会增加用量轮询。
 
 ### Sound
 

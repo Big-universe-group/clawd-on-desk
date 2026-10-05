@@ -192,6 +192,7 @@ const SCHEMA = {
   sessionHudShowElapsed: { type: "boolean", default: false },
   sessionHudShowContextUsage: { type: "boolean", default: true },
   sessionHudShowQuota: { type: "boolean", default: true },
+  quotaTrayEnabled: { type: "boolean", default: false },
   // Preserve the historical used-percentage presentation for existing users;
   // remaining is a display-only choice and never changes stored quota data.
   quotaRingDisplayMode: { type: "string", default: "used", enum: ["used", "remaining"] },

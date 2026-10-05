@@ -1,122 +1,150 @@
 "use strict";
 
-// ── Quota "Orbit" ring cluster (renderer) ──
-// One coin per (source, provider). A coin carries up to two concentric rings:
-// the outer for the shorter/rolling window, the inner for the weekly window.
-// The arc can present USED percent (full = nearly exhausted) or REMAINING
-// percent (full = plenty left). Severity still follows usedPercent, so changing
-// the presentation never changes warning semantics. A healthy ring is colored
-// by identity (provider + logical window, see identityClass) rather than by
-// headroom, because severity has only three steps and would paint two healthy
-// windows the same color; crossing a threshold hands the ring over to
-// amber/red. Window labels come from
-// each bucket's windowMinutes, never a hard-coded 5h/7d. The main process
-// (session-hud.js) sizes/positions the window and passes the side.
-
-const SVG_NS = "http://www.w3.org/2000/svg";
-const XLINK_NS = "http://www.w3.org/1999/xlink";
+// Quota section of the Session HUD (session-hud.html). Loaded as a classic
+// script beside session-hud-renderer.js, so everything stays inside this IIFE
+// and only `ClawdHudQuota` is shared: the session renderer hands it the
+// container and the snapshot's `quota` payload on every render.
+(function initHudQuota(root) {
 const DEFAULT_QUOTA_STALE_AFTER_MS = 5 * 60 * 1000;
-const PROVIDER_STALE_AFTER_MS = Object.freeze({
-  kimiQuota: 7 * 60 * 1000,
-});
-const MAX_COINS = 4; // must match quota-ring-geometry RING_MAX_COINS
+const PROVIDER_STALE_AFTER_MS = Object.freeze({ kimiQuota: 7 * 60 * 1000 });
+const EXTRA_HIDDEN_PREFIX = "extra:";
+const EXTRA_PALETTE_KEY = "extraQuota";
+const EXTRA_PROVIDER_ID_RE = /^[a-z0-9][a-z0-9._-]{0,47}$/;
+const DAY_MINUTES = 24 * 60;
+const WEEK_MINUTES = 7 * DAY_MINUTES;
+const WARN_AT = 60;
+const HOT_AT = 85;
 
-// Mirrors RING_PROVIDERS in quota-ring-geometry.js (that file is CommonJS; this
-// runs in the browser and cannot require it). Antigravity reports two quota
-// families; each physical ring selects the most constrained candidate for its
-// timescale while the Dashboard keeps the full breakdown.
+// Mirrors RING_PROVIDERS in quota-ring-geometry.js; the renderer runs in a
+// browser context and cannot require that CommonJS module.
 const RING_PROVIDERS = [
   {
     key: "antigravityQuota",
     label: "Antigravity",
     outer: [
-      { field: "geminiFiveHour", fallback: "5h", familyKey: "dashboardQuotaGroupGemini", shortFamily: "G" },
-      { field: "thirdPartyFiveHour", fallback: "5h", familyKey: "dashboardQuotaGroupThirdParty", shortFamily: "C/G" },
+      { field: "geminiFiveHour", fallback: "5h" },
+      { field: "thirdPartyFiveHour", fallback: "5h" },
     ],
     inner: [
-      { field: "geminiWeekly", fallback: "7d", familyKey: "dashboardQuotaGroupGemini", shortFamily: "G" },
-      { field: "thirdPartyWeekly", fallback: "7d", familyKey: "dashboardQuotaGroupThirdParty", shortFamily: "C/G" },
+      { field: "geminiWeekly", fallback: "7d" },
+      { field: "thirdPartyWeekly", fallback: "7d" },
     ],
   },
-  {
-    key: "claudeQuota",
-    label: "Claude",
-    outer: [{ field: "claudeFiveHour", fallback: "5h" }],
-    inner: [{ field: "claudeWeekly", fallback: "7d" }],
-  },
-  {
-    key: "codexQuota",
-    label: "Codex",
-    outer: [{ field: "codexFiveHour", fallback: "5h" }],
-    inner: [{ field: "codexWeekly", fallback: "7d" }],
-  },
-  {
-    key: "kimiQuota",
-    label: "Kimi",
-    outer: [{ field: "kimiFiveHour", fallback: "5h" }],
-    inner: [{ field: "kimiWeekly", fallback: "7d" }],
-  },
+  { key: "claudeQuota", label: "Claude", outer: [{ field: "claudeFiveHour", fallback: "5h" }], inner: [{ field: "claudeWeekly", fallback: "7d" }] },
+  { key: "codexQuota", label: "Codex", outer: [{ field: "codexFiveHour", fallback: "5h" }], inner: [{ field: "codexWeekly", fallback: "7d" }] },
+  { key: "kimiQuota", label: "Kimi", outer: [{ field: "kimiFiveHour", fallback: "5h" }], inner: [{ field: "kimiWeekly", fallback: "7d" }] },
 ];
 
-// Coin ring geometry (SVG user units == the coin's 26px box).
-const CX = 13;
-const CY = 13;
-const OUTER_R = 11;
-const OUTER_SW = 3;
-const INNER_R = 6.8;
-const INNER_SW = 2.6;
-const OUTER_C = 2 * Math.PI * OUTER_R;
-const INNER_C = 2 * Math.PI * INNER_R;
-// Provider logos are square PNGs with their own padding. Clip them to a circle
-// (avatar mask) and oversize past the clip so the mark fills the circle instead
-// of floating small inside the PNG's whitespace.
-const GLYPH_ZOOM = 1.35;
-// Per-provider override, because the exporter does not give every glyph the
-// same share of its canvas (see scripts/export-agent-icons.js):
-//
-//   plain marks           artwork fills 56 of 64  -> zoom 64/56
-//   contrast-tile marks   artwork fills 40 of 64, inside a 56px light plate
-//                         -> zoom 64/40
-//
-// A single 1.35 for both is what made the Codex mark look 29% smaller than
-// Claude's and wear a visible frame: 1.35 shows the middle 47 units, so a
-// 40-unit mark floats with 7 units of its plate still in frame. Zooming to
-// 64/40 fills the hole with the mark itself and pushes the plate past the clip,
-// which is also why the frame disappears — and the plate (#f4f4f4) is within a
-// couple of levels of the coin's own plate (#f6f6f8), so nothing shows at the
-// seam. The tile exists so these black-on-transparent marks survive the dark
-// HUD and Dashboard surfaces; a coin already puts them on a light plate, so
-// here it is pure cost. test/session-hud-style.test.js pins this mapping
-// against the exporter's own manifest so a new provider cannot miss it.
-// Tiled marks get a little breathing room rather than a flush fit. Filling the
-// hole exactly (64/40) is geometrically "equal" to the plain marks but not
-// visually: OpenAI's six-blade spiral has thin interlocking strokes, and at the
-// coin's ~10.6px glyph circle its stroke gaps fall under a pixel and antialias
-// into a grey smudge. Claude's starburst survives flush because it is radial,
-// thick, and mostly empty. So 40 units of artwork are laid out at 90% of the
-// hole — 40 / 0.9 = 44.4 — which still pushes the plate past the clip (the
-// frame stays gone) without crowding the strokes.
-const GLYPH_ZOOM_BY_PROVIDER = {
-  antigravityQuota: 64 / 56,
-  claudeQuota: 64 / 56,
-  codexQuota: 64 / 44.4,
-  kimiQuota: 64 / 56,
-};
-let coinClipSeq = 0;
+function isExtraWindowLimit(limit) {
+  return !!limit && typeof limit === "object" && limit.kind === "window"
+    && Number.isFinite(Number(limit.usedPercent));
+}
 
-let payload = {
+function isExtraBalanceLimit(limit) {
+  return !!limit && typeof limit === "object" && limit.kind === "balance"
+    && typeof limit.remaining === "number" && Number.isFinite(limit.remaining);
+}
+
+function compareExtraEntries(a, b) {
+  if (a.label !== b.label) return a.label < b.label ? -1 : 1;
+  if (a.id !== b.id) return a.id < b.id ? -1 : 1;
+  return 0;
+}
+
+function extraProviderEntries(source) {
+  const extra = source && source.extraQuota;
+  if (!extra || typeof extra !== "object") return [];
+  const entries = [];
+  for (const [id, provider] of Object.entries(extra)) {
+    if (!EXTRA_PROVIDER_ID_RE.test(id) || !provider || typeof provider !== "object") continue;
+    const limits = Array.isArray(provider.limits) ? provider.limits : [];
+    if (!limits.some((limit) => isExtraWindowLimit(limit) || isExtraBalanceLimit(limit))) continue;
+    const label = typeof provider.label === "string" && provider.label ? provider.label : id;
+    entries.push({ id, key: `${EXTRA_HIDDEN_PREFIX}${id}`, label, provider });
+  }
+  entries.sort(compareExtraEntries);
+  return entries;
+}
+
+function extraWindowMinutes(limit) {
+  const minutes = Number(limit && limit.windowMinutes);
+  return Number.isFinite(minutes) && minutes > 0 ? minutes : null;
+}
+
+// Mirrors selectExtraRingLimits in quota-ring-geometry.js: `outer` (shortest
+// sub-day window), `inner` (weekly or first day-plus window) and `third` (the
+// longest window left — an unknown-length calendar month counts as longest —
+// else the balance). Balance-only providers keep the `balance` shape.
+function selectExtraRingLimits(limits) {
+  const list = Array.isArray(limits) ? limits : [];
+  const windows = list.filter(isExtraWindowLimit);
+  const balance = list.find(isExtraBalanceLimit) || null;
+  if (!windows.length) {
+    return balance ? { outer: null, inner: null, third: null, balance } : null;
+  }
+  let outer = null;
+  for (const limit of windows) {
+    const minutes = extraWindowMinutes(limit);
+    if (minutes === null || minutes >= DAY_MINUTES) continue;
+    if (!outer || minutes < extraWindowMinutes(outer)) outer = limit;
+  }
+  if (!outer) outer = windows[0];
+  const long = windows.filter((limit) => limit !== outer
+    && extraWindowMinutes(limit) !== null && extraWindowMinutes(limit) >= DAY_MINUTES);
+  const inner = long.find((limit) => extraWindowMinutes(limit) === WEEK_MINUTES) || long[0] || null;
+  const span = (limit) => extraWindowMinutes(limit) ?? Infinity;
+  let third = null;
+  for (const limit of windows) {
+    if (limit === outer || limit === inner) continue;
+    if (!third || span(limit) > span(third)) third = limit;
+  }
+  return { outer, inner, third: third || balance, balance: null };
+}
+
+const BALANCE_SYMBOLS = Object.freeze({ usd: "$", cny: "¥", eur: "€" });
+
+function formatBalanceAmount(remaining, unit) {
+  const value = Number(remaining);
+  if (!Number.isFinite(value)) return "—";
+  const abs = Math.abs(value);
+  const compact = (n, suffix) => `${(Math.round(n * 10) / 10).toFixed(1).replace(/\.0$/, "")}${suffix}`;
+  let digits;
+  if (abs >= 1_000_000) digits = compact(abs / 1_000_000, "M");
+  else if (abs >= 1_000) digits = compact(abs / 1_000, "k");
+  else digits = abs.toFixed(2);
+  const sign = value < 0 ? "-" : "";
+  const key = typeof unit === "string" ? unit.toLowerCase() : "";
+  if (BALANCE_SYMBOLS[key]) return `${sign}${BALANCE_SYMBOLS[key]}${digits}`;
+  const suffix = key === "credits" ? "cr" : (typeof unit === "string" && unit ? unit : "");
+  return `${sign}${digits}${suffix ? ` ${suffix}` : ""}`;
+}
+
+function glyphLetter(label) {
+  const match = typeof label === "string" ? label.trim().match(/[\p{L}\p{N}]/u) : null;
+  return match ? match[0].toUpperCase() : "?";
+}
+
+const EMPTY_PAYLOAD = Object.freeze({
   accountQuota: [],
   quotaAgentIcons: {},
   displayMode: "used",
   hiddenQuotaProviders: [],
-  side: "left",
-  translations: {},
-};
-const clusterEl = document.getElementById("cluster");
+  visibleRows: 0,
+  overflow: 0,
+});
+let payload = EMPTY_PAYLOAD;
+let clusterEl = null;
 
-function t(key) {
-  const dict = payload && payload.translations ? payload.translations : {};
-  return dict[key] || key;
+function normalizePayload(next) {
+  if (!next || typeof next !== "object") return EMPTY_PAYLOAD;
+  return {
+    accountQuota: Array.isArray(next.accountQuota) ? next.accountQuota : [],
+    quotaAgentIcons: next.quotaAgentIcons || {},
+    displayMode: next.displayMode === "remaining" ? "remaining" : "used",
+    hiddenQuotaProviders: Array.isArray(next.hiddenQuotaProviders) ? next.hiddenQuotaProviders : [],
+    visibleRows: Number.isInteger(next.visibleRows) ? next.visibleRows : 0,
+    overflow: Number.isInteger(next.overflow) ? next.overflow : 0,
+  };
 }
 
 function quotaDisplayMode() {
@@ -131,15 +159,19 @@ function quotaDisplayPercent(usedPercent) {
 function formatWindowLabel(windowMinutes, fallbackLabel) {
   const minutes = Number(windowMinutes);
   if (!Number.isFinite(minutes) || minutes <= 0) return fallbackLabel;
-  if (minutes % (24 * 60) === 0) return `${minutes / (24 * 60)}d`;
+  if (minutes % DAY_MINUTES === 0) return `${minutes / DAY_MINUTES}d`;
   if (minutes % 60 === 0) return `${minutes / 60}h`;
   return `${Math.round(minutes)}m`;
 }
 
-// One definition of the thresholds: the ring's color, the pulse, and whether
-// the readout yields to the binding window all key off the same two numbers.
-const WARN_AT = 60; // >= this is amber
-const HOT_AT = 85; // > this is red (and pulses)
+// Mirrors formatExtraWindowLabel in quota-ring-geometry.js.
+function formatExtraWindowLabel(limit) {
+  const raw = limit && typeof limit.label === "string" ? limit.label.trim() : "";
+  const minutes = Number(limit && limit.windowMinutes);
+  if (Number.isFinite(minutes) && minutes > 0) return formatWindowLabel(minutes, raw);
+  if (/month/i.test(raw)) return "1mo";
+  return raw.replace(/\s+limit$/i, "") || raw;
+}
 
 function severityClass(usedPercent) {
   const p = Number(usedPercent);
@@ -149,25 +181,10 @@ function severityClass(usedPercent) {
   return "sev-ok";
 }
 
-// Identity hint for the stylesheet: a healthy ring is colored by (provider,
-// logical window) so the rolling and weekly windows stay tellable apart —
-// severity alone paints both the same color whenever both are healthy. The
-// slot argument is the window's LOGICAL timescale, not the physical ring it
-// is drawn on: a provider reporting only its weekly window (Codex, since the
-// 5h window was retired) draws that ring at the outer radius yet still wears
-// the weekly/inner hue — the same hue the Dashboard paints its Weekly bar,
-// so a color names one window across both surfaces.
-// Appended last so the "sev-x is-near" pair stays contiguous.
-function identityClass(providerKey, ringSlot) {
-  return `pv-${providerKey} rg-${ringSlot}`;
-}
-
 function staleAfterMs(providerKey) {
   return PROVIDER_STALE_AFTER_MS[providerKey] || DEFAULT_QUOTA_STALE_AFTER_MS;
 }
 
-// Window reset on wall clock: the pre-reset number would read high, so an
-// expired bucket becomes a dim 0 ("reset, nothing reported since").
 function liveBucket(group, field, now) {
   const bucket = group && group[field];
   if (!bucket || typeof bucket !== "object") return null;
@@ -192,11 +209,7 @@ function providerHasDrawableQuota(source, def) {
     group[candidate.field] && typeof group[candidate.field] === "object");
 }
 
-// Select one candidate for a physical ring. A live bucket always beats a reset
-// bucket; among equally live candidates the highest used percentage is the
-// most constrained. This keeps Antigravity to one coin while never silently
-// dropping its Claude/GPT quota family.
-function selectRingWindow(group, candidates, now, ring, providerSeenAtValue, providerKey) {
+function selectWindow(group, candidates, now, ring, providerSeenAtValue, providerKey) {
   let selected = null;
   for (const candidate of candidates) {
     const bucket = liveBucket(group, candidate.field, now);
@@ -214,536 +227,274 @@ function selectRingWindow(group, candidates, now, ring, providerSeenAtValue, pro
     }
   }
   if (!selected) return null;
-  const baseLabel = formatWindowLabel(selected.bucket.windowMinutes, selected.candidate.fallback);
-  const family = selected.candidate.familyKey ? t(selected.candidate.familyKey) : "";
   return {
     pct: selected.pct,
-    label: selected.candidate.shortFamily
-      ? `${selected.candidate.shortFamily}·${baseLabel}`
-      : baseLabel,
-    detailLabel: family ? `${family} · ${baseLabel}` : baseLabel,
+    label: formatWindowLabel(selected.bucket.windowMinutes, selected.candidate.fallback),
     reset: selected.reset,
     resetAt: selected.bucket.resetAt,
     ring,
     field: selected.candidate.field,
+    windowMinutes: selected.bucket.windowMinutes,
     stale: selected.stale,
     seenAt: selected.seenAt,
   };
 }
 
-// Build the visual model for one coin from a source's provider group.
-function buildCoinModel(source, def, now, multiSource) {
-  const provider = source[def.key];
-  const group = provider && provider.group;
-  if (!group) return null;
-  const providerSeen = providerSeenAt(provider);
-  const outer = selectRingWindow(group, def.outer, now, "outer", providerSeen, def.key);
-  const inner = selectRingWindow(group, def.inner, now, "inner", providerSeen, def.key);
-  if (!outer && !inner) return null;
-
-  const windows = [];
-  if (outer) windows.push(outer);
-  if (inner) windows.push(inner);
-
-  const allReset = windows.every((w) => w.reset);
-  // Binding window = the most-constrained live window (max used, tie → outer).
-  const live = windows.filter((w) => !w.reset);
-  const freshLive = live.filter((w) => !w.stale);
-  const bindingCandidates = freshLive.length ? freshLive : live;
-  let binding = null;
-  for (const w of bindingCandidates) {
-    if (!binding || w.pct > binding.pct) binding = w;
-  }
-  // The compact readout answers the common "what is my rolling-window usage?"
-  // question, so it prefers the rolling window while that is fresh — never
-  // presenting an old rolling number as live when the weekly window has a
-  // newer confirmation.
-  //
-  // But it yields to the binding window once that crosses a warning threshold.
-  // Otherwise the number and the alert describe different windows: 30% rolling
-  // over 90% weekly printed "30% 5h" — the most reassuring reading available —
-  // while the only thing reporting trouble was the inner ring's color. That
-  // left color as the sole carrier of the alert, which fails anyone with a
-  // color-vision deficiency, fails a glance that reads the digits, and (in the
-  // 60-85 band, where nothing pulses) has no other channel at all.
-  const restingWindow = (outer && !outer.stale)
-    ? outer
-    : ((inner && !inner.stale) ? inner : (outer || inner));
-  const displayWindow = (binding && binding.pct >= WARN_AT && binding !== restingWindow)
-    ? binding
-    : restingWindow;
-  const stale = windows.every((w) => w.stale);
-  const state = allReset ? "reset" : (stale ? "stale" : "live");
-  const near = state === "live" && binding && binding.pct > HOT_AT;
-
-  const visibleHost = multiSource
-    ? (source.host || t("dashboardQuotaSourceLocal"))
-    : null;
+function sourceIdentity(source) {
   return {
-    providerKey: def.key,
-    label: def.label,
-    host: visibleHost || source.host || null,
-    // Stable identity from the store, distinct from the display label: two
-    // trusted remote profiles may share one host string, so anything keyed per
-    // source has to use this instead.
+    host: typeof source.host === "string" && source.host ? source.host : null,
     sourceKey: source.sourceKey === undefined ? null : source.sourceKey,
-    sourceMarker: visibleHost,
-    glyphUrl: payload.quotaAgentIcons && payload.quotaAgentIcons[def.key],
-    windows,
-    binding,
-    displayWindow,
-    // Kept so the flashback can hand the readout back to the rolling number at
-    // the moments it is asked about — yielding the headline was right, but
-    // dropping the quiet number entirely trades one blind spot for another.
-    restingWindow,
-    state,
-    near: !!near,
   };
 }
 
-// Providers the user hid from this cluster. Display-only — collection and the
-// Dashboard are untouched. quota-ring-geometry.js applies the identical filter
-// when it sizes this window; the two must agree or the window reserves space
-// for coins that never render. test/quota-ring-geometry.test.js pins the pair.
+// `third` is an extra provider's third window, drawn first (longest) in the
+// long-window hue.
+function assembleWindowRow(identity, outer, inner, third = null) {
+  const windows = [];
+  if (outer) windows.push(outer);
+  if (inner) windows.push(inner);
+  if (third) windows.push(third);
+  const stale = windows.every((item) => item.stale);
+  return { ...identity, kind: "window", windows, state: windows.every((item) => item.reset) ? "reset" : stale ? "stale" : "live" };
+}
+
+function buildProviderRow(source, def, now) {
+  const provider = source[def.key];
+  const group = provider && provider.group;
+  if (!group) return null;
+  const seenAt = providerSeenAt(provider);
+  const outer = selectWindow(group, def.outer, now, "outer", seenAt, def.key);
+  const inner = selectWindow(group, def.inner, now, "inner", seenAt, def.key);
+  if (!outer && !inner) return null;
+  return assembleWindowRow({
+    providerKey: def.key,
+    paletteKey: def.key,
+    label: def.label,
+    ...sourceIdentity(source),
+    glyphUrl: payload.quotaAgentIcons && payload.quotaAgentIcons[def.key],
+    glyphLetter: null,
+  }, outer, inner);
+}
+
+function extraWindow(limit, ring, now, seenAt, slot = ring) {
+  const resetAt = Number(limit.resetAt);
+  const reset = limit.expired === true || (Number.isFinite(resetAt) && resetAt <= now);
+  const pct = reset ? 0 : Math.max(0, Math.min(100, Number(limit.usedPercent) || 0));
+  const limitSeenAt = Number(limit.lastSeenAt);
+  const observedAt = Number.isFinite(limitSeenAt) ? limitSeenAt : seenAt;
+  const stale = Number.isFinite(observedAt) && now - observedAt > staleAfterMs(EXTRA_PALETTE_KEY);
+  return {
+    pct,
+    label: formatExtraWindowLabel(limit),
+    slot,
+    reset,
+    resetAt: Number.isFinite(resetAt) ? resetAt : undefined,
+    ring,
+    field: typeof limit.id === "string" ? limit.id : "",
+    windowMinutes: limit.windowMinutes,
+    stale,
+    seenAt: observedAt,
+  };
+}
+
+function buildExtraProviderRow(source, entry, now) {
+  const selected = selectExtraRingLimits(entry.provider.limits);
+  if (!selected) return null;
+  const seenAt = providerSeenAt(entry.provider);
+  const identity = {
+    providerKey: entry.key,
+    paletteKey: EXTRA_PALETTE_KEY,
+    label: entry.label,
+    ...sourceIdentity(source),
+    glyphUrl: null,
+    glyphLetter: glyphLetter(entry.label),
+  };
+  if (selected.balance) {
+    const stale = Number.isFinite(seenAt) && now - seenAt > staleAfterMs(EXTRA_PALETTE_KEY);
+    return {
+      ...identity,
+      kind: "balance",
+      windows: [],
+      balance: { remaining: selected.balance.remaining, unit: selected.balance.unit,
+        text: formatBalanceAmount(selected.balance.remaining, selected.balance.unit) },
+      state: stale ? "stale" : "live",
+    };
+  }
+  const third = selected.third;
+  const thirdWindow = third && third.kind === "window"
+    ? extraWindow(third, "inner", now, seenAt, "third")
+    : null;
+  // A balance beside window limits stands in for the long (monthly) slot.
+  const balance = third && third.kind === "balance"
+    ? { remaining: third.remaining, unit: third.unit, text: formatBalanceAmount(third.remaining, third.unit) }
+    : null;
+  const outerMinutes = extraWindowMinutes(selected.outer);
+  const row = !selected.inner && outerMinutes !== null && outerMinutes >= DAY_MINUTES
+    ? assembleWindowRow(identity, null, extraWindow(selected.outer, "inner", now, seenAt), thirdWindow)
+    : assembleWindowRow(identity,
+      extraWindow(selected.outer, "outer", now, seenAt),
+      selected.inner ? extraWindow(selected.inner, "inner", now, seenAt) : null,
+      thirdWindow);
+  return balance ? { ...row, balance } : row;
+}
+
 function hiddenProviderSet() {
   const hidden = Array.isArray(payload.hiddenQuotaProviders) ? payload.hiddenQuotaProviders : [];
   const keys = hidden.filter((key) => typeof key === "string" && key);
   return keys.length ? new Set(keys) : null;
 }
 
-function collectCoins(now) {
+function collectQuotaRows(now = Date.now()) {
   const sources = Array.isArray(payload.accountQuota) ? payload.accountQuota : [];
   const hidden = hiddenProviderSet();
-  const isDrawn = (source, def) =>
-    !(hidden && hidden.has(def.key)) && providerHasDrawableQuota(source, def);
-  // "Multi-source" drives the per-coin host marker, so it counts sources that
-  // still draw something AFTER hiding — hiding every provider a second machine
-  // reports should retire the marker, not leave it labelling a single cluster.
-  const drawableSources = sources.filter((source) =>
-    source && typeof source === "object"
-      && RING_PROVIDERS.some((def) => isDrawn(source, def)));
-  const multiSource = drawableSources.length > 1;
-  const coins = [];
-  for (const source of drawableSources) {
+  const isHidden = (key) => !!(hidden && hidden.has(key));
+  const rows = [];
+  for (const source of sources) {
+    if (!source || typeof source !== "object") continue;
     for (const def of RING_PROVIDERS) {
-      if (hidden && hidden.has(def.key)) continue;
-      const model = buildCoinModel(source, def, now, multiSource);
-      if (model) coins.push(model);
+      if (isHidden(def.key) || !providerHasDrawableQuota(source, def)) continue;
+      const model = buildProviderRow(source, def, now);
+      if (model) rows.push(model);
+    }
+    for (const entry of extraProviderEntries(source)) {
+      if (isHidden(entry.key)) continue;
+      const model = buildExtraProviderRow(source, entry, now);
+      if (model) rows.push(model);
     }
   }
-  return coins;
+  return rows;
 }
 
-function ringCircle(cls, r, sw, dashFill) {
-  const c = document.createElementNS(SVG_NS, "circle");
-  c.setAttribute("class", cls);
-  c.setAttribute("cx", String(CX));
-  c.setAttribute("cy", String(CY));
-  c.setAttribute("r", String(r));
-  c.setAttribute("fill", "none");
-  c.setAttribute("stroke-width", String(sw));
-  if (dashFill) {
-    const circ = 2 * Math.PI * r;
-    const filled = Math.max(0, Math.min(100, dashFill.pct)) / 100 * circ;
-    c.setAttribute("stroke-linecap", "round");
-    c.setAttribute("stroke-dasharray", `${filled.toFixed(2)} ${circ.toFixed(2)}`);
-    c.setAttribute("transform", `rotate(-90 ${CX} ${CY})`);
-  }
-  return c;
-}
-
-function buildCoinSvg(model) {
-  const dual = model.windows.length > 1;
-  const svg = document.createElementNS(SVG_NS, "svg");
-  svg.setAttribute("class", "coin");
-  svg.setAttribute("viewBox", "0 0 26 26");
-  svg.setAttribute("aria-hidden", "true");
-
-  const outer = model.windows.find((w) => w.ring === "outer") || model.windows[0];
-  const inner = model.windows.find((w) => w.ring === "inner");
-
-  // The track carries the identity classes too: it is the same hue as the fill,
-  // just laid down faintly as a bed (see quota-ring.html). A reset ring draws no
-  // fill at all, so its bed is the only thing left — it must not fall back to
-  // grey there, and it gets its own class so the bed can be strengthened for
-  // exactly that state. Per RING, not per row: .coin-row.is-reset only exists
-  // when EVERY window reset, so "one window reset while the other is live" —
-  // the common case right after a 5h rollover — falls straight through it.
-  const bedOnly = (w) => !!w && w.reset === true && quotaDisplayMode() === "used";
-  // Staleness belongs to a bucket, not necessarily the whole provider. A
-  // presence-aware partial update can refresh weekly while leaving 5h old (or
-  // vice versa), so each physical ring carries its own class. The row-level
-  // state remains useful when every reported window is stale.
-  const staleClass = (w) => (w && w.stale ? " is-stale" : "");
-  // Identity classes come from each window's LOGICAL slot (outer.ring), so a
-  // single-window provider drawn at the outer radius still wears the hue of
-  // the window it is actually reporting (see identityClass).
-  svg.appendChild(ringCircle(
-    `track ${identityClass(model.providerKey, outer.ring)}${bedOnly(outer) ? " is-reset-bed" : ""}${staleClass(outer)}`,
-    OUTER_R, OUTER_SW, null));
-  if (outer && (!outer.reset || quotaDisplayMode() === "remaining")) {
-    const outerNear = !outer.reset && model.near && model.binding === outer;
-    const f = ringCircle(
-      `fill ${outer.reset ? "sev-reset" : severityClass(outer.pct)}${outerNear ? " is-near" : ""} ${identityClass(model.providerKey, outer.ring)}${staleClass(outer)}`,
-      OUTER_R,
-      OUTER_SW,
-      { pct: outer.reset ? 100 : quotaDisplayPercent(outer.pct) }
-    );
-    svg.appendChild(f);
-  }
-  if (dual) {
-    svg.appendChild(ringCircle(
-      `track ${identityClass(model.providerKey, inner.ring)}${bedOnly(inner) ? " is-reset-bed" : ""}${staleClass(inner)}`,
-      INNER_R, INNER_SW, null));
-    if (inner && (!inner.reset || quotaDisplayMode() === "remaining")) {
-      const innerNear = !inner.reset && model.near && model.binding === inner;
-      svg.appendChild(ringCircle(
-        `fill ${inner.reset ? "sev-reset" : severityClass(inner.pct)}${innerNear ? " is-near" : ""} ${identityClass(model.providerKey, inner.ring)}${staleClass(inner)}`,
-        INNER_R,
-        INNER_SW,
-        { pct: inner.reset ? 100 : quotaDisplayPercent(inner.pct) }
-      ));
-    }
-  }
-
-  // Center token: a single-ring coin owns the whole inner hole; a dual-ring
-  // coin only the space inside the weekly ring. The logo is clipped to a circle
-  // (avatar mask) and oversized so it fills that circle edge-to-edge.
-  const plateR = dual ? 5.3 : 7.9;
-  const plate = document.createElementNS(SVG_NS, "circle");
-  plate.setAttribute("class", "plate");
-  plate.setAttribute("cx", String(CX));
-  plate.setAttribute("cy", String(CY));
-  plate.setAttribute("r", String(plateR));
-  svg.appendChild(plate);
-
-  if (model.glyphUrl) {
-    const clipId = `coin-clip-${coinClipSeq++}`;
-    const defs = document.createElementNS(SVG_NS, "defs");
-    const clip = document.createElementNS(SVG_NS, "clipPath");
-    clip.setAttribute("id", clipId);
-    const clipCircle = document.createElementNS(SVG_NS, "circle");
-    clipCircle.setAttribute("cx", String(CX));
-    clipCircle.setAttribute("cy", String(CY));
-    clipCircle.setAttribute("r", String(plateR));
-    clip.appendChild(clipCircle);
-    defs.appendChild(clip);
-    svg.appendChild(defs);
-
-    const zoom = GLYPH_ZOOM_BY_PROVIDER[model.providerKey] || GLYPH_ZOOM;
-    const box = plateR * 2 * zoom; // oversize past the clip → crops PNG padding
-    const img = document.createElementNS(SVG_NS, "image");
-    img.setAttribute("class", "glyph");
-    img.setAttribute("x", String(CX - box / 2));
-    img.setAttribute("y", String(CY - box / 2));
-    img.setAttribute("width", String(box));
-    img.setAttribute("height", String(box));
-    img.setAttribute("preserveAspectRatio", "xMidYMid slice");
-    img.setAttribute("clip-path", `url(#${clipId})`);
-    img.setAttribute("href", model.glyphUrl);
-    img.setAttributeNS(XLINK_NS, "xlink:href", model.glyphUrl);
-    svg.appendChild(img);
-  }
-  return svg;
-}
-
-function buildCoinRow(model, now = Date.now()) {
-  const row = document.createElement("div");
-  row.className = `coin-row is-${model.state}`;
-  // The hosting Electron panel is intentionally non-focusable so checking
-  // quota never steals focus from the terminal. Treat the ring as a decorative
-  // pointer convenience; keyboard/screen-reader access remains in Dashboard.
-  row.addEventListener("click", () => window.quotaRingAPI.openDashboard());
-
-  const readout = document.createElement("div");
-  readout.className = "readout";
-  const pct = document.createElement("span");
-  pct.className = "pct";
-  const win = document.createElement("span");
-  win.className = "win";
-  // During a flashback the rolling window borrows the readout back. The rings
-  // never change — only which window the digits are reporting — so the alert
-  // stays on screen the whole time.
-  const shown = model.flashingResting ? model.restingWindow : model.displayWindow;
-  if (shown && shown.reset) {
-    pct.textContent = quotaDisplayMode() === "remaining" ? "100%" : "0%";
-    win.textContent = t("quotaRingReset");
-  } else if (shown) {
-    pct.textContent = `${Math.round(quotaDisplayPercent(shown.pct))}%`;
-    win.textContent = shown.label;
-  } else {
-    pct.textContent = "—";
-    win.textContent = model.windows[0] ? model.windows[0].label : "";
-  }
-  readout.append(pct, win);
-  const foot = buildReadoutFoot(model);
-  if (foot) readout.appendChild(foot);
-
-  row.append(readout, buildCoinSvg(model));
-  return row;
-}
-
-// The readout's optional third line answers, in priority order:
-//   1. "what do the digits mean?" — remaining mode flips the percent's
-//      meaning, so whenever it is active the mode word stays on screen.
-//   2. "which machine reported this?" — the static source marker, shown only
-//      when the mode word above does not need the line.
-//
-// Deliberately NOT here: the stale age. A draft spelled it out ("1h26m ago")
-// so staleness would not ride on row opacity alone, which is an intensity
-// channel a glance or any CVD can miss. On a real desktop it was wrong for a
-// blunter reason — Codex goes stale 5 minutes after its last reading, so the
-// note is on screen during every ordinary gap between runs, i.e. nearly
-// always. A permanent footnote is not a warning, it is furniture, and it cost
-// a third text line on a 26px coin row to say nothing new. If staleness needs
-// a second channel later, it should be one that is silent while normal —
-// desaturating the arc, or a dot — not standing text.
-function buildReadoutFoot(model) {
-  let text = null;
-  if (quotaDisplayMode() === "remaining") {
-    text = t("quotaRingRemainingWord");
-  } else if (model.sourceMarker) {
-    text = model.sourceMarker;
-  }
-  if (!text) return null;
-  const foot = document.createElement("span");
-  foot.className = "source";
-  foot.textContent = text;
-  return foot;
-}
-
-function buildOverflow(count) {
-  const el = document.createElement("div");
-  el.className = "overflow";
-  el.textContent = `+${count}`;
-  el.addEventListener("click", () => window.quotaRingAPI.openDashboard());
+function createElement(tag, className, text) {
+  const el = document.createElement(tag);
+  if (className) el.className = className;
+  if (text !== undefined) el.textContent = text;
   return el;
 }
 
-// ── Rolling-window flashback ──
-//
-// When an alert borrows the headline, the rolling number vanishes — but "what
-// did that last run cost me?" is still the question the ring gets opened for.
-// Rather than cycling the two forever (permanent motion in the corner of the
-// eye, and a glance can land on the wrong half), the rolling number is shown
-// only at the moments it is actually being asked about:
-//
-//   - the cluster becomes visible and the rolling number moved since it was
-//     last on screen — i.e. you summoned it right after using some quota;
-//   - it is pinned, and the rolling number moves under you.
-//
-// Both are events, not a timer: an idle desktop never animates. Movement
-// includes a window reset (70% -> 1%), which is exactly the kind of change
-// worth surfacing.
-const FLASH_MS = 1600;
-const flashState = new Map(); // coin key -> { lastPct, dirty, until }
-let ringVisible = true; // main process tells us; assume visible until told
-let flashTimer = null;
-
-// Keyed on the store's sourceKey, never on `host`: host is a display label and
-// two trusted remote profiles are explicitly allowed to share one, which would
-// otherwise fuse their coins into a single state entry — each overwriting the
-// other's lastPct and manufacturing a change on every snapshot. JSON so no
-// separator can appear inside a component.
-function coinKey(model) {
-  return JSON.stringify([model.providerKey, model.sourceKey ?? null]);
-}
-
-// A coin only has something to flash back TO when the alert took the headline
-// from a different window.
-function flashCandidate(model) {
-  return model.restingWindow
-    && model.displayWindow
-    && model.restingWindow !== model.displayWindow
-    ? model.restingWindow
-    : null;
-}
-
-function armFlash(entry, now) {
-  entry.dirty = false;
-  // Do not restart a flash already running: with several runs back to back the
-  // readout would otherwise sit on the rolling number indefinitely and the
-  // alert would never get its headline back. (A newer value still paints
-  // immediately — the snapshot repaints — it just does not extend the window.)
-  if (!(entry.until > now)) entry.until = now + FLASH_MS;
-}
-
-// Fold the current snapshot into the flash state. Called only where the
-// snapshot is actually consumed — never from fingerprint(), which runs every
-// tick and must stay free of side effects.
-function noteRestingWindows(coins, now) {
-  const seen = new Set();
-  for (const model of coins) {
-    const key = coinKey(model);
-    seen.add(key);
-    const resting = model.restingWindow;
-    const pct = resting && !resting.reset ? resting.pct : null;
-    const entry = flashState.get(key);
-    if (!entry) {
-      // First sighting establishes the baseline; a fresh window (or a rebuilt
-      // one after the panel was destroyed) should not flash on arrival.
-      flashState.set(key, { lastPct: pct, dirty: false, until: 0 });
-      continue;
+function attachDashboardClick(row) {
+  row.addEventListener("click", () => window.sessionHudAPI.openDashboard());
+  row.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      window.sessionHudAPI.openDashboard();
     }
-    if (pct === entry.lastPct) continue;
-    entry.lastPct = pct;
-    // Record the movement itself, independently of whether an alert happens to
-    // hold the headline right now. Gating this on flashCandidate() lost the
-    // ordinary case: rolling moves while hidden and healthy, THEN the weekly
-    // window crosses the threshold — by the time anyone looks, the rolling
-    // number has changed unseen and nothing remembers it.
-    entry.dirty = true;
-    if (!ringVisible) continue;
-    // Visible: either play it now, or note that it is already on screen — the
-    // readout IS the rolling window when no alert took it, so there is nothing
-    // left to replay later.
-    if (flashCandidate(model)) armFlash(entry, now);
-    else entry.dirty = false;
+  });
+}
+
+function identityClasses(model, window) {
+  const severity = window.reset ? "sev-reset" : severityClass(window.pct);
+  return `quota-value pv-${model.paletteKey} rg-${window.ring} ${severity}`;
+}
+
+function displayedWindowPercent(item) {
+  if (item.reset) return quotaDisplayMode() === "remaining" ? 100 : 0;
+  return Math.round(quotaDisplayPercent(item.pct));
+}
+
+function buildQuotaRow(model) {
+  const row = createElement("div", `quota-row${model.state === "stale" ? " is-stale" : ""}`);
+  row.setAttribute("role", "button");
+  row.setAttribute("tabindex", "0");
+  attachDashboardClick(row);
+
+  if (model.glyphUrl) {
+    const glyph = createElement("img", "provider-glyph");
+    glyph.setAttribute("src", model.glyphUrl);
+    glyph.setAttribute("alt", "");
+    row.appendChild(glyph);
+  } else {
+    const glyph = createElement("span", "provider-glyph extra-glyph", model.glyphLetter || glyphLetter(model.label));
+    row.appendChild(glyph);
   }
-  for (const key of [...flashState.keys()]) if (!seen.has(key)) flashState.delete(key);
-}
 
-function isFlashing(model, now) {
-  const entry = flashState.get(coinKey(model));
-  return !!(entry && entry.until > now && flashCandidate(model));
-}
+  const identity = createElement("span", "provider-identity");
+  identity.appendChild(createElement("span", "provider-label", model.label));
+  if (model.host) identity.appendChild(createElement("span", "provider-host", ` · ${model.host}`));
+  row.appendChild(identity);
 
-// Release whatever was banked while the cluster was hidden. Returns whether
-// anything actually fired, so the caller can skip a repaint.
-function armPendingFlashes(coins, now) {
-  let armed = false;
-  for (const model of coins) {
-    const entry = flashState.get(coinKey(model));
-    if (!entry || !entry.dirty) continue;
-    if (flashCandidate(model)) {
-      armFlash(entry, now);
-      armed = true;
-    } else {
-      // No alert holds the headline any more, so the rolling number is already
-      // what the reader sees. Clear the debt rather than keeping it — otherwise
-      // the next alert would open with a replay of a change the reader has
-      // been looking at the whole time.
-      entry.dirty = false;
+  const values = createElement("span", "quota-values");
+  if (model.kind === "balance") {
+    values.appendChild(createElement("span", identityClasses(model, { ring: "outer", pct: 0 }), model.balance.text));
+  } else {
+    if (model.balance) {
+      values.appendChild(createElement("span", identityClasses(model, { ring: "inner", pct: 0 }), model.balance.text));
+    }
+    // Longest first: the third (monthly) window, then the long ring, then
+    // the rolling one.
+    const slotOrder = (item) => (item.slot === "third" ? 0 : item.ring === "inner" ? 1 : 2);
+    const windows = [...model.windows].sort((a, b) =>
+      slotOrder(a) - slotOrder(b) || (Number(b.windowMinutes) || 0) - (Number(a.windowMinutes) || 0));
+    for (const item of windows) {
+      values.appendChild(createElement("span", identityClasses(model, item),
+        `${item.label} ${displayedWindowPercent(item)}%`));
     }
   }
-  return armed;
+  row.appendChild(values);
+  return row;
 }
 
-// Fire at the EARLIEST pending expiry, not a fixed FLASH_MS from now: a second
-// coin flashing later would otherwise push the timer out and leave the first
-// one's handback to the 1s tick, stretching a 1.6s flash toward 2.6s.
-function scheduleFlashEnd(now) {
-  let earliest = Infinity;
-  for (const entry of flashState.values()) {
-    if (entry.until > now && entry.until < earliest) earliest = entry.until;
-  }
-  if (flashTimer) clearTimeout(flashTimer);
-  flashTimer = null;
-  if (!Number.isFinite(earliest)) return;
-  flashTimer = setTimeout(() => {
-    flashTimer = null;
-    render();
-    // Another coin may still be mid-flash with a later expiry.
-    scheduleFlashEnd(Date.now());
-  }, Math.max(0, earliest - now) + 30);
+function buildOverflowRow(count) {
+  const row = createElement("div", "quota-row quota-overflow", `+${count}`);
+  row.setAttribute("role", "button");
+  row.setAttribute("tabindex", "0");
+  attachDashboardClick(row);
+  return row;
 }
 
-// Digest of everything time flips WITHOUT a new snapshot (bucket expiry, source
-// staleness), so the 1s tick can re-render on change even for a pinned cluster
-// receiving no snapshots.
 let lastFingerprint = "";
 function fingerprint(now) {
-  const coins = collectCoins(now);
-  const digest = coins.map((m) => {
-    const windows = m.windows.map((w) => {
-      const resetIn = Number.isFinite(w.resetAt) && w.resetAt > now
-        ? Math.ceil((w.resetAt - now) / 60000)
-        : 0;
-      const staleAge = w.stale && Number.isFinite(w.seenAt)
-        ? Math.floor((now - w.seenAt) / 60000)
-        : 0;
-      return `${w.ring}:${w.field}:${w.pct}:${w.reset ? 1 : 0}:${resetIn}:${w.stale ? 1 : 0}:${staleAge}`;
-    }).join(",");
-    // Include the flash so the 1s tick can repaint when one expires, as a
-    // backstop for the precise timer. (It cannot recover a panel that was
-    // destroyed and rebuilt mid-flash — that takes the whole Map with it.)
-    return `${m.providerKey}:${m.host || ""}:${m.state}:${isFlashing(m, now) ? 1 : 0}:${windows}`;
-  }).join("|");
-  return `${quotaDisplayMode()}|${digest}`;
+  return JSON.stringify({ mode: quotaDisplayMode(), rows: collectQuotaRows(now).map((row) => ({
+    key: row.providerKey,
+    host: row.host,
+    state: row.state,
+    windows: row.windows.map((item) => [item.ring, item.field, item.pct, item.reset, item.stale,
+      Number.isFinite(item.resetAt) && item.resetAt > now ? Math.ceil((item.resetAt - now) / 60000) : 0,
+      item.stale && Number.isFinite(item.seenAt) ? Math.floor((now - item.seenAt) / 60000) : 0]),
+    balance: row.balance && row.balance.text,
+  })) });
 }
 
 function render() {
+  if (!clusterEl) return;
   const now = Date.now();
   lastFingerprint = fingerprint(now);
-  clusterEl.className = `cluster side-${payload.side === "right" ? "right" : "left"}`;
   clusterEl.replaceChildren();
-  coinClipSeq = 0;
-
-  const coins = collectCoins(now);
-  if (!coins.length) return;
-  const visible = coins.slice(0, MAX_COINS);
-  const overflow = coins.length - visible.length;
-
-  for (const model of visible) {
-    model.flashingResting = isFlashing(model, now);
-    clusterEl.appendChild(buildCoinRow(model, now));
-  }
-  if (overflow > 0) clusterEl.appendChild(buildOverflow(overflow));
+  // visibleRows is the count main sized the window for; with none, the
+  // section stays empty and takes no height.
+  if (!Number.isInteger(payload.visibleRows) || payload.visibleRows <= 0) return;
+  const rows = collectQuotaRows(now);
+  if (!rows.length) return;
+  const overflow = Math.max(0, payload.overflow);
+  const providerLimit = overflow > 0 ? Math.max(0, payload.visibleRows - 1) : payload.visibleRows;
+  for (const model of rows.slice(0, providerLimit)) clusterEl.appendChild(buildQuotaRow(model));
+  if (overflow > 0) clusterEl.appendChild(buildOverflowRow(overflow));
 }
 
+// Reset times and staleness move on their own; re-render only when what the
+// rows would show actually changed.
 function tick() {
-  const now = Date.now();
-  if (fingerprint(now) !== lastFingerprint) render();
+  if (!clusterEl) return;
+  if (fingerprint(Date.now()) !== lastFingerprint) render();
 }
 
-async function init() {
-  window.quotaRingAPI.onLangChange((next) => {
-    if (next) payload = { ...payload, translations: next.translations || {}, lang: next.lang };
+root.ClawdHudQuota = {
+  update(container, nextPayload) {
+    clusterEl = container || null;
+    payload = normalizePayload(nextPayload);
     render();
-  });
-  window.quotaRingAPI.onSnapshot((next) => {
-    payload = {
-      accountQuota: Array.isArray(next && next.accountQuota) ? next.accountQuota : [],
-      quotaAgentIcons: (next && next.quotaAgentIcons) || {},
-      displayMode: next && next.displayMode === "remaining" ? "remaining" : "used",
-      hiddenQuotaProviders: Array.isArray(next && next.hiddenQuotaProviders)
-        ? next.hiddenQuotaProviders
-        : [],
-      side: next && next.side === "right" ? "right" : "left",
-      translations: payload.translations,
-      lang: payload.lang,
-    };
-    const now = Date.now();
-    const coins = collectCoins(now);
-    noteRestingWindows(coins, now);
-    if (coins.some((model) => isFlashing(model, now))) scheduleFlashEnd(now);
-    render();
-  });
-
-  // Visibility comes from the main process rather than the Page Visibility API:
-  // an Electron window that is merely hidden does not reliably flip
-  // document.visibilityState, and a pinned cluster never hides at all.
-  if (typeof window.quotaRingAPI.onVisibility === "function") {
-    window.quotaRingAPI.onVisibility((visible) => {
-      const wasVisible = ringVisible;
-      ringVisible = visible !== false;
-      if (!ringVisible || wasVisible) return;
-      const now = Date.now();
-      if (!armPendingFlashes(collectCoins(now), now)) return;
-      scheduleFlashEnd(now);
-      render();
-    });
-  }
-
-  const i18n = await window.quotaRingAPI.getI18n();
-  if (i18n) payload = { ...payload, translations: i18n.translations || {}, lang: i18n.lang };
-  // Establish the baseline before the first paint so a cold start never opens
-  // on a flashback.
-  noteRestingWindows(collectCoins(Date.now()), Date.now());
-  render();
-  setInterval(tick, 1000);
-}
-
-init().catch((err) => {
-  clusterEl.textContent = err && err.message ? err.message : String(err);
-});
+  },
+  // Read-only view of the rows a payload would produce; the mounted section
+  // keeps its own payload.
+  collectQuotaRows(nextPayload, now = Date.now()) {
+    const current = payload;
+    payload = normalizePayload(nextPayload);
+    try {
+      return collectQuotaRows(now);
+    } finally {
+      payload = current;
+    }
+  },
+};
+setInterval(tick, 1000);
+})(globalThis);

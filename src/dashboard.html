@@ -271,12 +271,13 @@ h1 {
   overflow: hidden;
 }
 
-/* Provider identity + severity are mirrored from quota-ring.html so a bar and
-   an Orbit coin answer "which provider / which window / which state" with the
-   same color. The hue follows the LOGICAL window: the 5h half wears the
-   provider's outer/rolling hue, the Weekly half the inner/weekly hue — the
-   same assignment the coins use. test/quota-palette.test.js pins the mirror,
-   so these values are not editable here alone — quota-ring.html carries the
+/* Provider identity + severity are mirrored from the quota section of
+   session-hud.html so a Dashboard bar and a Session HUD quota row answer
+   "which provider / which window / which state" with the same color. The hue
+   follows the LOGICAL window: the 5h half wears the provider's outer/rolling
+   hue, the Weekly half the inner/weekly hue — the same assignment the HUD rows
+   use. test/quota-palette.test.js pins the mirror, so these values are not
+   editable here alone — session-hud.html (quota section) carries the
    reasoning for each hue and is where a change starts. Watch out for --done
    above: it is a similar blue, but it means "session finished", not a quota
    window, and a palette sweep must leave it alone. */
@@ -289,6 +290,8 @@ h1 {
   --id-antigravity-inner: #6366f1;
   --id-kimi-outer: #3b93f7;
   --id-kimi-inner: #e27aeb;
+  --id-extra-outer: #c084fc;
+  --id-extra-inner: #6ee7b7;
   --sev-warn: #fbbf24;
   --sev-hot: #f87171;
 }
@@ -311,9 +314,51 @@ h1 {
 .quota-bar-fill.pv-antigravityQuota.rg-inner { background: var(--id-antigravity-inner); }
 .quota-bar-fill.pv-kimiQuota.rg-outer { background: var(--id-kimi-outer); }
 .quota-bar-fill.pv-kimiQuota.rg-inner { background: var(--id-kimi-inner); }
+/* Every extra provider (DeepSeek, Command Code, …) shares one neutral pair. */
+.quota-bar-fill.pv-extraQuota.rg-outer { background: var(--id-extra-outer); }
+.quota-bar-fill.pv-extraQuota.rg-inner { background: var(--id-extra-inner); }
 /* Severity overrides identity exactly like on the coins: warn 60, hot 85. */
 .quota-bar-fill.sev-warn { background: var(--sev-warn); }
 .quota-bar-fill.sev-hot { background: var(--sev-hot); }
+
+/* A wall-clock reset shows 0% like the fixed providers; the label dims so
+   "nothing reported since the reset" does not read as a fresh 0%. */
+.quota-half.is-expired .quota-label-row {
+  opacity: 0.6;
+}
+
+/* Wrap extra-provider windows (OpenCode Go reports three) two per line. */
+.quota-halves.is-wrapping {
+  flex-wrap: wrap;
+  row-gap: 6px;
+}
+
+.quota-halves.is-wrapping .quota-half {
+  flex: 1 1 calc(50% - 7px);
+}
+
+.quota-balance-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 10px;
+}
+
+.quota-balance-label {
+  color: var(--muted);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.quota-balance-value {
+  color: var(--text);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
 
 .content {
   flex: 1 1 auto;

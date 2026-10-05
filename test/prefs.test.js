@@ -84,6 +84,7 @@ describe("prefs.getDefaults", () => {
     assert.strictEqual(d.sessionHudShowElapsed, false);
     assert.strictEqual(d.sessionHudShowContextUsage, true);
     assert.strictEqual(d.sessionHudShowQuota, true);
+    assert.strictEqual(d.quotaTrayEnabled, false);
     assert.strictEqual(d.quotaRingDisplayMode, "used");
     // Empty means every connected provider draws, matching the behaviour before
     // the preference existed. Storing what is HIDDEN (not what is shown) is why
@@ -307,7 +308,7 @@ describe("prefs.validate", () => {
       sessionHudShowElapsed: "yes",
       sessionHudShowContextUsage: "yes",
       quotaRingDisplayMode: "available",
-      sessionHudCleanupDetached: "yes",
+      quotaTrayEnabled: "yes",
       hideBubbles: 0,        // wrong type
       permissionBubblesEnabled: "yes",
       notificationBubbleAutoCloseSeconds: -1,
@@ -335,7 +336,7 @@ describe("prefs.validate", () => {
     assert.strictEqual(v.sessionHudShowElapsed, false);
     assert.strictEqual(v.sessionHudShowContextUsage, true);
     assert.strictEqual(v.quotaRingDisplayMode, "used");
-    assert.strictEqual(v.sessionHudCleanupDetached, true);
+    assert.strictEqual(v.quotaTrayEnabled, false);
     assert.strictEqual(v.hideBubbles, false);
     assert.strictEqual(v.permissionBubblesEnabled, true);
     assert.strictEqual(v.notificationBubbleAutoCloseSeconds, 6);

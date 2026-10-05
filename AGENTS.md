@@ -100,7 +100,7 @@ Copilot CLI 同步走 `<COPILOT_HOME 或 ~/.copilot>/hooks/hooks.json`，marker-
 - HTTP hook / plugin 主路径：`src/server.js` → `src/server-route-state.js` → `src/agent-runtime-main.js` → `src/state.js` → IPC；本地 JSONL monitor 直接进入 `agent-runtime-main`，不经过 HTTP server
 - 权限主路径：`src/server-route-permission.js` → `src/permission.js`；本地 bubble、显式 permission automation 与可选 Telegram / 飞书 Lark 远程审批都可能产生真实决定
 - 桌宠的渲染/输入双窗口由 `src/pet-window-runtime.js` 统一创建和定位；浮层排序与 topmost 行为在 `src/floating-window-runtime.js` / `src/topmost-runtime.js`
-- `src/state.js` 生成的 session snapshot 是 Dashboard、HUD/Orbit 与可选通知/presence/mobile consumer 的共享合约，改字段必须检查所有消费者
+- `src/state.js` 生成的 session snapshot 是 Dashboard、Session HUD（含额度分区）与可选通知/presence/mobile consumer 的共享合约，改字段必须检查所有消费者
 - `src/integration-sync.js` 为已安装且启用的 agent 异步同步 hooks / plugins / extensions；Codex official hooks 为 primary，JSONL 轮询保留为 fallback
 - Claude hook 恢复由 `src/claude-settings-watcher.js` 的目录 watcher + 低频只读巡检共同负责；repair 统一经过 `src/claude-hook-operations.js` 队列并复验，连续失败转 `manual-fix-required`。完整 gate、阈值与 source-missing 语义见 `docs/project/agent-runtime-architecture.md`
 - `src/agent-gate.js` 控制各 agent 的安装意图、启用状态、权限气泡开关和 wait-for-input notification 子开关
@@ -127,6 +127,8 @@ Copilot CLI 同步走 `<COPILOT_HOME 或 ~/.copilot>/hooks/hooks.json`，marker-
 | `src/dashboard-quick-mode.js` | 完整 Dashboard 的 1–9 键盘模式（**macOS/Windows only**）：quick 宿主、opacity/input parking、轮次栅栏与冻结数字映射；Windows 显式取消与页面失效的来源恢复在 `src/quick-select-origin-focus.js`，quick 宿主的退出清理挂在 `before-quit` |
 | `src/session-hud.js` + `src/session-hud-renderer.js` | 桌宠旁轻量会话 HUD、折叠行、点击跳转 |
 | `src/session-alias.js` | session alias key 规范化、TTL pruning、Kiro cwd scope |
+| `src/usage-collector.js` + `src/usage-sources/*.js` | 额度用量聚合：Claude Code 登录用量（只读 OAuth token → `/api/oauth/usage`）、Codex `app-server` `account/rateLimits/read`、OMP `omp usage --json --redact`；按 agent gate 与 `sessionHudShowQuota` 主开关事件触发刷新，写入 account-quota 本机 source（含通用 `extraQuota`） |
+| `src/session-hud.js` + `src/quota-ring-geometry.js` + `src/quota-ring-renderer.js` | Session HUD 内的额度分区：provider 计数/行数布局、按 provider 着色的行与 +N 溢出行，随 Session HUD 一起显示/自动隐藏 |
 | `src/theme-loader.js` + `src/theme-runtime.js` | stateless 主题加载/消毒与唯一 active-theme owner；`waitForThemeReloadSettled` 完成信号 |
 | `src/official-theme-catalog.js` / `-download.js` / `-installer.js` / `-main.js` | 官方可下载主题：严格 catalog/cache、Electron `net.request` 流式下载、受限流式 ZIP 解压与 marker-before-rename、main owner/IPC/共享 `theme` lock |
 | `src/prefs.js` | 偏好 schema、load/save/migrate/validate，设置持久化入口 |
@@ -212,6 +214,7 @@ Copilot CLI 同步走 `<COPILOT_HOME 或 ~/.copilot>/hooks/hooks.json`，marker-
 - Remote SSH 的远端 Node 探测要求 Node >= 14；Node discovery/version validation 只在 `src/remote-ssh-node.js`，ordinary tunnel health 与 serialized readiness 在 `src/remote-ssh-runtime.js`，不得互相复制或从已停用脚本另起实现
 - 注册 Claude Code hook 必须 marker-scoped merge：只可更新/删除含 `clawd-hook.js` / `auto-start.js` marker 的 Clawd-owned entry，不得整体覆盖数组或改动无 marker 的用户 entry
 - 注册 Claude Code statusLine 默认只接管空槽或自己的槽（marker `claude-statusline.js`）；本机 Settings 显式开启采集遇到第三方槽时，必须经共存确认并复核原槽指纹，使用 `--local-chain` 和独立的 `clawd-statusline-local-chain.json` 保存/恢复完整原对象。启动/自动修复不得自行取得第三方槽；恢复记录缺失、损坏或不匹配时 fail closed 并保留现场。远程部署仍用 profile 的 `chainStatusline` opt-in 和既有 `--chain` sidecar，不与本机记录混用。订阅配额通过 `metadata_only` POST 进入 session-independent `updateAccountQuota` per-source store；不要把 quota 塞进 `updateSession` opts，也不要以 session 存活作为摄入前提
+- 额度用量聚合（`src/usage-collector.js`）只在 `sessionHudShowQuota=true` 且对应 agent 已启用时运行，准入与提交前都要复查 gate；只做事件触发（启动一次、单击桌宠、打开 Dashboard、Settings 立即刷新、开关/agent 打开），每源 ≥5 分钟（强制 ≥60 秒）、单飞、429 退避，**不得**加后台轮询。凭据一律只读：不得刷新、轮换或回写 Claude Code / Codex / OMP 的 token；macOS 钥匙串 `Claude Code-credentials` 只能在 interactive 触发里经 `/usr/bin/security` 读取，启动/后台不得弹钥匙串。token、响应体、email/account/org id 不得进日志、状态或持久化。Claude statusline 采集仍是 Agents 卡片上的独立 opt-in，不得被主开关自动打开；`clearLocalClaudeQuota` 会清掉所有本机 claudeQuota，main.js 随后用 `recommitProvider("claudeQuota")` 恢复 collector 自己拉到的数据
 - Copilot CLI hooks 走按需自动同步：`hooks/copilot-install.js` 在本地启动仅当 Copilot CLI 已安装且已启用时调用；远端由 Settings Remote SSH deploy controller 调用。路径解析尊重 `COPILOT_HOME` env（trimmed 非空才生效，否则 fallback 到 `~/.copilot`）；`hooks/copilot-hook.js` 的 session-state resolver 同样走 env
 - Remote SSH 的 effective transport 由 `ssh -G` 只读检查决定：ordinary SSH 在没有 retained serialized occupancy 时保持 `context:null` 的 parallel 路径；serialized transport 以有效 target key（不是 profile id）互斥。所有 serialized managed SSH/SCP child 必须持 coordinator 发出的有效 connection/operation context，并通过其 pre-spawn gateway 启动；用户交互终端只有命中 serialized/retained occupancy 时才要求 coordinator 判定 target 完全 idle
 - serialized persistent tunnel 使用同一条 SSH 内嵌 readiness；暂停通过 stdin EOF 请求自然退出并等待 `close`。强杀或带 signal 的 outer `ssh.exe` close 不能证明 nested ProxyCommand 已 drain；timeout/未验证 drain 必须 quarantine，期间禁止新 child、mutation、resume 或 interactive terminal

@@ -85,7 +85,6 @@ function createHarness() {
   FakeBrowserWindow.instances = [];
   let updateAutoCloseMs = 9_000;
   let petHidden = false;
-  const orbitRepositions = [];
   const clipboardWrites = [];
   const initUpdateBubble = loadUpdateBubbleWithElectron({ BrowserWindow: FakeBrowserWindow });
   const ctx = {
@@ -104,7 +103,6 @@ function createHarness() {
     getHudReservedOffset: () => 0,
     guardAlwaysOnTop: () => {},
     reapplyMacVisibility: () => {},
-    repositionSessionHud: () => orbitRepositions.push("reposition"),
     clipboard: {
       writeText(value) { clipboardWrites.push(value); },
     },
@@ -112,7 +110,6 @@ function createHarness() {
   const api = initUpdateBubble(ctx);
   return {
     api,
-    orbitRepositions,
     clipboardWrites,
     setUpdateAutoCloseMs(value) {
       updateAutoCloseMs = value;
@@ -208,7 +205,6 @@ describe("update bubble auto-close refresh", () => {
       getSessionHudBounds: () => [],
       guardAlwaysOnTop: () => {},
       reapplyMacVisibility: () => {},
-      repositionQuotaRing: () => {},
       clipboard: { writeText: () => {} },
     });
 
@@ -245,7 +241,6 @@ describe("update bubble auto-close refresh", () => {
       getSessionHudBounds: () => [],
       guardAlwaysOnTop: () => {},
       reapplyMacVisibility: () => {},
-      repositionQuotaRing: () => {},
       clipboard: { writeText: () => {} },
     });
 
@@ -283,7 +278,6 @@ describe("update bubble auto-close refresh", () => {
       getSessionHudBounds: () => [{ x: 852, y: 560, width: 340, height: 60 }],
       guardAlwaysOnTop: () => {},
       reapplyMacVisibility: () => {},
-      repositionQuotaRing: () => {},
       clipboard: { writeText: () => {} },
     });
 
@@ -638,28 +632,6 @@ describe("update bubble auto-close refresh", () => {
     assert.strictEqual(bubble.isVisible(), true);
     assert.equal(bubble.sent.at(-1).channel, "update-bubble-show");
     harness.api.cleanup();
-  });
-
-  it("repositions Orbit when the update bubble shows, resizes, and finishes hiding", async () => {
-    mock.timers.enable({ apis: ["setTimeout"] });
-    const harness = createHarness();
-
-    await harness.api.showUpdateBubble({
-      mode: "up-to-date",
-      title: "Up to date",
-      requireAction: false,
-      defaultAction: "dismiss",
-    });
-    const bubble = harness.api.getBubbleWindow();
-    assert.strictEqual(harness.orbitRepositions.length, 1, "show should add update bounds to Orbit avoidance");
-
-    harness.api.handleUpdateBubbleHeight({ sender: bubble.webContents }, 220);
-    assert.strictEqual(harness.orbitRepositions.length, 2, "measured height should reflow Orbit");
-
-    harness.api.hideUpdateBubble();
-    assert.strictEqual(harness.orbitRepositions.length, 2, "Orbit must keep avoiding the fade-out window");
-    mock.timers.tick(250);
-    assert.strictEqual(harness.orbitRepositions.length, 3, "hidden window should release Orbit avoidance");
   });
 
   it("copies error details without closing or resolving the update bubble", async () => {

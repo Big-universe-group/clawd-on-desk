@@ -1,26 +1,25 @@
 "use strict";
 
-// The Orbit coins (quota-ring.html) and the Dashboard bars (dashboard.html)
-// are separate browser documents that cannot share a stylesheet, so the
-// provider palette and the severity colors live in both. This suite pins the
-// mirror: same tokens, same values, same thresholds — and guards the two
-// palette invariants the comments in quota-ring.html promise:
-//   1. no two identity hues collide (the original Kimi draft reused Claude's
-//      inner blue verbatim and sat 15° off Codex's violet);
-//   2. identity hues stay clear of the warm alert band that sev-warn/sev-hot
-//      own, so a warm arc/bar still means exactly one thing.
+// The HUD quota section (session-hud.html) and Dashboard bars (dashboard.html) are
+// separate browser documents that cannot share a stylesheet, so provider
+// palette and severity tokens must mirror. This suite guards the identity
+// separation and its distinction from warm alert colors.
+//   1. no two identity hues collide;
+//   2. identity hues stay clear of the warm alert band owned by severity values.
 
 const { describe, it } = require("node:test");
 const assert = require("node:assert");
 const fs = require("node:fs");
 const path = require("node:path");
 
-const quotaRingHtml = fs.readFileSync(path.join(__dirname, "..", "src", "quota-ring.html"), "utf8");
+const quotaRingHtml = fs.readFileSync(path.join(__dirname, "..", "src", "session-hud.html"), "utf8");
 const dashboardHtml = fs.readFileSync(path.join(__dirname, "..", "src", "dashboard.html"), "utf8");
 const quotaRingRenderer = fs.readFileSync(path.join(__dirname, "..", "src", "quota-ring-renderer.js"), "utf8");
 const dashboardRenderer = fs.readFileSync(path.join(__dirname, "..", "src", "dashboard-renderer.js"), "utf8");
 
-const PROVIDERS = ["claude", "codex", "antigravity", "kimi"];
+// "extra" is the one shared pair every generic provider (source.extraQuota)
+// wears; it is held to the same uniqueness / alert-band rules as a brand pair.
+const PROVIDERS = ["claude", "codex", "antigravity", "kimi", "extra"];
 const SLOTS = ["outer", "inner"];
 
 function tokens(source, prefix) {
@@ -57,28 +56,28 @@ function hueDistance(a, b) {
   return d > 180 ? 360 - d : d;
 }
 
-describe("quota palette mirror across Orbit and Dashboard", () => {
+describe("HUD quota section palette mirror with Dashboard", () => {
   it("declares the same provider/slot identity tokens with the same values in both surfaces", () => {
     const ring = tokens(quotaRingHtml, "--id-");
     const dash = tokens(dashboardHtml, "--id-");
     for (const provider of PROVIDERS) {
       for (const slot of SLOTS) {
         const name = `${provider}-${slot}`;
-        assert.ok(ring[name], `quota-ring.html is missing --id-${name}`);
+        assert.ok(ring[name], `session-hud.html is missing --id-${name}`);
         assert.ok(dash[name], `dashboard.html is missing --id-${name}`);
         assert.strictEqual(
           dash[name], ring[name],
-          `--id-${name} diverged: ring ${ring[name]} vs dashboard ${dash[name]}`
+          `--id-${name} diverged: panel ${ring[name]} vs dashboard ${dash[name]}`
         );
         assert.match(
           dashboardHtml,
-          new RegExp(`\\.quota-bar-fill\\.pv-${provider}Quota\\.rg-${slot}\\s*\\{[^}]*var\\(--id-${name}\\)`),
+          new RegExp(`\\.quota-bar-fill\\.pv-${provider}Quota\\.rg-${slot}\\s*\\{[^}]*var\\(--id-${name}`),
           `dashboard.html has no bar rule painting ${provider}/${slot} in its identity hue`
         );
         assert.match(
           quotaRingHtml,
-          new RegExp(`\\.pv-${provider}Quota\\.rg-${slot}\\s*\\{[^}]*--ring-id`),
-          `quota-ring.html has no coin rule resolving ${provider}/${slot}`
+          new RegExp(`\\.pv-${provider}Quota\\.rg-${slot}\\s*\\{[^}]*--quota-hue`),
+          `session-hud.html has no value rule resolving ${provider}/${slot}`
         );
       }
     }
@@ -130,8 +129,7 @@ describe("quota palette mirror across Orbit and Dashboard", () => {
     assert.match(dashboardRenderer, /QUOTA_WARN_AT = 60/);
     assert.match(dashboardRenderer, /QUOTA_HOT_AT = 85/);
     assert.match(dashboardRenderer, /function quotaSeverityClass\(usedPercent\)/);
-    // The bar carries the same classes the coin uses: provider, logical
-    // window, severity.
+    // The panel value carries the same provider/window/severity classes as the Dashboard bar.
     assert.match(dashboardRenderer, /`quota-bar-fill pv-\$\{providerKey\} rg-\$\{ringSlot\} \$\{quotaSeverityClass/);
     assert.match(dashboardHtml, /\.quota-bar-fill\.sev-warn\s*\{[^}]*var\(--sev-warn\)/);
     assert.match(dashboardHtml, /\.quota-bar-fill\.sev-hot\s*\{[^}]*var\(--sev-hot\)/);

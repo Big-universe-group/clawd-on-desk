@@ -25,6 +25,7 @@
     "sessionHudShowElapsed",
     "sessionHudShowContextUsage",
     "sessionHudShowQuota",
+    "quotaTrayEnabled",
     "quotaRingDisplayMode",
     "permissionAutomationMode",
     "permissionAutomationAutoToolsWarningDismissed",
@@ -857,22 +858,28 @@
     });
   }
 
-  // The quota ring is a sibling of the Session HUD under "Session management",
-  // not a child of it: its switches are never gated by the HUD master, so the
-  // ring can be used with the Session HUD turned off (and vice versa).
+  // The quota group is a sibling of the Session HUD group under "Session
+  // management", not a child of it: its switch is never gated by the HUD
+  // master, so the HUD's quota section shows even with session rows turned off
+  // (and vice versa).
   //
-  // This group answers ONE question: what does the ring look like. It used to
-  // also carry "collect local Claude usage", which is a different question —
-  // whether to read a provider at all — and having the two side by side is why
-  // per-provider collection ended up split across two tabs, Claude here and
-  // Kimi on its agent card. Collection now lives on each provider's own card
-  // under Agents, so "which providers am I reading" has one place to look.
-  // Keep it that way: a new provider's collection switch goes on its card.
+  // This group answers two questions: should Clawd collect usage at all (the
+  // master switch, which also gates the active usage sources — Claude Code
+  // login usage, Codex app-server, `omp usage` — for every enabled agent), and
+  // which provider rows appear in the HUD's quota section. Per-provider opt-ins that rewrite
+  // another tool's config (Claude statusline) or need a secret (Kimi API key)
+  // stay on that provider's card under Agents; "Data sources" here only reports
+  // on the read-only sources the master switch drives.
   function buildQuotaRingGroup() {
     const enabledRow = helpers.buildSwitchRow({
       key: "sessionHudShowQuota",
       labelKey: "rowQuotaRingEnabled",
       descKey: "rowQuotaRingEnabledDesc",
+    });
+    const trayEnabledRow = helpers.buildSwitchRow({
+      key: "quotaTrayEnabled",
+      labelKey: "rowQuotaTrayEnabled",
+      descKey: "rowQuotaTrayEnabledDesc",
     });
     const mergeRow = helpers.buildSwitchRow({
       key: "quotaMergeSources",
@@ -881,6 +888,7 @@
     });
     const displayModeRow = buildQuotaRingDisplayModeRow();
     const providersBlock = buildQuotaRingProvidersBlock();
+    const usageSourcesBlock = buildUsageSourcesBlock();
     // "Merge across machines" only matters with more than one reporting source
     // (WSL / SSH remotes). Hidden by default so single-machine users never see
     // a confusing no-op switch; revealed once multiple sources are confirmed.
@@ -889,6 +897,8 @@
       : "none";
     const optionList = buildOptionList("quota-ring-option-list", [
       enabledRow,
+      trayEnabledRow,
+      usageSourcesBlock.element,
       displayModeRow,
       providersBlock.element,
       mergeRow,
@@ -918,19 +928,181 @@
         .catch(() => {});
     }
     providersBlock.load(group);
+    usageSourcesBlock.load(group);
     return group;
   }
 
-  // Per-provider visibility for the pet-side cluster. This is display-only —
+  const USAGE_SOURCE_NAME_KEYS = {
+    "claude-oauth": "usageSourceNameClaudeOauth",
+    "codex-app-server": "usageSourceNameCodexAppServer",
+    "omp-usage": "usageSourceNameOmpUsage",
+  };
+  const USAGE_SOURCE_STATE_KEYS = {
+    off: "usageSourceStateOff",
+    "agent-disabled": "usageSourceStateAgentDisabled",
+    unavailable: "usageSourceStateUnavailable",
+    "needs-login": "usageSourceStateNeedsLogin",
+    "waiting-interaction": "usageSourceStateWaitingInteraction",
+    ok: "usageSourceStateOk",
+    "rate-limited": "usageSourceStateRateLimited",
+    error: "usageSourceStateError",
+    idle: "usageSourceStateIdle",
+  };
+
+  function formatUsageSourceUpdated(lastSuccessAt) {
+    const at = Number(lastSuccessAt);
+    if (!Number.isFinite(at) || at <= 0) return t("usageSourceUpdatedNever");
+    const minutes = Math.floor(Math.max(0, Date.now() - at) / 60000);
+    if (minutes < 1) return t("usageSourceUpdatedJustNow");
+    if (minutes < 60) return t("usageSourceUpdatedMinAgo").replace("{n}", String(minutes));
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return t("usageSourceUpdatedHrAgo").replace("{n}", String(hours));
+    return t("usageSourceUpdatedDayAgo").replace("{n}", String(Math.floor(hours / 24)));
+  }
+
+  // Status of the active usage sources the master switch drives. Read-only:
+  // the collector in main owns gating, intervals and credentials; this block
+  // only reports and offers a user-triggered (interactive) refresh. An older
+  // preload without the status IPC leaves the block hidden.
+  function buildUsageSourcesBlock() {
+    const element = document.createElement("div");
+    element.className = "quota-ring-usage-sources";
+    element.style.display = "none";
+
+    const head = document.createElement("div");
+    head.className = "row quota-ring-usage-sources-head";
+    const headText = document.createElement("div");
+    headText.className = "row-text";
+    const headLabel = document.createElement("span");
+    headLabel.className = "row-label";
+    headLabel.textContent = t("usageSourcesTitle");
+    const headDesc = document.createElement("span");
+    headDesc.className = "row-desc";
+    headDesc.textContent = t("usageSourcesDesc");
+    headText.append(headLabel, headDesc);
+    head.appendChild(headText);
+
+    const api = window.settingsAPI;
+    const canRefresh = !!api && typeof api.refreshUsageSources === "function";
+    let refreshButton = null;
+    if (canRefresh) {
+      const control = document.createElement("div");
+      control.className = "row-control";
+      refreshButton = helpers.buildButton({
+        labelKey: "usageSourcesRefresh",
+        size: "compact",
+        className: "quota-ring-usage-sources-refresh",
+      });
+      control.appendChild(refreshButton);
+      head.appendChild(control);
+    }
+    element.appendChild(head);
+
+    const list = document.createElement("div");
+    list.className = "quota-ring-usage-source-list";
+    element.appendChild(list);
+
+    function buildSourceRow(status) {
+      const row = document.createElement("div");
+      row.className = "row row-sub quota-ring-usage-source-row";
+      row.dataset.sourceId = status.id;
+      row.dataset.state = status.state;
+      const text = document.createElement("div");
+      text.className = "row-text";
+      const label = document.createElement("span");
+      label.className = "row-label";
+      const nameKey = USAGE_SOURCE_NAME_KEYS[status.id];
+      label.textContent = nameKey ? t(nameKey) : status.id;
+      const stateText = document.createElement("span");
+      stateText.className = "row-desc quota-ring-usage-source-state";
+      const stateKey = USAGE_SOURCE_STATE_KEYS[status.state];
+      stateText.textContent = stateKey ? t(stateKey) : String(status.state || "");
+      const meta = document.createElement("span");
+      meta.className = "row-desc quota-ring-usage-source-meta";
+      const parts = [formatUsageSourceUpdated(status.lastSuccessAt)];
+      const providers = Array.isArray(status.providers)
+        ? status.providers.filter((name) => typeof name === "string" && name)
+        : [];
+      if (providers.length) parts.push(t("usageSourceProviders").replace("{list}", providers.join(", ")));
+      meta.textContent = parts.join(" · ");
+      text.append(label, stateText, meta);
+      // Short English diagnostic from main (never secrets); a tooltip keeps it
+      // available without putting untranslated text in the row.
+      if (typeof status.detail === "string" && status.detail) row.title = status.detail;
+      row.appendChild(text);
+      return row;
+    }
+
+    let mountedGroup = null;
+    function render(statuses) {
+      const rows = (Array.isArray(statuses) ? statuses : [])
+        .filter((status) => status && typeof status.id === "string" && status.id)
+        .map(buildSourceRow);
+      const apply = () => {
+        const wasHidden = element.style.display === "none";
+        list.textContent = "";
+        for (const row of rows) list.appendChild(row);
+        element.style.display = "";
+        return wasHidden ? element : rows;
+      };
+      if (mountedGroup && typeof mountedGroup.mutateCollapsibleBody === "function") {
+        mountedGroup.mutateCollapsibleBody(apply);
+      } else {
+        apply();
+      }
+    }
+
+    function reload() {
+      const current = window.settingsAPI;
+      if (!current || typeof current.getUsageSourcesStatus !== "function") return;
+      Promise.resolve()
+        .then(() => current.getUsageSourcesStatus())
+        .then((statuses) => {
+          if (Array.isArray(statuses)) render(statuses);
+        })
+        .catch(() => {});
+    }
+
+    if (refreshButton) {
+      let pending = false;
+      refreshButton.addEventListener("click", () => {
+        if (pending) return;
+        pending = true;
+        helpers.setButtonState(refreshButton, { pending: true });
+        Promise.resolve()
+          .then(() => window.settingsAPI.refreshUsageSources())
+          .then((statuses) => {
+            if (!Array.isArray(statuses)) throw new Error("no status returned");
+            render(statuses);
+          })
+          .catch((err) => {
+            ops.showToast(t("usageSourcesRefreshFailed") + ((err && err.message) || "unknown error"), { error: true });
+          })
+          .finally(() => {
+            pending = false;
+            helpers.setButtonState(refreshButton, { pending: false });
+          });
+      });
+    }
+
+    function load(group) {
+      mountedGroup = group || null;
+      state.mountedControls.usageSources = { element, reload };
+      reload();
+    }
+
+    return { element, load };
+  }
+
+  // Per-provider visibility for the HUD's quota section is display-only —
   // collection stays on each provider's Agents card and the Dashboard keeps
-  // showing everything — because the cluster caps at four coins and the
-  // renderer simply takes the first four in provider order, so without this the
-  // user has no say over WHICH four survive. With remotes the count is sources
+  // showing everything. The section fits six rows; when providers overflow, five
+  // rows remain and the last row becomes +N. With remotes the count is sources
   // × providers, which is where it stops being theoretical.
   //
   // The list is built from providers that actually report, so a fresh install
-  // sees nothing here rather than four checkboxes for things it never
-  // connected — the same rule that hides "merge across machines" on one machine.
+  // sees nothing here rather than checkboxes for things it never connected —
+  // the same rule that hides "merge across machines" on one machine.
   function buildQuotaRingProvidersBlock() {
     const element = document.createElement("div");
     element.className = "quota-ring-providers";
@@ -2660,6 +2832,12 @@
       });
       if (key === "soundMuted") {
         state.mountedControls.soundVolume.syncDisabled();
+      }
+      if (key === "sessionHudShowQuota") {
+        // The master switch gates every source; re-read so "off" rows do not
+        // linger after it turns on (and vice versa).
+        const sources = state.mountedControls.usageSources;
+        if (sources && document.body.contains(sources.element)) sources.reload();
       }
     }
     if ((keys.includes("freeRoam") || keys.includes("roamConstrainAxis"))

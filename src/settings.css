@@ -2166,6 +2166,32 @@ html, body {
   justify-content: center;
   text-align: center;
 }
+.quota-ring-usage-sources-head .row-control {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.quota-ring-usage-source-row .row-text {
+  min-width: 0;
+}
+.quota-ring-usage-source-meta {
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.quota-ring-usage-source-row[data-state="ok"] .quota-ring-usage-source-state {
+  color: var(--text-primary);
+}
+.quota-ring-usage-source-row[data-state="needs-login"] .quota-ring-usage-source-state,
+.quota-ring-usage-source-row[data-state="rate-limited"] .quota-ring-usage-source-state,
+.quota-ring-usage-source-row[data-state="error"] .quota-ring-usage-source-state {
+  color: #9a6700;
+}
+@media (prefers-color-scheme: dark) {
+  .quota-ring-usage-source-row[data-state="needs-login"] .quota-ring-usage-source-state,
+  .quota-ring-usage-source-row[data-state="rate-limited"] .quota-ring-usage-source-state,
+  .quota-ring-usage-source-row[data-state="error"] .quota-ring-usage-source-state {
+    color: #f6c343;
+  }
+}
 
 .kimi-quota-card {
   align-items: stretch;

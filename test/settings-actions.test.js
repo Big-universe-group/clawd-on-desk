@@ -208,6 +208,12 @@ describe("updateRegistry pure-data validators", () => {
     assert.strictEqual(updateRegistry.quotaRingDisplayMode(true).status, "error");
   });
 
+  it("validates the quota tray switch as a boolean", () => {
+    assert.strictEqual(updateRegistry.quotaTrayEnabled(true).status, "ok");
+    assert.strictEqual(updateRegistry.quotaTrayEnabled(false).status, "ok");
+    assert.strictEqual(updateRegistry.quotaTrayEnabled("yes").status, "error");
+  });
+
   it("accepts only supported bubble placement enums", () => {
     for (const value of ["auto", "left", "right"]) {
       assert.strictEqual(updateRegistry.bubbleFollowPreference(value).status, "ok");

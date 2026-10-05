@@ -425,6 +425,7 @@ const updateRegistry = {
   sessionHudShowElapsed: requireBoolean("sessionHudShowElapsed"),
   sessionHudShowContextUsage: requireBoolean("sessionHudShowContextUsage"),
   sessionHudShowQuota: requireBoolean("sessionHudShowQuota"),
+  quotaTrayEnabled: requireBoolean("quotaTrayEnabled"),
   quotaRingDisplayMode: requireEnum("quotaRingDisplayMode", ["used", "remaining"]),
   // Shape only — the entries are provider keys, and deliberately not checked
   // against the ring's provider list here (see prefs.js: rejecting an

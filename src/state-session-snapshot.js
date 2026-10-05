@@ -626,6 +626,15 @@ function sessionSnapshotSignature(snapshot) {
       kimiQuota: entry.kimiQuota
         ? { group: entry.kimiQuota.group, lastSeenAt: entry.kimiQuota.lastSeenAt }
         : null,
+      // Generic providers (state-account-quota.js extraQuota): labels, limits
+      // (expired flags included) and minute-quantized lastSeenAt are all
+      // rendered, so all move the signature; updatedAt does not.
+      extraQuota: entry.extraQuota
+        ? Object.fromEntries(Object.entries(entry.extraQuota).map(([providerId, provider]) => [
+          providerId,
+          { label: provider.label, limits: provider.limits, lastSeenAt: provider.lastSeenAt },
+        ]))
+        : null,
     })),
     sessions: snapshot.sessions.map((entry) => ({
       id: entry.id,

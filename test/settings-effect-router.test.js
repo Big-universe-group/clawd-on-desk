@@ -67,6 +67,7 @@ function createHarness(options = {}) {
     repositionFloatingBubbles: () => calls.push(["repositionFloatingBubbles"]),
     applyTextScale: () => calls.push(["applyTextScale"]),
     syncSessionHudVisibility: () => calls.push(["syncSessionHudVisibility"]),
+    refreshQuotaTrayMenu: () => calls.push(["refreshQuotaTrayMenu"]),
     refreshDisplayedVisual: () => calls.push(["refreshDisplayedVisual"]),
     handleSessionHudPinnedChanged: (next) => calls.push(["handleSessionHudPinnedChanged", next]),
     reclampPetAfterEdgePinningChange: () => calls.push(["reclampPetAfterEdgePinningChange"]),
@@ -299,8 +300,16 @@ describe("settings-effect-router", () => {
     emit({ sessionHudShowQuota: false });
     assert.deepStrictEqual(calls, [
       ["updateMirrors", { sessionHudShowQuota: false }],
+      ["refreshQuotaTrayMenu"],
       ["syncSessionHudVisibility"],
       ["repositionFloatingBubbles"],
+    ]);
+
+    calls.length = 0;
+    emit({ quotaTrayEnabled: true });
+    assert.deepStrictEqual(calls, [
+      ["updateMirrors", { quotaTrayEnabled: true }],
+      ["refreshQuotaTrayMenu"],
     ]);
 
     calls.length = 0;
@@ -309,6 +318,7 @@ describe("settings-effect-router", () => {
       ["updateMirrors", { quotaRingDisplayMode: "remaining" }],
       ["syncSessionHudVisibility"],
       ["repositionFloatingBubbles"],
+      ["rebuildAllMenus"],
     ]);
 
     calls.length = 0;

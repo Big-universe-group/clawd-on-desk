@@ -813,7 +813,7 @@ const t = createTranslator(() => ctx.lang);
 // Each entry: { res, abortHandler, suggestions, sessionId, bubble, hideTimer, toolName, toolInput, resolvedSuggestion, createdAt, measuredHeight }
 const pendingPermissions = [];
 let expandedPermissionEntry = null;
-// Keep windows independently of pendingPermissions so Orbit continues avoiding
+// Keep windows independently of pendingPermissions so the update bubble keeps avoiding
 // a bubble during its 250ms fade-out after the request has already been removed
 // from the pending list.
 const permissionBubbleWindows = new Set();

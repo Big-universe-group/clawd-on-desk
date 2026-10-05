@@ -124,6 +124,11 @@ const accountQuota = createAccountQuotaStore({
 // Upgrade cleanup: older builds retained the last local Claude quota even
 // after the user opted out. Remove that misleading cache before the first
 // snapshot while preserving Remote SSH and every non-Claude provider.
+// This also clears local claudeQuota written by the active usage collector
+// (src/usage-collector.js: claude-oauth / omp-usage share the local source);
+// that is intentional — the collector's startup refresh repopulates it when
+// the quota ring and the Claude Code agent are enabled, so only data the
+// user still opts into reappears.
 if (ctx.claudeQuotaCollectionEnabled === false) {
   clearLocalClaudeQuota({ broadcast: false });
 }

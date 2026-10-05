@@ -301,14 +301,6 @@ module.exports = function initUpdateBubble(ctx) {
   // newTotal - elapsedVisible instead of clamping a stale remaining value.
   let autoCloseElapsedVisibleMs = 0;
 
-  function notifyOrbitGeometryChanged() {
-    const reposition = typeof ctx.repositionQuotaRing === "function"
-      ? ctx.repositionQuotaRing
-      : ctx.repositionSessionHud;
-    if (typeof reposition !== "function") return;
-    try { reposition(); } catch {}
-  }
-
   function getTextScale(workArea) {
     return clampTextScale(typeof ctx.getTextScale === "function" ? ctx.getTextScale(workArea) : 1);
   }
@@ -368,7 +360,6 @@ module.exports = function initUpdateBubble(ctx) {
       bubble = null;
       measuredHeight = 0;
       presentationActive = false;
-      notifyOrbitGeometryChanged();
       if (resolveAction) {
         const fallback = activePayload && activePayload.defaultAction != null ? activePayload.defaultAction : null;
         const resolver = resolveAction;
@@ -574,7 +565,6 @@ module.exports = function initUpdateBubble(ctx) {
       if (win && !win.isDestroyed()) {
         win.webContents.send("update-bubble-show", payload);
         syncVisibility();
-        notifyOrbitGeometryChanged();
       }
     };
 
@@ -606,7 +596,6 @@ module.exports = function initUpdateBubble(ctx) {
     hideTimer = setTimeout(() => {
       if (bubble && !bubble.isDestroyed()) {
         bubble.hide();
-        notifyOrbitGeometryChanged();
       }
     }, 250);
   }
@@ -630,7 +619,6 @@ module.exports = function initUpdateBubble(ctx) {
       hideTimer = null;
     }
     bubble.hide();
-    notifyOrbitGeometryChanged();
     return true;
   }
 
@@ -672,7 +660,6 @@ module.exports = function initUpdateBubble(ctx) {
     bubble.webContents.send("update-bubble-show", activePayload);
     repositionUpdateBubble();
     const shown = syncVisibility(hiddenOverride);
-    notifyOrbitGeometryChanged();
     return shown;
   }
 
@@ -739,7 +726,6 @@ module.exports = function initUpdateBubble(ctx) {
     if (typeof height === "number" && height > 0) {
       measuredHeight = Math.ceil(height);
       repositionUpdateBubble();
-      notifyOrbitGeometryChanged();
     }
   }
 

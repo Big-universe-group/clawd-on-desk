@@ -94,6 +94,7 @@ const { createRecapRuntime } = require("./recap-runtime");
 const { createKimiQuotaClient } = require("./kimi-quota-client");
 const { createKimiQuotaCredentialStore } = require("./kimi-quota-credential-store");
 const { createKimiQuotaRuntime } = require("./kimi-quota-runtime");
+const { createUsageCollector } = require("./usage-collector");
 const {
   getPetTintIdForTheme,
   resolvePetTintPayload,
@@ -749,6 +750,7 @@ function hydrateFreshInstallLanguage() {
   }
 }
 
+
 // Capture window/mini runtime state into the controller and write to disk.
 // Replaces the legacy `savePrefs()` callsites — they used to read fresh
 // `win.getBounds()` and `_mini.*` at save time, so we mirror that here.
@@ -1344,8 +1346,37 @@ let sessionHudShowStateLabels = _settingsController.get("sessionHudShowStateLabe
 let sessionHudShowElapsed = _settingsController.get("sessionHudShowElapsed");
 let sessionHudShowContextUsage = _settingsController.get("sessionHudShowContextUsage");
 let sessionHudShowQuota = _settingsController.get("sessionHudShowQuota");
+let quotaTrayEnabled = _settingsController.get("quotaTrayEnabled");
 let quotaRingDisplayMode = _settingsController.get("quotaRingDisplayMode");
 let quotaRingHiddenProviders = _settingsController.get("quotaRingHiddenProviders");
+let quotaTrayRefreshScheduler = null;
+let quotaTraySnapshotSignature = null;
+
+function quotaTrayAccountQuotaSignature(snapshot) {
+  const accountQuota = snapshot && Array.isArray(snapshot.accountQuota) ? snapshot.accountQuota : [];
+  try {
+    return JSON.stringify(accountQuota);
+  } catch {
+    return null;
+  }
+}
+
+function refreshQuotaTrayForSnapshot(snapshot) {
+  if (quotaTrayEnabled !== true || sessionHudShowQuota !== true || !quotaTrayRefreshScheduler) return;
+  const signature = quotaTrayAccountQuotaSignature(snapshot);
+  if (signature === null || signature === quotaTraySnapshotSignature) return;
+  quotaTraySnapshotSignature = signature;
+  quotaTrayRefreshScheduler.request();
+}
+
+function handleQuotaTraySettingsChange() {
+  if (quotaTrayEnabled === true && sessionHudShowQuota === true) {
+    quotaTraySnapshotSignature = quotaTrayAccountQuotaSignature(_state.buildSessionSnapshot());
+  } else {
+    quotaTraySnapshotSignature = null;
+  }
+  if (quotaTrayRefreshScheduler) quotaTrayRefreshScheduler.refreshNow();
+}
 let claudeQuotaCollectionEnabled = _settingsController.get("claudeQuotaCollectionEnabled");
 let kimiQuotaCollectionEnabled = _settingsController.get("kimiQuotaCollectionEnabled");
 let quotaMergeSources = _settingsController.get("quotaMergeSources");
@@ -1981,13 +2012,11 @@ let forceEyeResend = false;
 let forceEyeResendBoostUntil = 0;
 let requestFastTick = () => {};
 let repositionSessionHud = () => {};
-let repositionQuotaRing = () => {};
 let syncSessionHudVisibility = () => {};
 let broadcastSessionHudSnapshot = () => {};
 let sendSessionHudI18n = () => {};
 let getSessionHudReservedOffset = () => 0;
 let getSessionHudWindow = () => null;
-let getQuotaRingWindow = () => null;
 
 function getVisibleSessionHudBounds() {
   try {
@@ -2077,7 +2106,6 @@ const topmostRuntime = createTopmostRuntime({
   ),
   getUpdateBubbleWindow: () => _updateBubble.getBubbleWindow(),
   getSessionHudWindow: () => getSessionHudWindow(),
-  getQuotaRingWindow: () => getQuotaRingWindow(),
   getContextMenuOwner: () => contextMenuOwner,
   getNearestWorkArea,
   getPetWindowBounds,
@@ -2212,9 +2240,6 @@ const _permCtx = {
   clearShortcutFailure: (actionId) => shortcutRuntime.clearFailure(actionId),
   repositionFloatingBubbles: () => repositionFloatingBubbles(),
   repositionUpdateBubble: () => repositionUpdateBubble(),
-  // permission.js still calls this legacy-shaped callback after the update
-  // bubble has moved; only Orbit needs the second geometry pass here.
-  repositionSessionHud: () => repositionQuotaRing(),
   getTelegramApprovalClient: () => getTelegramApprovalClient(),
   getRemoteApprovalClients: () => {
     const client = getFeishuApprovalClient();
@@ -2285,7 +2310,6 @@ const _updateBubbleCtx = {
   getTextScale: (workArea) => getTextScaleForBubbleWorkArea(workArea),
   guardAlwaysOnTop,
   reapplyMacVisibility,
-  repositionQuotaRing: () => repositionQuotaRing(),
   clipboard,
 };
 const _updateBubble = initUpdateBubble(_updateBubbleCtx);
@@ -2301,7 +2325,6 @@ floatingWindowRuntime = createFloatingWindowRuntime({
   repositionPermissionBubbles: () => repositionBubbles(),
   repositionUpdateBubble: () => repositionUpdateBubble(),
   repositionSessionHud: () => repositionSessionHud(),
-  repositionQuotaRing: () => repositionQuotaRing(),
   syncSessionHudVisibility: () => syncSessionHudVisibility(),
   syncUpdateBubbleVisibility: (hiddenOverride) => syncUpdateBubbleVisibility(hiddenOverride),
   suspendUpdateBubbleForPet: () => _updateBubble.suspendForPetHidden(),
@@ -2465,6 +2488,7 @@ const _stateCtx = {
     reconcilePowerSaveBlocker();
     broadcastDashboardSessionSnapshot(snapshot);
     broadcastSessionHudSnapshot(snapshot);
+    refreshQuotaTrayForSnapshot(snapshot);
     repositionFloatingBubbles();
     // R1a: best-effort completion notifications. Must never throw or block the
     // broadcast — the companion computes synchronously and fires sends async.
@@ -2586,6 +2610,42 @@ _settingsController.subscribeKey("agents", (_agents, snapshot) => {
   if (!_runtimeAgentGate.isAgentEnabled("kimi-cli")) {
     _kimiQuotaRuntime.invalidateRequests();
   }
+});
+// Active usage aggregation for the HUD's quota section (src/usage-collector.js). The
+// quota master switch and each agent's enabled state gate every source at
+// admission and again before commit; results land in the account-quota
+// store's local source next to the passive statusline/rollout/Kimi data.
+const USAGE_COLLECTOR_AGENT_IDS = ["claude-code", "codex", "omp"];
+const USAGE_STARTUP_REFRESH_DELAY_MS = 15_000;
+const USAGE_PET_REVEAL_WINDOW_MS = 10_000;
+const _usageCollector = createUsageCollector({
+  appVersion: app.getVersion(),
+  isMasterEnabled: () => _settingsController.get("sessionHudShowQuota") === true,
+  isAgentEnabled: (agentId) => _runtimeAgentGate.isAgentEnabled(agentId),
+  updateAccountQuota: (host, quotas) => _state.updateAccountQuota(host, quotas),
+  logWarn: console.warn,
+});
+let _usageStartupRefreshTimer = null;
+function requestUsageRefresh(trigger, options = {}) {
+  return _usageCollector.requestRefresh({ ...options, trigger }).catch((err) => {
+    console.warn("Clawd: usage refresh failed:", err && err.message);
+    return _usageCollector.getStatus();
+  });
+}
+function listEnabledUsageAgents() {
+  return new Set(USAGE_COLLECTOR_AGENT_IDS.filter((agentId) => _runtimeAgentGate.isAgentEnabled(agentId)));
+}
+let _usageEnabledAgents = listEnabledUsageAgents();
+_settingsController.subscribeKey("sessionHudShowQuota", (enabled) => {
+  if (enabled === true) void requestUsageRefresh("quota-ring-enabled", { interactive: false });
+});
+_settingsController.subscribeKey("agents", () => {
+  // Only a disabled→enabled transition of a usage-source agent triggers a
+  // refresh; unrelated agent setting edits must not spawn CLIs.
+  const next = listEnabledUsageAgents();
+  const newlyEnabled = Array.from(next).some((agentId) => !_usageEnabledAgents.has(agentId));
+  _usageEnabledAgents = next;
+  if (newlyEnabled) void requestUsageRefresh("agent-enabled", { interactive: false });
 });
 const { setState, applyState, updateSession, resolveDisplayState, getSvgOverride,
         enableDoNotDisturb, disableDoNotDisturb, startStaleCleanup, stopStaleCleanup,
@@ -2839,7 +2899,13 @@ const _dashboard = require("./dashboard")({
   onSaveBounds: (bounds) => _settingsController.applyUpdate("dashboardWindowBounds", bounds),
   iconPath: settingsWindowRuntime.getIconPath(),
 });
-showDashboard = _dashboard.showDashboard;
+// Opening the Dashboard is an explicit look at usage: refresh active sources
+// (interactive, so the Claude Keychain login may be read). Throttling lives
+// in the collector, so repeated opens are cheap.
+showDashboard = (options) => {
+  void requestUsageRefresh("dashboard-open", { interactive: true });
+  return _dashboard.showDashboard(options);
+};
 // The keyboard mode is a temporary state of the real Dashboard page, so it is
 // owned by the Dashboard rather than by a second window/renderer.
 showQuickSelect = () => _dashboard.quick.show();
@@ -2971,10 +3037,11 @@ const _tutorial = require("./tutorial")({
   ),
 });
 
-// Shared with session-hud.js on purpose: the Settings "show beside the pet"
-// list has to be built from the SAME provider table and draw rule that sizes
-// the cluster window, or the list can offer a provider that never draws.
+// Shared with session-hud.js on purpose: the Settings provider list has to be
+// built from the SAME provider table and draw rule that sizes the HUD's quota
+// section, or the list can offer a provider that never draws.
 const _ringGeom = require("./quota-ring-geometry");
+const { createQuotaTrayRefreshScheduler } = require("./quota-tray-lines");
 
 const _sessionHud = require("./session-hud")({
   get win() { return win; },
@@ -2997,20 +3064,42 @@ const _sessionHud = require("./session-hud")({
   getSessionHudAnchorRect,
   getNearestWorkArea,
   getTextScale: () => getTextScaleForPetWindows(),
-  getPermissionBubbleBounds: () => _perm.getVisibleBubbleBounds(),
-  getUpdateBubbleWindow: () => _updateBubble.getBubbleWindow(),
   guardAlwaysOnTop,
   reapplyMacVisibility,
   onReservedOffsetChange: () => repositionFloatingBubbles(),
 });
 repositionSessionHud = _sessionHud.repositionSessionHud;
-repositionQuotaRing = _sessionHud.repositionQuotaRing;
 syncSessionHudVisibility = _sessionHud.syncSessionHud;
 broadcastSessionHudSnapshot = _sessionHud.broadcastSessionSnapshot;
 sendSessionHudI18n = _sessionHud.sendI18n;
 getSessionHudReservedOffset = _sessionHud.getHudReservedOffset;
 getSessionHudWindow = _sessionHud.getWindow;
-getQuotaRingWindow = _sessionHud.getQuotaRingWindow;
+
+function countVisibleQuotaRows() {
+  return _ringGeom.countQuotaCoins(
+    _state.buildSessionSnapshot(),
+    sessionHudShowQuota !== false,
+    quotaRingHiddenProviders
+  );
+}
+
+
+// Pet click = "show me my usage": refresh active sources interactively. When
+// the HUD had no quota rows and this refresh produced its first provider data,
+// reveal once more so the user does not need a second click — but only
+// while the click is still recent (a slow source must not pop the HUD
+// out of nowhere).
+function refreshUsageFromPetClick() {
+  const clickedAt = Date.now();
+  const rowsBefore = countVisibleQuotaRows();
+  void requestUsageRefresh("pet-click", { interactive: true }).then(() => {
+    if (rowsBefore > 0 || Date.now() - clickedAt >= USAGE_PET_REVEAL_WINDOW_MS) return;
+    if (countVisibleQuotaRows() <= 0) return;
+    if (typeof _sessionHud.revealFromPet === "function") _sessionHud.revealFromPet();
+  }).catch((err) => {
+    console.warn("Clawd: usage pet-click reveal failed:", err && err.message);
+  });
+}
 
 agentRuntime = createAgentRuntimeMain({
   getServer: () => _server,
@@ -3077,7 +3166,14 @@ const _serverCtx = {
   shouldSuppressCodexArchive: (rawSessionId, opts) =>
     agentRuntime.shouldSuppressCodexArchive(rawSessionId, opts),
   clearClaudeStatuslineAuthority: (profileId) => _state.clearClaudeStatuslineAuthority(profileId),
-  clearLocalClaudeQuota: () => _state.clearLocalClaudeQuota(),
+  // Clears every local claudeQuota bucket, including the ones the usage
+  // collector fetched from the login API / omp; those stay valid, so restore
+  // them right away (src/usage-collector.js recommitProvider).
+  clearLocalClaudeQuota: () => {
+    const cleared = _state.clearLocalClaudeQuota();
+    _usageCollector.recommitProvider("claudeQuota");
+    return cleared;
+  },
   updateAccountQuota: (host, quotas) => _state.updateAccountQuota(host, quotas),
   resolvePermissionEntry,
   sendPermissionResponse,
@@ -4512,6 +4608,11 @@ const _menuCtx = {
   get doNotDisturb() { return doNotDisturb; },
   get lang() { return lang; },
   set lang(v) { _settingsController.applyUpdate("lang", v); },
+  get quotaTrayEnabled() { return quotaTrayEnabled; },
+  get sessionHudShowQuota() { return sessionHudShowQuota; },
+  get quotaRingDisplayMode() { return quotaRingDisplayMode; },
+  get quotaRingHiddenProviders() { return quotaRingHiddenProviders; },
+  getQuotaSnapshot: () => _state.buildSessionSnapshot(),
   get showTray() { return showTray; },
   set showTray(v) { _settingsController.applyUpdate("showTray", v); },
   get showDock() { return showDock; },
@@ -4688,6 +4789,13 @@ const _menu = require("./menu")(_menuCtx);
 const { t, buildContextMenu, buildTrayMenu, rebuildAllMenus, createTray,
         destroyTray, showPetContextMenu, ensureContextMenuOwner,
         requestAppQuit, applyDockVisibility } = _menu;
+quotaTrayRefreshScheduler = createQuotaTrayRefreshScheduler({
+  isEnabled: () => quotaTrayEnabled === true && sessionHudShowQuota === true,
+  refresh: () => buildTrayMenu(),
+});
+if (quotaTrayEnabled === true && sessionHudShowQuota === true) {
+  quotaTraySnapshotSignature = quotaTrayAccountQuotaSignature(_state.buildSessionSnapshot());
+}
 
 // ── Settings effect router ──
 const SETTINGS_MIRROR_SETTERS = {
@@ -4702,6 +4810,7 @@ const SETTINGS_MIRROR_SETTERS = {
   sessionHudShowElapsed: (v) => { sessionHudShowElapsed = v; },
   sessionHudShowContextUsage: (v) => { sessionHudShowContextUsage = v; },
   sessionHudShowQuota: (v) => { sessionHudShowQuota = v; },
+  quotaTrayEnabled: (v) => { quotaTrayEnabled = v; },
   quotaRingDisplayMode: (v) => { quotaRingDisplayMode = v; },
   // Normalized to an array here as well as in prefs: this mirror also takes the
   // value straight from a settings broadcast, and every consumer indexes it.
@@ -4784,6 +4893,7 @@ const settingsEffectRouter = createSettingsEffectRouter({
   repositionFloatingBubbles,
   applyTextScale: () => applyTextScaleNow(),
   syncSessionHudVisibility: () => syncSessionHudVisibility(),
+  refreshQuotaTrayMenu: () => handleQuotaTraySettingsChange(),
   handleSessionHudPinnedChanged: (next) => {
     if (_sessionHud && typeof _sessionHud.handlePinnedChanged === "function") {
       _sessionHud.handlePinnedChanged(next);
@@ -5129,6 +5239,8 @@ const settingsIpcRuntime = registerSettingsIpc({
   getHookServerPort: () => getHookServerPort(),
   getRecentHookEvents: (options) => _server.getRecentHookEvents(options),
   kimiQuotaRuntime: _kimiQuotaRuntime,
+  getUsageSourcesStatus: () => _usageCollector.getStatus(),
+  refreshUsageSources: () => requestUsageRefresh("settings-refresh", { interactive: true, force: true }),
   checkForUpdates,
   getUpdateCheckSnapshot,
   clearUpdateError,
@@ -5377,6 +5489,7 @@ function createWindow() {
       if (_sessionHud && typeof _sessionHud.revealFromPet === "function") {
         _sessionHud.revealFromPet();
       }
+      refreshUsageFromPetClick();
     },
     statPath: (p) => fs.promises.stat(p),
     openTerminalAt: (dir) => openTerminalAt(dir),
@@ -5969,6 +6082,13 @@ if (!gotTheLock) {
     void _kimiQuotaRuntime.initialize().catch((err) => {
       console.warn("Clawd: Kimi quota startup reconciliation failed:", err && err.message);
     });
+    // Active quota collection waits until startup settles; it is non-interactive
+    // and never prompts for the Keychain.
+    _usageStartupRefreshTimer = setTimeout(() => {
+      _usageStartupRefreshTimer = null;
+      void requestUsageRefresh("startup", { interactive: false });
+    }, USAGE_STARTUP_REFRESH_DELAY_MS);
+    if (typeof _usageStartupRefreshTimer.unref === "function") _usageStartupRefreshTimer.unref();
     notifyPrefsAuthorityFailure();
     if (feishuApprovalMigrationNudge) {
       void feishuApprovalMigrationNudge.sync({ allowNotify: true });
@@ -6121,6 +6241,8 @@ if (!gotTheLock) {
     _tick.cleanup();
     _mini.cleanup();
     if (macHideController) macHideController.stop();
+    clearTimeout(_usageStartupRefreshTimer);
+    _usageCollector.dispose();
     _sessionHud.cleanup();
     agentRuntime.cleanup();
     topmostRuntime.cleanup();

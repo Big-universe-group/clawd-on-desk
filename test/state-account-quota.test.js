@@ -402,7 +402,7 @@ describe("account quota store", () => {
     assert.strictEqual(snapshot[0].claudeQuota.updatedAt, 1234, "persisted stamp survives reload");
   });
 
-  it("persists Spark quota in schema v6 and reloads it independently", () => {
+  it("persists Spark quota in the current schema and reloads it independently", () => {
     const persistPath = tempPersistPath();
     const store = createAccountQuotaStore({ persistPath, now: () => 1234 });
     store.update("pi", {
@@ -412,7 +412,7 @@ describe("account quota store", () => {
     store.flush();
 
     const persisted = JSON.parse(fs.readFileSync(persistPath, "utf8"));
-    assert.strictEqual(persisted.version, 6);
+    assert.strictEqual(persisted.version, 7);
     assert.strictEqual(persisted.sources[0].codexSparkQuota.group.codexWeekly.usedPercent, 7);
     const snapshot = createAccountQuotaStore({ persistPath, now: () => 5678 }).snapshot()[0];
     assert.strictEqual(snapshot.codexQuota.group.codexWeekly.usedPercent, 41);
@@ -669,5 +669,232 @@ describe("account quota store", () => {
 
     const reloaded = createAccountQuotaStore({ persistPath, now: () => 1000 + PROVIDER_RETENTION_MS });
     assert.deepStrictEqual(reloaded.snapshot(), []);
+  });
+
+  describe("extra providers", () => {
+    const BASE = 1_000_000_000;
+    const HOUR = 60 * 60 * 1000;
+
+    it("sanitizes, orders and caps a provider report", () => {
+      const { MAX_RESET_AHEAD_MS } = require("../src/state-account-quota");
+      const store = createAccountQuotaStore({ persistPath: null, now: () => BASE });
+      store.update(null, { extraQuota: {
+        "Bad ID": { label: "nope", limits: [{ id: "x", kind: "balance", remaining: 1, unit: "usd" }] },
+        deepseek: {
+          label: "Deep\u0000Seek\n",
+          limits: [
+            { id: "deepseek:balance:CNY", label: "Balance", kind: "balance", remaining: 43.62, unit: "CNY" },
+            { id: "weekly", label: "Weekly", kind: "window", usedPercent: 140, windowMinutes: 10080, resetAt: BASE + HOUR },
+            { id: "monthly", label: "Monthly", kind: "window", usedPercent: 3, resetAt: BASE + HOUR },
+            { id: "5h", label: "5 Hour", kind: "window", usedPercent: 12.4, windowMinutes: 300, resetAt: BASE + HOUR },
+            { id: "5h", label: "duplicate", kind: "window", usedPercent: 99, windowMinutes: 300 },
+            { id: "reset", label: "Already reset", kind: "window", usedPercent: 50, resetAt: BASE - 1 },
+            { id: "far", label: "Implausible", kind: "window", usedPercent: 50, resetAt: BASE + MAX_RESET_AHEAD_MS + 1 },
+            { id: "bogus", kind: "meter", usedPercent: 1 },
+            { id: "", kind: "balance", remaining: 1 },
+          ],
+        },
+      } });
+
+      const extra = store.snapshot()[0].extraQuota;
+      assert.deepStrictEqual(Object.keys(extra), ["deepseek"]);
+      assert.strictEqual(extra.deepseek.label, "DeepSeek");
+      assert.deepStrictEqual(extra.deepseek.limits, [
+        { id: "5h", label: "5 Hour", kind: "window", usedPercent: 12, windowMinutes: 300, resetAt: BASE + HOUR },
+        { id: "weekly", label: "Weekly", kind: "window", usedPercent: 100, windowMinutes: 10080, resetAt: BASE + HOUR },
+        { id: "monthly", label: "Monthly", kind: "window", usedPercent: 3, resetAt: BASE + HOUR },
+        { id: "deepseek:balance:CNY", label: "Balance", kind: "balance", remaining: 43.62, unit: "cny" },
+      ]);
+    });
+
+    it("caps providers per source and limits per provider", () => {
+      const { MAX_EXTRA_PROVIDERS, MAX_EXTRA_LIMITS } = require("../src/state-account-quota");
+      const store = createAccountQuotaStore({ persistPath: null, now: () => BASE });
+      const limits = Array.from({ length: MAX_EXTRA_LIMITS + 4 }, (_, i) => ({
+        id: `b${i}`, kind: "balance", remaining: i, unit: "credits",
+      }));
+      const extraQuota = {};
+      for (let i = 0; i < MAX_EXTRA_PROVIDERS + 4; i++) extraQuota[`p${i}`] = { label: `P${i}`, limits };
+      store.update(null, { extraQuota });
+      const extra = store.snapshot()[0].extraQuota;
+      assert.strictEqual(Object.keys(extra).length, MAX_EXTRA_PROVIDERS);
+      assert.strictEqual(extra.p0.limits.length, MAX_EXTRA_LIMITS);
+      // Existing providers keep updating at the cap.
+      store.update(null, { extraQuota: { p0: { label: "P0", limits: [limits[0]] } } });
+      assert.strictEqual(store.snapshot()[0].extraQuota.p0.limits.length, 1);
+    });
+
+    it("replaces a provider's limits wholesale and rejects older complete reports", () => {
+      let nowMs = BASE;
+      const store = createAccountQuotaStore({ persistPath: null, now: () => nowMs });
+      const window = (id, usedPercent, windowMinutes) => ({
+        id, label: id, kind: "window", usedPercent, windowMinutes, resetAt: BASE + 10 * HOUR,
+      });
+      store.update(null, { extraQuota: { commandcode: {
+        label: "Command Code", capturedAt: BASE - 100, limits: [window("5h", 10, 300), window("7d", 40, 10080)],
+      } } });
+      nowMs = BASE + 1000;
+      store.update(null, { extraQuota: { commandcode: {
+        label: "Command Code", capturedAt: BASE, limits: [window("7d", 41, 10080)],
+      } } });
+      assert.deepStrictEqual(
+        store.snapshot()[0].extraQuota.commandcode.limits.map((limit) => [limit.id, limit.usedPercent]),
+        [["7d", 41]],
+        "a newer report retires the omitted 5h limit"
+      );
+
+      const stale = store.updateDetailed(null, { extraQuota: { commandcode: {
+        label: "Command Code", capturedAt: BASE - 50, limits: [window("5h", 99, 300)],
+      } } });
+      assert.deepStrictEqual(stale, { accepted: false, changed: false });
+      assert.deepStrictEqual(
+        store.snapshot()[0].extraQuota.commandcode.limits.map((limit) => limit.id),
+        ["7d"]
+      );
+    });
+
+    it("reports change only on value change or a lastSeenAt minute crossing", () => {
+      const { SEEN_QUANTUM_MS } = require("../src/state-account-quota");
+      let nowMs = BASE;
+      const store = createAccountQuotaStore({ persistPath: null, now: () => nowMs });
+      const report = { extraQuota: { deepseek: {
+        label: "DeepSeek", limits: [{ id: "bal", kind: "balance", remaining: 43.62, unit: "cny" }],
+      } } };
+      assert.strictEqual(store.update(null, report), true);
+      nowMs = BASE + 1000;
+      assert.strictEqual(store.update(null, report), false, "identical refresh within a minute is a no-op");
+      assert.strictEqual(store.snapshot()[0].extraQuota.deepseek.updatedAt, BASE);
+      nowMs = BASE + SEEN_QUANTUM_MS;
+      assert.strictEqual(store.update(null, report), true, "freshness label moves once a minute");
+      const provider = store.snapshot()[0].extraQuota.deepseek;
+      assert.strictEqual(provider.updatedAt, BASE, "confirmation does not look like a value change");
+      assert.strictEqual(provider.lastSeenAt, Math.floor(nowMs / SEEN_QUANTUM_MS) * SEEN_QUANTUM_MS);
+    });
+
+    it("flags reset windows, drops them later, and keeps balances until retention", () => {
+      const { EXPIRED_BUCKET_DROP_AFTER_MS, PROVIDER_RETENTION_MS } = require("../src/state-account-quota");
+      let nowMs = BASE;
+      const store = createAccountQuotaStore({ persistPath: null, now: () => nowMs });
+      store.update(null, { extraQuota: { commandcode: { label: "Command Code", limits: [
+        { id: "5h", kind: "window", usedPercent: 10, windowMinutes: 300, resetAt: BASE + HOUR },
+        { id: "balance", kind: "balance", remaining: 43.96, unit: "credits" },
+      ] } } });
+
+      nowMs = BASE + HOUR;
+      let limits = store.snapshot()[0].extraQuota.commandcode.limits;
+      assert.strictEqual(limits[0].expired, true);
+      assert.strictEqual(limits[1].expired, undefined);
+
+      nowMs = BASE + HOUR + EXPIRED_BUCKET_DROP_AFTER_MS;
+      limits = store.snapshot()[0].extraQuota.commandcode.limits;
+      assert.deepStrictEqual(limits.map((limit) => limit.id), ["balance"]);
+
+      nowMs = BASE + PROVIDER_RETENTION_MS;
+      assert.deepStrictEqual(store.snapshot(), []);
+    });
+
+    it("persists extra providers in v7 and still loads v6 files", () => {
+      const persistPath = tempPersistPath();
+      const store = createAccountQuotaStore({ persistPath, now: () => BASE });
+      store.update(null, { extraQuota: { "opencode-go": { label: "OpenCode Go", capturedAt: BASE - 5, limits: [
+        { id: "rolling-5h", label: "5 Hour limit", kind: "window", usedPercent: 0, windowMinutes: 300, resetAt: BASE + HOUR },
+      ] } } });
+      assert.strictEqual(store.flush(), true);
+      assert.strictEqual(JSON.parse(fs.readFileSync(persistPath, "utf8")).version, 7);
+
+      const reloaded = createAccountQuotaStore({ persistPath, now: () => BASE + 1000 });
+      const provider = reloaded.snapshot()[0].extraQuota["opencode-go"];
+      assert.strictEqual(provider.label, "OpenCode Go");
+      assert.strictEqual(provider.updatedAt, BASE);
+      assert.deepStrictEqual(provider.limits, [
+        { id: "rolling-5h", label: "5 Hour limit", kind: "window", usedPercent: 0, windowMinutes: 300, resetAt: BASE + HOUR },
+      ]);
+      // capturedAt survives the reload, so an older report is still rejected.
+      assert.strictEqual(reloaded.updateDetailed(null, { extraQuota: { "opencode-go": {
+        label: "OpenCode Go", capturedAt: BASE - 10, limits: [{ id: "x", kind: "balance", remaining: 1 }],
+      } } }).accepted, false);
+
+      const v6Path = tempPersistPath();
+      fs.writeFileSync(v6Path, JSON.stringify({ version: 6, sources: [{
+        sourceKey: "",
+        host: null,
+        codexQuota: { group: { codexWeekly: { usedPercent: 41, resetAt: BASE + HOUR, seenAt: BASE } }, updatedAt: BASE, lastSeenAt: BASE },
+      }] }));
+      const fromV6 = createAccountQuotaStore({ persistPath: v6Path, now: () => BASE }).snapshot();
+      assert.strictEqual(fromV6[0].codexQuota.group.codexWeekly.usedPercent, 41);
+      assert.strictEqual(fromV6[0].extraQuota, undefined);
+    });
+
+    it("mergeSources takes the freshest live report per provider without mixing limits", () => {
+      let nowMs = BASE;
+      const store = createAccountQuotaStore({ persistPath: null, now: () => nowMs });
+      const report = (usedPercent, resetAt, extraLimit) => ({ extraQuota: { zai: { label: "Z.ai", limits: [
+        { id: "5h", kind: "window", usedPercent, windowMinutes: 300, resetAt },
+        ...(extraLimit ? [extraLimit] : []),
+      ] } } });
+      store.update(null, report(10, BASE + HOUR, { id: "bal", kind: "balance", remaining: 5, unit: "usd" }));
+      nowMs = BASE + 1000;
+      store.update("remote", report(20, BASE + 2 * HOUR));
+      let merged = store.snapshot({ mergeSources: true });
+      assert.strictEqual(merged.length, 1);
+      assert.deepStrictEqual(
+        merged[0].extraQuota.zai.limits.map((limit) => [limit.id, limit.usedPercent]),
+        [["5h", 20]],
+        "freshest source wins wholesale; the older source's balance is not mixed in"
+      );
+
+      // A fully-expired report loses to an older live one.
+      nowMs = BASE + HOUR + 1;
+      store.update("remote", report(30, BASE + HOUR + 2));
+      nowMs = BASE + HOUR + 3;
+      merged = store.snapshot({ mergeSources: true });
+      assert.deepStrictEqual(
+        merged[0].extraQuota.zai.limits.map((limit) => limit.id),
+        ["5h", "bal"],
+        "local still has a live balance"
+      );
+    });
+
+    it("clearing a fixed provider keeps a source that still has extra providers", () => {
+      const store = createAccountQuotaStore({ persistPath: null, now: () => BASE });
+      store.update(null, {
+        claudeQuota: { claudeWeekly: { usedPercent: 5, resetAt: BASE + HOUR } },
+        extraQuota: { deepseek: { label: "DeepSeek", limits: [{ id: "bal", kind: "balance", remaining: 1, unit: "cny" }] } },
+      });
+      assert.strictEqual(store.clearProvider("claudeQuota"), 1);
+      assert.strictEqual(store.clearProvider("extraQuota"), 0, "only fixed provider keys are clearable");
+      const [entry] = store.snapshot();
+      assert.strictEqual(entry.claudeQuota, undefined);
+      assert.deepStrictEqual(Object.keys(entry.extraQuota), ["deepseek"]);
+    });
+
+    it("moves the session snapshot signature on extra value/label/freshness changes only", () => {
+      const { buildSessionSnapshot, sessionSnapshotSignature } = require("../src/state-session-snapshot");
+      const { SEEN_QUANTUM_MS } = require("../src/state-account-quota");
+      let nowMs = BASE;
+      const store = createAccountQuotaStore({ persistPath: null, now: () => nowMs });
+      const signature = () => sessionSnapshotSignature(buildSessionSnapshot(new Map(), {
+        statePriority: {},
+        getAgentIconUrl: () => null,
+        accountQuota: store.snapshot(),
+      }));
+      const report = (remaining, label = "DeepSeek") => ({ extraQuota: { deepseek: {
+        label, limits: [{ id: "bal", kind: "balance", remaining, unit: "cny" }],
+      } } });
+      store.update(null, report(43.62));
+      const original = signature();
+      nowMs = BASE + 1000;
+      store.update(null, report(43.62));
+      assert.strictEqual(signature(), original, "same-minute confirmation does not re-broadcast");
+      store.update(null, report(40));
+      const changedValue = signature();
+      assert.notStrictEqual(changedValue, original);
+      store.update(null, report(40, "DeepSeek CN"));
+      const changedLabel = signature();
+      assert.notStrictEqual(changedLabel, changedValue);
+      nowMs = BASE + SEEN_QUANTUM_MS;
+      store.update(null, report(40, "DeepSeek CN"));
+      assert.notStrictEqual(signature(), changedLabel, "lastSeenAt minute crossing reaches renderers");
+    });
   });
 });

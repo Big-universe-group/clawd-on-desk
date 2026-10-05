@@ -563,6 +563,23 @@ function registerSettingsIpc(options = {}) {
       ? runtime.forget()
       : { status: "error", reason: "runtime-unavailable" };
   });
+  // Active usage sources behind the quota ring (src/usage-collector.js).
+  // Status entries carry only state names, timestamps, short diagnostics and
+  // provider display labels — never tokens or response bodies.
+  handle("settings:usage-sources-status", (event) => {
+    const rejected = rejectUntrustedSettingsEvent(event);
+    if (rejected) return rejected;
+    return typeof options.getUsageSourcesStatus === "function"
+      ? options.getUsageSourcesStatus()
+      : [];
+  });
+  handle("settings:usage-sources-refresh", (event) => {
+    const rejected = rejectUntrustedSettingsEvent(event);
+    if (rejected) return rejected;
+    return typeof options.refreshUsageSources === "function"
+      ? options.refreshUsageSources()
+      : [];
+  });
   handle("settings:get-pet-tint-options", () => listPetTintOptions());
   handle("settings:get-pet-accessory-options", () => listPetAccessoryOptions());
   handle("settings:get-pet-mouth-accessory-options", () => listPetMouthAccessoryOptions());

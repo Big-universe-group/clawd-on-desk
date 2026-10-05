@@ -624,11 +624,12 @@ function contextUsageText(session) {
 // and remote can be different subscriptions. Freshest-wins applies within
 // a source only. Provider sections cover Antigravity's own /usage (Gemini +
 // Claude/GPT-via-agy), Claude Code's rate_limits, Codex's generic rollout
-// rate_limits, and Dashboard-only Codex Spark quota.
-// Severity thresholds mirror the Orbit coins (quota-ring-renderer.js): a bar
-// and a ring must agree on what counts as warn (60) and hot (85), otherwise
-// the same bucket reads as alarming in one surface and fine in the other.
-// test/quota-palette.test.js pins the mirror.
+// rate_limits, Dashboard-only Codex Spark quota, Kimi, and then one section
+// per extra provider (source.extraQuota, see buildExtraQuotaSections).
+// Severity thresholds mirror the Session HUD quota rows (quota-ring-renderer.js):
+// a Dashboard bar and a HUD row must agree on what counts as warn (60) and
+// hot (85), otherwise the same bucket reads as alarming in one surface and
+// fine in the other. test/quota-palette.test.js pins the mirror.
 const QUOTA_WARN_AT = 60;
 const QUOTA_HOT_AT = 85;
 
@@ -904,8 +905,8 @@ function buildQuotaHalfBar(labelText, bucket, resetStyle, providerKey, ringSlot)
   track.className = "quota-bar-track";
   const fill = document.createElement("div");
   // Identity classes (pv-/rg-) paint the bar in the provider+window hue the
-  // Orbit coin uses for the same logical window; the sev- class overrides it
-  // on warning/hot, again exactly like the coin's fill.
+  // Session HUD quota row uses for the same logical window; the sev- class
+  // overrides it on warning/hot, again exactly like the HUD row.
   fill.className = `quota-bar-fill pv-${providerKey} rg-${ringSlot} ${quotaSeverityClass(bucket.usedPercent)}`;
   fill.style.width = `${Math.max(0, Math.min(100, bucket.usedPercent))}%`;
   track.appendChild(fill);
@@ -944,6 +945,10 @@ function buildQuotaGroupRow(headerText, fiveHourBucket, weeklyBucket, providerKe
 }
 
 function buildQuotaSection(headerKey, rows, headerExtras = []) {
+  return buildQuotaSectionTitled(t(headerKey), rows, headerExtras);
+}
+
+function buildQuotaSectionTitled(title, rows, headerExtras = []) {
   const usableRows = rows.filter(Boolean);
   if (!usableRows.length && !headerExtras.length) return null;
   const section = document.createElement("div");
@@ -951,14 +956,141 @@ function buildQuotaSection(headerKey, rows, headerExtras = []) {
   if (headerExtras.length) {
     const titlebar = document.createElement("div");
     titlebar.className = "quota-section-titlebar";
-    titlebar.appendChild(createText("div", "quota-section-header", t(headerKey)));
+    titlebar.appendChild(createText("div", "quota-section-header", title));
     for (const el of headerExtras) titlebar.appendChild(el);
     section.appendChild(titlebar);
   } else {
-    section.appendChild(createText("div", "quota-section-header", t(headerKey)));
+    section.appendChild(createText("div", "quota-section-header", title));
   }
   for (const row of usableRows) section.appendChild(row);
   return section;
+}
+
+// ── Extra (generic) providers: source.extraQuota[providerId] ──
+// One section per provider after the fixed ones, titled with the provider's
+// own label (a brand name, not translated), one row per reporting source. A
+// row shows EVERY window limit as a bar — a Session HUD quota row only has
+// room for two — and every balance as a value line. All extra providers share
+// one identity pair (pv-extraQuota), exactly like their HUD rows.
+const EXTRA_PROVIDER_ID_RE = /^[a-z0-9][a-z0-9._-]{0,47}$/;
+const BALANCE_SYMBOLS = Object.freeze({ usd: "$", cny: "¥", eur: "€" });
+let balanceFormatterLang = null;
+let balanceFormatter = null;
+
+function formatQuotaBalance(remaining, unit) {
+  const value = Number(remaining);
+  if (!Number.isFinite(value)) return "—";
+  const lang = (i18nPayload && i18nPayload.lang) || "en";
+  let digits;
+  try {
+    if (!balanceFormatter || balanceFormatterLang !== lang) {
+      balanceFormatter = new Intl.NumberFormat(lang, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      balanceFormatterLang = lang;
+    }
+    digits = balanceFormatter.format(Math.abs(value));
+  } catch (_err) {
+    digits = Math.abs(value).toFixed(2);
+  }
+  const sign = value < 0 ? "-" : "";
+  const key = typeof unit === "string" ? unit.toLowerCase() : "";
+  if (BALANCE_SYMBOLS[key]) return `${sign}${BALANCE_SYMBOLS[key]}${digits}`;
+  if (!key || key === "credits") return `${sign}${digits} cr`;
+  return `${sign}${digits} ${unit}`;
+}
+
+function extraProviderLabel(providerId, provider) {
+  return typeof provider.label === "string" && provider.label ? provider.label : providerId;
+}
+
+function extraWindowLimit(limit) {
+  if (!limit || typeof limit !== "object" || limit.kind !== "window") return null;
+  if (!Number.isFinite(Number(limit.usedPercent))) return null;
+  const usedPercent = Math.max(0, Math.min(100, Math.round(Number(limit.usedPercent))));
+  const bucket = { ...limit, usedPercent };
+  if (bucket.expired === true || isExpiredBucket(bucket)) {
+    return { ...bucket, usedPercent: 0, expired: true };
+  }
+  return bucket;
+}
+
+function extraBalanceLimit(limit) {
+  return limit && typeof limit === "object" && limit.kind === "balance"
+    && typeof limit.remaining === "number" && Number.isFinite(limit.remaining)
+    ? limit
+    : null;
+}
+
+function buildExtraQuotaRow(sourceEntry, provider) {
+  const limits = Array.isArray(provider.limits) ? provider.limits : [];
+  const windows = limits.map(extraWindowLimit).filter(Boolean);
+  const balances = limits.map(extraBalanceLimit).filter(Boolean);
+  if (!windows.length && !balances.length) return null;
+  const row = document.createElement("div");
+  row.className = "quota-group-row";
+  const headerText = buildQuotaSourceHeader(sourceEntry, provider, null, "extraQuota");
+  if (headerText) row.appendChild(createText("div", "quota-group-header", headerText));
+  if (windows.length) {
+    const halves = document.createElement("div");
+    halves.className = windows.length > 2 ? "quota-halves is-wrapping" : "quota-halves";
+    for (const limit of windows) {
+      const minutes = Number(limit.windowMinutes);
+      const knownMinutes = Number.isFinite(minutes) && minutes > 0;
+      // Same hue rule as the coin: a sub-day window is the rolling (outer)
+      // one, a day or longer (or unknown, like a calendar month) the long one.
+      const ringSlot = knownMinutes && minutes < 24 * 60 ? "outer" : "inner";
+      const half = buildQuotaHalfBar(
+        formatQuotaWindowLabel(limit, typeof limit.label === "string" ? limit.label : ""),
+        limit,
+        quotaResetStyle(limit, ringSlot === "outer" ? "countdown" : "date"),
+        "extraQuota",
+        ringSlot
+      );
+      if (limit.expired === true) half.className = "quota-half is-expired";
+      halves.appendChild(half);
+    }
+    row.appendChild(halves);
+  }
+  for (const balance of balances) {
+    const line = document.createElement("div");
+    line.className = "quota-balance-row";
+    const label = typeof balance.label === "string" && balance.label
+      ? balance.label
+      : t("dashboardQuotaBalance");
+    const labelEl = createText("span", "quota-balance-label", label);
+    labelEl.title = label;
+    line.appendChild(labelEl);
+    line.appendChild(createText("span", "quota-balance-value", formatQuotaBalance(balance.remaining, balance.unit)));
+    row.appendChild(line);
+  }
+  return row;
+}
+
+function buildExtraQuotaSections(sources) {
+  const providers = new Map(); // providerId -> label (first reporting source names it)
+  for (const source of sources) {
+    const extra = source.extraQuota;
+    if (!extra || typeof extra !== "object") continue;
+    for (const [id, provider] of Object.entries(extra)) {
+      if (!EXTRA_PROVIDER_ID_RE.test(id) || !provider || typeof provider !== "object") continue;
+      if (!providers.has(id)) providers.set(id, extraProviderLabel(id, provider));
+    }
+  }
+  // Same order as the Session HUD quota section: by label, then id.
+  const ordered = [...providers.entries()].sort(([idA, labelA], [idB, labelB]) => {
+    if (labelA !== labelB) return labelA < labelB ? -1 : 1;
+    if (idA !== idB) return idA < idB ? -1 : 1;
+    return 0;
+  });
+  const sections = [];
+  for (const [id, label] of ordered) {
+    const rows = sources.map((source) => {
+      const provider = source.extraQuota && source.extraQuota[id];
+      return provider && typeof provider === "object" ? buildExtraQuotaRow(source, provider) : null;
+    });
+    const section = buildQuotaSectionTitled(label, rows);
+    if (section) sections.push(section);
+  }
+  return sections;
 }
 
 // render() re-invokes renderQuotaSummary every second so the "resets in Xh
@@ -1088,6 +1220,8 @@ function renderQuotaSummary(snapshot) {
     kimiConnected ? buildKimiQuotaRefreshControl() : []
   );
   if (kimiSection) sections.push(kimiSection);
+
+  sections.push(...buildExtraQuotaSections(sources));
 
   if (!sections.length) {
     quotaSummaryEl.hidden = true;

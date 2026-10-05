@@ -1082,6 +1082,7 @@ describe("roam pauses during IME editing (#640)", () => {
   });
 });
 
+
 describe("roam pauses during settings size preview", () => {
   beforeEach(() => {
     mock.method(Math, "random", () => 0.9);

@@ -273,10 +273,14 @@ async function loadDashboard(
 }
 
 async function loadHud(sessions, openResult = { status: "ok" }) {
-  const document = createDocument(["hud"]);
+  const document = createDocument(["hud", "hud-sessions", "hud-quota"]);
+  // Same nesting as session-hud.html: one box, sessions then quota.
+  document.elements.get("hud").appendChild(document.elements.get("hud-sessions"));
+  document.elements.get("hud").appendChild(document.elements.get("hud-quota"));
   const openCalls = [];
   let snapshotListener = null;
   let feedbackTimeout = null;
+  const dashboardCalls = { count: 0 };
   const api = {
     onLangChange: () => {},
     onSessionSnapshot: (listener) => { snapshotListener = listener; },
@@ -287,7 +291,7 @@ async function loadHud(sessions, openResult = { status: "ok" }) {
     },
     focusSession: () => {},
     ackCompletion: async () => ({ status: "noop" }),
-    openDashboard: () => {},
+    openDashboard: () => { dashboardCalls.count += 1; },
     setPinned: () => {},
   };
   const context = vm.createContext({
@@ -297,16 +301,23 @@ async function loadHud(sessions, openResult = { status: "ok" }) {
     clearTimeout: () => { feedbackTimeout = null; },
   });
   vm.runInContext(fs.readFileSync(path.join(__dirname, "..", "src", "session-focus-unavailable.js"), "utf8"), context);
+  vm.runInContext(fs.readFileSync(path.join(__dirname, "..", "src", "quota-ring-renderer.js"), "utf8"), context);
   vm.runInContext(fs.readFileSync(path.join(__dirname, "..", "src", "session-hud-renderer.js"), "utf8"), context);
   await flush();
   snapshotListener({ sessions, orderedIds: sessions.map((entry) => entry.id) });
   return {
     root: document.elements.get("hud"),
     openCalls,
-    pushSnapshot: (nextSessions = sessions) => snapshotListener({
+    dashboardCalls,
+    pushSnapshot: (nextSessions = sessions, extra = {}) => snapshotListener({
       sessions: nextSessions,
       orderedIds: nextSessions.map((entry) => entry.id),
+      ...extra,
     }),
+    sections: {
+      sessions: document.elements.get("hud-sessions"),
+      quota: document.elements.get("hud-quota"),
+    },
     expireFeedback: async () => {
       const callback = feedbackTimeout;
       feedbackTimeout = null;
@@ -398,7 +409,7 @@ test("Dashboard renders no Kimi quota section or refresh for a disconnected key"
   assert.strictEqual(byClass(dashboard.quotaSummary, "quota-section").length, 0);
 });
 
-test("Dashboard quota bars apply the same warn and hot boundaries as Orbit", async () => {
+test("Dashboard quota bars apply the same warn and hot boundaries as the HUD quota rows", async () => {
   const dashboard = await loadDashboard([], { status: "ok" }, {
     accountQuota: [{
       host: null,
@@ -427,6 +438,79 @@ test("Dashboard quota bars apply the same warn and hot boundaries as Orbit", asy
   assert.match(classesByWidth.get("60%"), /\bsev-warn\b/);
   assert.match(classesByWidth.get("85%"), /\bsev-warn\b/);
   assert.match(classesByWidth.get("86%"), /\bsev-hot\b/);
+});
+
+test("Dashboard renders one section per extra provider with window bars and balance rows", async () => {
+  const now = Date.now();
+  const dashboard = await loadDashboard([], { status: "ok" }, {
+    accountQuota: [{
+      host: null,
+      claudeQuota: { lastSeenAt: now, group: { claudeFiveHour: { usedPercent: 35 } } },
+      extraQuota: {
+        "opencode-go": {
+          label: "OpenCode Go",
+          lastSeenAt: now,
+          limits: [
+            { id: "rolling-5h", label: "5 Hour limit", kind: "window", usedPercent: 0, windowMinutes: 300, resetAt: now + 3_600_000 },
+            { id: "weekly", label: "Weekly limit", kind: "window", usedPercent: 0, windowMinutes: 10080, resetAt: now + 86_400_000 },
+            { id: "monthly", label: "Monthly", kind: "window", usedPercent: 0, resetAt: now + 20 * 86_400_000 },
+          ],
+        },
+        commandcode: {
+          label: "Command Code",
+          // Last confirmed 20 minutes ago: the row says so.
+          lastSeenAt: now - 20 * 60_000,
+          limits: [
+            { id: "commandcode:5h", label: "5-hour limit", kind: "window", usedPercent: 90, windowMinutes: 300, resetAt: now - 1 },
+            { id: "commandcode:7d", label: "Weekly limit", kind: "window", usedPercent: 44, windowMinutes: 10080, resetAt: now + 86_400_000 },
+            { id: "commandcode:balance", label: "Credit balance", kind: "balance", remaining: 43.9644636339, unit: "credits" },
+          ],
+        },
+        deepseek: {
+          label: "DeepSeek",
+          lastSeenAt: now,
+          limits: [{ id: "deepseek:balance:CNY", label: "", kind: "balance", remaining: 43.62, unit: "cny" }],
+        },
+      },
+    }],
+  });
+
+  const sections = byClass(dashboard.quotaSummary, "quota-section");
+  const titleOf = (section) => byClass(section, "quota-section-header")[0].textContent;
+  // Fixed providers first, then extras by label.
+  assert.deepStrictEqual(sections.map(titleOf), ["dashboardQuotaSectionClaudeCode", "Command Code", "DeepSeek", "OpenCode Go"]);
+
+  const [, commandCode, deepSeek, openCode] = sections;
+  assert.deepStrictEqual(byClass(openCode, "quota-label").map((el) => el.textContent), ["5h", "7d", "Monthly"]);
+  assert.deepStrictEqual(
+    byClass(openCode, "quota-bar-fill").map((fill) => fill.className),
+    [
+      "quota-bar-fill pv-extraQuota rg-outer sev-ok",
+      "quota-bar-fill pv-extraQuota rg-inner sev-ok",
+      "quota-bar-fill pv-extraQuota rg-inner sev-ok",
+    ]
+  );
+
+  // The expired 5h window reads as a dimmed 0%, never the pre-reset 90%.
+  const ccHalves = byClass(commandCode, "quota-half");
+  assert.strictEqual(ccHalves[0].className, "quota-half is-expired");
+  assert.strictEqual(byClass(ccHalves[0], "quota-bar-fill")[0].style.width, "0%");
+  assert.match(byClass(ccHalves[1], "quota-percent")[0].textContent, /^44% · /);
+  // Stale source → "as of …" header (untranslated key in this harness); a
+  // fresh single-source provider carries no header at all.
+  assert.deepStrictEqual(byClass(commandCode, "quota-group-header").map((el) => el.textContent), ["dashboardQuotaAsOf"]);
+  assert.strictEqual(byClass(openCode, "quota-group-header").length, 0);
+  assert.deepStrictEqual(
+    byClass(commandCode, "quota-balance-row").map((row) => row.children.map((c) => c.textContent)),
+    [["Credit balance", "43.96 cr"]]
+  );
+
+  // A balance without its own label falls back to the localized word.
+  assert.deepStrictEqual(
+    byClass(deepSeek, "quota-balance-row").map((row) => row.children.map((c) => c.textContent)),
+    [["dashboardQuotaBalance", "¥43.62"]]
+  );
+  assert.strictEqual(byClass(deepSeek, "quota-bar-fill").length, 0);
 });
 
 test("Dashboard renders the resolved custom agent name instead of its raw id", async () => {
@@ -758,6 +842,39 @@ test("HUD feedback survives snapshot renders and clears on its timeout", async (
   await harness.expireFeedback();
   assert.strictEqual(byClass(harness.root, "session-inline-feedback").length, 0);
   assert.strictEqual(byClass(harness.root, "title")[0].textContent, "local");
+});
+
+test("HUD draws session rows and quota rows as two sections of one box", async () => {
+  const harness = await loadHud([session("local")]);
+  const quota = {
+    accountQuota: [{
+      host: null,
+      claudeQuota: { lastSeenAt: Date.now(), group: {
+        claudeFiveHour: { usedPercent: 11, windowMinutes: 300, resetAt: Date.now() + 3_600_000 },
+        claudeWeekly: { usedPercent: 33, windowMinutes: 10080, resetAt: Date.now() + 86_400_000 },
+      } },
+    }],
+    quotaAgentIcons: {},
+    displayMode: "used",
+    hiddenQuotaProviders: [],
+    visibleRows: 1,
+    overflow: 0,
+  };
+  harness.pushSnapshot(undefined, { quota });
+  assert.strictEqual(byClass(harness.sections.sessions, "title")[0].textContent, "local");
+  const quotaRows = byClass(harness.sections.quota, "quota-row");
+  assert.strictEqual(quotaRows.length, 1);
+  assert.deepStrictEqual(byClass(quotaRows[0], "quota-value").map((el) => el.textContent), ["7d 33%", "5h 11%"]);
+  await quotaRows[0].dispatch("click");
+  assert.strictEqual(harness.dashboardCalls.count, 1);
+  assert.ok(harness.root.classList.contains("has-pin"));
+
+  // Session rows switched off: the quota section stays, the pin goes with the
+  // session rows it belongs to.
+  harness.pushSnapshot(undefined, { quota, hudShowSessions: false });
+  assert.strictEqual(byClass(harness.sections.sessions, "row").length, 0);
+  assert.strictEqual(byClass(harness.sections.quota, "quota-row").length, 1);
+  assert.strictEqual(harness.root.classList.contains("has-pin"), false);
 });
 
 test("unfocusable and folder feedback copy exists in all supported languages", () => {

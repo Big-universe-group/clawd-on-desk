@@ -206,6 +206,48 @@ describe("menu grouping invariants", () => {
   });
 });
 
+describe("quota tray menu group", () => {
+  it("requires both switches and at least one drawable provider, then inserts disabled lines after state", () => {
+    const initMenu = loadMenuWithElectron(fakeElectron());
+    let trayTemplate = null;
+    const snapshot = {
+      accountQuota: [{ host: null }],
+    };
+    const ctx = buildBaseCtx({
+      tray: { setContextMenu(menuObj) { trayTemplate = menuObj.template; } },
+      quotaTrayEnabled: false,
+      sessionHudShowQuota: true,
+      getQuotaSnapshot: () => snapshot,
+    });
+    const menu = initMenu(ctx);
+    const build = () => {
+      menu.buildTrayMenu();
+      return trayTemplate;
+    };
+
+    assert.ok(!build().some((item) => item.label === "Usage"));
+    ctx.quotaTrayEnabled = true;
+    ctx.sessionHudShowQuota = false;
+    assert.ok(!build().some((item) => item.label === "Usage"));
+    ctx.sessionHudShowQuota = true;
+    assert.ok(!build().some((item) => item.label === "Usage"), "an empty snapshot omits the group");
+
+    snapshot.accountQuota[0].claudeQuota = {
+      lastSeenAt: 1000,
+      group: {
+        claudeFiveHour: { usedPercent: 25, windowMinutes: 300, lastSeenAt: 1000 },
+        claudeWeekly: { usedPercent: 75, windowMinutes: 10080, lastSeenAt: 1000 },
+      },
+    };
+    const template = build();
+    const headerIndex = template.findIndex((item) => item.label === "Usage");
+    assert.ok(headerIndex > template.findIndex((item) => item.label === "Mini Mode"));
+    assert.strictEqual(template[headerIndex].enabled, false);
+    assert.strictEqual(template[headerIndex + 1].label, "Claude  7d 75% · 5h 25%");
+    assert.strictEqual(template[headerIndex + 1].enabled, false);
+  });
+});
+
 describe("pet color menu placement", () => {
   it("keeps pet colors out of both tray and context quick menus", () => {
     const initMenu = loadMenuWithElectron(fakeElectron());
