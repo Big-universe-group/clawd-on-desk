@@ -3552,6 +3552,39 @@ describe("updateSession()", () => {
     });
   });
 
+  // issue #655: WorkBuddy 5.6.x delivers UserPromptSubmit ~0.1s before
+  // SessionStart on every turn, so the hook marks SessionStart preserve_state.
+  // Without it the late idle SessionStart would flip the running turn to idle.
+  it("issue #655: keeps a running WorkBuddy turn thinking across a late preserveState SessionStart", () => {
+    api.updateSession("workbuddy:turn", "thinking", "UserPromptSubmit", {
+      agentId: "workbuddy",
+      cwd: "/tmp/repo",
+    });
+    api.updateSession("workbuddy:turn", "idle", "SessionStart", {
+      agentId: "workbuddy",
+      cwd: "/tmp/repo",
+      preserveState: true,
+    });
+
+    assert.strictEqual(
+      api.sessions.get("workbuddy:turn").state,
+      "thinking",
+      "the late SessionStart must not flip a running turn back to idle",
+    );
+  });
+
+  it("issue #655: still creates an idle WorkBuddy session from a preserveState SessionStart when none exists", () => {
+    api.updateSession("workbuddy:cold", "idle", "SessionStart", {
+      agentId: "workbuddy",
+      cwd: "/tmp/repo",
+      preserveState: true,
+    });
+
+    const session = api.sessions.get("workbuddy:cold");
+    assert.ok(session, "SessionStart must still create the session");
+    assert.strictEqual(session.state, "idle");
+  });
+
   // Account quota is not session state: it lives in the session-independent
   // per-source store (src/state-account-quota.js), fed via updateAccountQuota
   // and exported as snapshot.accountQuota — the headline case is "check a

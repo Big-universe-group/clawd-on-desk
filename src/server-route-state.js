@@ -656,9 +656,9 @@ function handleStatePost(req, res, options) {
           // placeholder → real title swap arrives on session.updated, which
           // maps to no Clawd state). Not gated on the Claude telemetry flag —
           // it's not Claude statusline data. A metadata-only title is always
-          // formal: only hooks/clawd-hook.js sends session_title_from_prompt,
-          // and it never sends it on a metadata-only request, so any marker
-          // here is ignored.
+          // formal: only hooks/clawd-hook.js and hooks/workbuddy-hook.js send
+          // session_title_from_prompt, and neither sends it on a metadata-only
+          // request, so any marker here is ignored.
           if (sessionTitle) metaUpdate.sessionTitle = sessionTitle;
           // DSH metadata bypasses the lifecycle sequence fence, so it must
           // only ever annotate DSH's own session. Pass the expected owner so

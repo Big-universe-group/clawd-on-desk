@@ -76,6 +76,14 @@ function isLocalTraeDesktopIdleSession(session) {
     && session.state === "idle";
 }
 
+function isLocalWorkBuddyDesktopIdleSession(session) {
+  return !!session
+    && session.agentId === "workbuddy"
+    && !session.host
+    && !session.headless
+    && session.state === "idle";
+}
+
 function getStaleSessionDecision(session, options = {}) {
   const now = options.now;
   const config = options.staleConfig || {};
@@ -193,6 +201,20 @@ function getStaleSessionDecision(session, options = {}) {
     return { action: "delete", reason: "traecode-desktop-idle-timeout" };
   }
 
+  // WorkBuddy emits Stop when a turn finishes (stored as idle) but never emits
+  // SessionEnd, and archiving or deleting a conversation sends no event either.
+  // On Windows agent_pid is the long-lived main process, so a live process
+  // cannot vouch for an individual finished conversation forever — apply the
+  // same configured idle cutoff used for Codex Desktop, ZCode, and TraeCode.
+  // agent-exit above still wins when WorkBuddy itself quits.
+  if (
+    sessionStaleMs > 0
+    && age > sessionStaleMs
+    && isLocalWorkBuddyDesktopIdleSession(session)
+  ) {
+    return { action: "delete", reason: "workbuddy-desktop-idle-timeout" };
+  }
+
   // NOTE: requiresCompletionAck does NOT hold a session out of stale cleanup.
   // The completion notification (e.g. Telegram push) already fires once at the
   // completion instant, so an unacknowledged remote session has already been
@@ -280,5 +302,6 @@ module.exports = {
   isLocalOpencodeWorkingLikeSession,
   isLocalZcodeDesktopIdleSession,
   isLocalTraeDesktopIdleSession,
+  isLocalWorkBuddyDesktopIdleSession,
   getStaleSessionDecision,
 };

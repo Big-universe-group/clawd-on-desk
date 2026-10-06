@@ -162,6 +162,15 @@ WorkBuddy 状态与通知同步（Claude Code 兼容 hook，command）：
     → 同上状态机（agent_id: workbuddy）
   Hook 注册到当前 WorkBuddy AI 的 ~/.workbuddy-ai/settings.json（旧版兼容 ~/.workbuddy/settings.json）。集成为 state + Notification only：不注册 PermissionRequest HTTP hook，
   审批始终由 WorkBuddy 原生沙箱与 GUI 处理；无 session_id 的事件在返回合法 stdout 后直接丢弃，不进入 /state。
+  WorkBuddy 每轮完成会发 Stop（存成 idle），但没有结束对话的 SessionEnd，归档、删除也不发事件；Windows 上所有角色共用同一个 WorkBuddy.exe，agent_pid 取命令行不引用 app.asar 脚本、也不带 --type= 的长寿 GUI 主进程，
+  跑 app.asar 脚本的 daemon / sidecar / edge-sync / 每轮 --prewarm 宿主都不认——否则 agent_pid 会落在每轮做完就退出的宿主上，卡片被 agent-exit 提前删除。本机 idle 会话因此不再由
+  长寿进程保活，超过会话超时按 workbuddy-desktop-idle-timeout 撤卡（agent-exit 仍优先）。5.6.x 每轮 UserPromptSubmit 都可能早于 SessionStart（首轮 source=startup，之后 source=resume），
+  故 SessionStart 带 preserve_state，避免刚进入 thinking 的会话被迟到的 idle 改回空闲。归档、删除只改 workbuddy.db 的 sessions 行（status='archived' 或 deleted_at 非空）而不发 hook，
+  所以挂在 workbuddy-session-title 观察器上：一次轮询读到这两种生命周期就对该会话 dismissSession 撤卡（不响提示音、不算完成），并让 updateSessionFromServer 对随后的迟到事件
+  同步重读当时判定用的那个所属库；仍是归档/删除就丢弃，取消归档或读不到就恢复正常接收。生命周期只认拥有 transcript 的那个库（transcript 不在任何已知家目录下、或没有 transcript 一律算“不知道”，
+  绝不用别的库推断）；别的家目录里的同 ID 归档副本不参与判断；读不到数据库一律按“不知道”处理，绝不撤卡。
+
+  WorkBuddy's native `Notification` subtypes `idle_prompt` and `auth_success` are acknowledged with `{}` locally, before process resolution or HTTP delivery. `idle_prompt` is a "send another message" reminder, observed on 5.2.6 about 60 seconds after Stop (5.6.2's per-turn host exits before it can fire, so it was not observed there); `auth_success` is the login-success toast, emitted by 5.6.2 at the start of every turn. Forwarding either would create or settle a session — a phantom idle row before the first UserPromptSubmit, or knocking a running turn back to idle. Permission, elicitation, needs-input, unknown and untyped notifications retain their existing behavior. This does not change SessionEnd/process-exit handling or resolve completed-session retention in #655.
 
 Qoder 会话标题（本机、state-only）：
   Hook 转发显式标题与 transcript 路径，保持 stdout 为 `{}` 和原生权限流程不变。
@@ -505,6 +514,16 @@ DND remains an interaction/visual gate and does not stop recap or coverage. Susp
 | Theme | `theme-loader` 是 stateless loader；`theme-runtime` 是唯一 active-theme owner |
 
 `state.js` 的 session snapshot 是共享 schema：Dashboard、Session HUD（含 Orbit quota ring）以及可选 Telegram completion、Discord presence、LAN PWA 等 consumer 都会读取它。新增、重命名或删除字段时必须检查全部 consumer，不能只看 Dashboard/HUD。
+
+## WorkBuddy Native Session Titles
+
+`hooks/workbuddy-hook.js` forwards `transcript_path` and marks a prompt first-line fallback with `session_title_from_prompt`. A fallback cannot replace a formal title. Only the first nonblank prompt line is considered, with secret-looking lines rejected before truncation; message bodies are not forwarded.
+
+After a local WorkBuddy session has been accepted, `src/agent-runtime-main.js` owns a `workbuddy-session-title` observer. It reads the matching `sessions` row from `workbuddy.db`, preferring `custom_title` to `title`. Roots are an absolute `WORKBUDDY_CONFIG_DIR`, `~/.workbuddy-ai`, and `~/.workbuddy`; the home owning the supplied transcript takes precedence for titles when both generations exist. Cwd mismatches and titles over 4 KiB are rejected. Title search may span homes, but the lifecycle is reported only when the owning home is known — the home holding the transcript, or a home pinned by the decision that retired the session. With no transcript under a known home, the lifecycle is unknown and is never inferred from another home's archive copy: `status = 'archived'` or a non-null `deleted_at` in that home retires the card through the runtime's `dismissSession` (not a completion — no sound, recap, or completion push) and starts suppression of late local hooks, which synchronously re-read the *same pinned home* and only drop the event while it is still archived/deleted. A missing or unreadable owning home is "unknown" and never retires a card. A table without the `status` column falls back to the original title-only query: titles still work, lifecycle is unknown. Databases are opened read-only and closed after each read; under WAL mode SQLite may maintain its own `-shm`/`-wal` side files, but Clawd never writes database content or settings. Absent homes are never created.
+
+When SQLite is unavailable or the database cannot supply a title, the observer reads session-scoped `ai-title` / `custom-title` JSONL metadata using `src/jsonl-session-title.js`, the incremental reader shared with Qoder. Only SQLite can report the archive/delete lifecycle; the JSONL fallback supplies a title only. WorkBuddy reads at most 1 MiB of new transcript bytes per scan, retains bounded partial lines, and ignores other sessions and message records. A two-second poll discovers delayed generated titles and idle renames without requiring a new hook. Immediate reads are rate-limited to one per poll window per session, and a `SessionStart` (WorkBuddy 5.6.x sends one every turn) replaces the observer identity — so a read started before the turn cannot annotate the resumed lifecycle — while carrying the rate-limit window over. It keeps the JSONL reader's accumulated progress only for the same file, not merely the same path: the observer samples the transcript's `dev`+`ino` once per event, records exactly that sample, and resets the reader when the file was replaced or the identity cannot be read — while preserving the conversation's rate-limit window. At most 256 surviving local sessions are observed; `track` and `beginTurn` share that cap. End, disable/uninstall, eviction, same-id resume, and shutdown invalidate pending reads; remote, WSL, and headless sessions never read local WorkBuddy storage.
+
+Native titles enter `updateSessionMetadata` with an explicit WorkBuddy ownership guard. They use the existing session snapshot consumed by HUD/Dashboard and do not refresh activity timestamps, change state, replay completion, or create missing sessions.
 
 ## Cursor Hook Commands And Session Titles
 
