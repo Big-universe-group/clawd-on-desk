@@ -127,8 +127,8 @@ describe("Session HUD quota section", () => {
     const [win] = windows;
     assert.match(win.file, /session-hud\.html$/);
     assert.ok(win.isVisible());
-    // shell top 2 + (2*28 + 1 + 3*26 + 2) + shell bottom 8
-    assert.equal(win.bounds.height, 2 + 137 + 8);
+    // shell top 2 + (2*28 + 2 + 3*26 + 2) + shell bottom 8
+    assert.equal(win.bounds.height, 2 + 138 + 8);
     assert.ok(win.bounds.y >= 420, "box sits below the pet");
     assert.ok(win.bounds.width >= 250 + 6, "box widens to fit quota rows");
     const payload = lastPayload();

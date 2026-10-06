@@ -10,6 +10,10 @@
 :root {
   --hud-bg: rgba(255, 255, 255, 0.88);
   --hud-border: rgba(0, 0, 0, 0.12);
+  /* Sessions/quota rule: heavier than the box border so the two sections read
+     as separate blocks, plus a faint tint on the quota block. */
+  --hud-divider: rgba(0, 0, 0, 0.22);
+  --hud-quota-tint: rgba(0, 0, 0, 0.035);
   --text: #242427;
   --text-muted: #6b6b70;
   --shadow: rgba(0, 0, 0, 0.16);
@@ -41,6 +45,8 @@
   :root {
     --hud-bg: rgba(32, 32, 36, 0.88);
     --hud-border: rgba(255, 255, 255, 0.12);
+    --hud-divider: rgba(255, 255, 255, 0.24);
+    --hud-quota-tint: rgba(255, 255, 255, 0.045);
     --text: #f4f4f5;
     --text-muted: #a1a1aa;
     --shadow: rgba(0, 0, 0, 0.34);
@@ -85,10 +91,11 @@ body { padding: 2px 3px 8px; }
 
 .hud-section:empty { display: none; }
 
-/* 1px rule between the sessions and quota sections; session-hud.js counts it
+/* 2px rule between the sessions and quota sections; session-hud.js counts it
    (HUD_SECTION_DIVIDER) only when both sections have rows. */
 .hud-sessions:not(:empty) + .hud-quota:not(:empty) {
-  border-top: 1px solid var(--hud-border);
+  border-top: 2px solid var(--hud-divider);
+  background: var(--hud-quota-tint);
 }
 
 .hud.has-pin .row {
@@ -446,6 +453,14 @@ body { padding: 2px 3px 8px; }
 .quota-value.sev-warn { color: var(--sev-warn); }
 .quota-value.sev-hot { color: var(--sev-hot); }
 .quota-value.sev-reset { color: var(--sev-reset); }
+/* "7d(2d2h) 29%": the time to reset rides in parentheses right after the
+   window label, a size smaller and lighter than the label/percentage so the
+   percentage stays the primary signal; it keeps the window's hue. */
+.quota-reset-in {
+  font-size: 10px;
+  font-weight: 600;
+  opacity: 0.78;
+}
 
 .pv-claudeQuota.rg-outer { --quota-hue: var(--id-claude-outer); }
 .pv-claudeQuota.rg-inner { --quota-hue: var(--id-claude-inner); }

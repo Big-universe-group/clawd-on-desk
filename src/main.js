@@ -1985,6 +1985,14 @@ function flashTaskbar() {
   armTrayAlertDismiss();
 }
 
+// Turning the flash off in Settings ends an alert already in progress. The
+// chime repeat re-checks its switch on every tick; the flash has no such tick
+// check, so without this an "until dismissed" flash (flashDurationMs = 0) kept
+// blinking after the user disabled it.
+_settingsController.subscribeKey("flashTaskbarOnComplete", (enabled) => {
+  if (enabled !== true) stopTrayFlash();
+});
+
 function syncHitWin() { return petWindowRuntime.syncHitWin(); }
 
 function getDisplayedVisualTuple() {

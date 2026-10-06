@@ -38,8 +38,8 @@ const AUTO_HIDE_POLL_MS = 200;
 const HIDE_GRACE_MS = 500;
 const HIDDEN_WINDOW_DESTROY_MS = 30000;
 const HUD_WIDTH_GROWTH_RATIO = 0.4;
-// 1px rule between the sessions section and the quota section.
-const HUD_SECTION_DIVIDER = 1;
+// 2px rule between the sessions section and the quota section (session-hud.html).
+const HUD_SECTION_DIVIDER = 2;
 
 function clampToWorkArea(value, min, max) {
   if (max < min) return min;
@@ -197,8 +197,13 @@ function computeHudBoxHeight({ sessionRows = 0, quotaRows = 0 } = {}) {
     + HUD_BORDER_Y;
 }
 
-function getHudBoxWidth(sessionWidth, quotaRows) {
-  return quotaRows > 0 ? Math.max(sessionWidth, ringGeom.constants.QUOTA_MIN_WIDTH) : sessionWidth;
+// Box width with a quota section: at least QUOTA_MIN_WIDTH, and wide enough
+// for the widest quota row's estimate (row width + the box's 1px side borders)
+// so "7d(2d2h) 29%"-style values never push the provider label to an ellipsis.
+function getHudBoxWidth(sessionWidth, quotaRows, quotaRowWidth = 0) {
+  if (!(quotaRows > 0)) return sessionWidth;
+  const rowNeed = Number.isFinite(quotaRowWidth) && quotaRowWidth > 0 ? quotaRowWidth + 2 : 0;
+  return Math.max(sessionWidth, ringGeom.constants.QUOTA_MIN_WIDTH, rowNeed);
 }
 
 function computeHudReservedOffset(cardHeight) {
@@ -374,10 +379,14 @@ module.exports = function initSessionHud(ctx) {
     const sessionRows = ctx.sessionHudEnabled !== false && snapshotHasVisibleSessions(snapshot)
       ? computeHudLayout(snapshot, { showStateLabels: ctx.sessionHudShowStateLabels !== false }).rowCount
       : 0;
+    const showQuota = ctx.sessionHudShowQuota !== false;
     const quota = ringGeom.computeQuotaSectionLayout(
-      countQuotaCoins(snapshot, ctx.sessionHudShowQuota !== false, ctx.quotaRingHiddenProviders)
+      countQuotaCoins(snapshot, showQuota, ctx.quotaRingHiddenProviders)
     );
-    return { sessionRows, quota };
+    const quotaRowWidth = quota.visibleRows > 0
+      ? ringGeom.estimateQuotaSectionWidth(snapshot, showQuota, ctx.quotaRingHiddenProviders)
+      : 0;
+    return { sessionRows, quota, quotaRowWidth };
   }
 
   function getPetHitRect() {
@@ -412,7 +421,7 @@ module.exports = function initSessionHud(ctx) {
       ctx.sessionHudShowElapsed !== false,
       ctx.sessionHudShowStateLabels !== false,
       ctx.sessionHudShowContextUsage !== false
-    ), sections.quota.visibleRows);
+    ), sections.quota.visibleRows, sections.quotaRowWidth);
     const widthScale = getHudWidthScale(scale);
     const computed = computeSessionHudBounds({ hitRect, anchorRect, workArea, width, height, scale, widthScale });
     if (!computed) return null;

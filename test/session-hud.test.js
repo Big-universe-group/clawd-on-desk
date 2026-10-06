@@ -31,9 +31,9 @@ function mkSession(id, overrides = {}) {
 }
 
 describe("session HUD box with a quota section", () => {
-  it("stacks session rows, a 1px divider and quota rows in one box height", () => {
-    // 2 session rows (28) + divider 1 + 3 quota rows (26) + border 2.
-    assert.strictEqual(computeHudBoxHeight({ sessionRows: 2, quotaRows: 3 }), 2 * 28 + 1 + 3 * 26 + 2);
+  it("stacks session rows, a 2px divider and quota rows in one box height", () => {
+    // 2 session rows (28) + divider 2 + 3 quota rows (26) + border 2.
+    assert.strictEqual(computeHudBoxHeight({ sessionRows: 2, quotaRows: 3 }), 2 * 28 + 2 + 3 * 26 + 2);
     // A single section carries no divider.
     assert.strictEqual(computeHudBoxHeight({ sessionRows: 2, quotaRows: 0 }), computeHudHeight(2));
     assert.strictEqual(computeHudBoxHeight({ sessionRows: 0, quotaRows: 2 }), 2 * 26 + 2);

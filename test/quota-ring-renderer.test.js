@@ -110,9 +110,16 @@ function elementsWithClass(root, className) {
   return found;
 }
 
-function rowValues(row) {
+// Value text as the row reads it ("7d(2d2h) 33%"); `withCountdown: false`
+// drops the reset countdown so percentage assertions stay time-independent.
+function valueText(node, { withCountdown = true } = {}) {
+  if (!withCountdown && node.className === "quota-reset-in") return "";
+  return node.textContent + (node.children || []).map((child) => valueText(child, { withCountdown })).join("");
+}
+
+function rowValues(row, options = { withCountdown: false }) {
   const values = elementsWithClass(row, "quota-values")[0];
-  return values.children.map((child) => ({ text: child.textContent, className: child.className }));
+  return values.children.map((child) => ({ text: valueText(child, options), className: child.className }));
 }
 
 function providerName(row) {
@@ -321,5 +328,55 @@ describe("HUD quota section rows", () => {
     const source = plan("claudeQuota", 11, 33);
     renderer.update({ accountQuota: [source], visibleRows: 0, overflow: 0 });
     assert.equal(renderer.rows().length, 0);
+  });
+});
+
+describe("HUD quota reset countdown", () => {
+  function countdowns(row) {
+    return elementsWithClass(row, "quota-values")[0].children.map((value) => {
+      const reset = value.children.find((child) => child.className === "quota-reset-in");
+      return reset ? reset.textContent : null;
+    });
+  }
+
+  it("reads each window as label(time to reset) percentage, longest window first", () => {
+    const renderer = loadRenderer();
+    const source = plan("claudeQuota", 11, 33);
+    const t = Date.now();
+    source.claudeQuota.group.claudeFiveHour = bucket(11, { windowMinutes: 300, resetAt: t + (2 * 60 + 13) * 60_000 - 30_000 });
+    source.claudeQuota.group.claudeWeekly = bucket(33, { windowMinutes: 10080, resetAt: t + (3 * 24 + 4) * 3_600_000 - 30_000 });
+    renderer.render([source]);
+    const [row] = renderer.rows();
+    assert.deepEqual(rowValues(row, { withCountdown: true }).map((value) => value.text), ["7d(3d4h) 33%", "5h(2h13m) 11%"]);
+    assert.deepEqual(countdowns(row), ["(3d4h)", "(2h13m)"]);
+  });
+
+  it("drops the minor unit where two units would not fit", () => {
+    const renderer = loadRenderer();
+    const t = Date.now();
+    const cases = [
+      [12 * 24 * 60 + 300, "12d"],
+      [13 * 60 + 5, "13h"],
+      [45, "45m"],
+      [60, "1h"],
+      [24 * 60, "1d"],
+    ];
+    for (const [minutes, expected] of cases) {
+      const source = plan("codexQuota", undefined, 12);
+      source.codexQuota.group.codexWeekly = bucket(12, { windowMinutes: 10080, resetAt: t + minutes * 60_000 - 1_000 });
+      renderer.render([source]);
+      assert.deepEqual(countdowns(renderer.rows()[0]), [`(${expected})`], `${minutes}m left`);
+    }
+  });
+
+  it("omits the countdown for a window that already reset or reports no reset time", () => {
+    const renderer = loadRenderer();
+    const source = plan("claudeQuota", 11, 33);
+    source.claudeQuota.group.claudeFiveHour = bucket(80, { windowMinutes: 300, resetAt: Date.now() - 1_000 });
+    source.claudeQuota.group.claudeWeekly = bucket(33, { windowMinutes: 10080, resetAt: undefined });
+    renderer.render([source]);
+    const [row] = renderer.rows();
+    assert.deepEqual(rowValues(row, { withCountdown: true }).map((value) => value.text), ["7d 33%", "5h 0%"]);
+    assert.deepEqual(countdowns(row), [null, null]);
   });
 });

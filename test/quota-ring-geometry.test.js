@@ -108,3 +108,35 @@ describe("quota row labels and severity", () => {
     assert.equal(quotaSeverity(86), "hot");
   });
 });
+
+describe("quota section width estimate", () => {
+  const { estimateQuotaSectionWidth } = quotaGeometry;
+  const openCodeGo = {
+    host: null,
+    extraQuota: {
+      "opencode-go": {
+        label: "OpenCode Go",
+        limits: [
+          { kind: "window", usedPercent: 95, windowMinutes: 300, resetAt: 9_999_999_999_999 },
+          { kind: "window", usedPercent: 95, windowMinutes: 10080, resetAt: 9_999_999_999_999 },
+          { kind: "window", usedPercent: 82, label: "Monthly limit", resetAt: 9_999_999_999_999 },
+        ],
+      },
+    },
+  };
+  const claude = { host: null, claudeQuota: { group: { claudeFiveHour: bucket(10), claudeWeekly: bucket(20) } } };
+
+  // Measured in the real HUD (macOS system font): "OpenCode Go" plus
+  // "1mo(28d) 82%  7d(5d12h) 95%  5h(4h59m) 100%" needs a 425px row.
+  it("covers a three-window row with countdowns so its label does not truncate", () => {
+    assert.ok(estimateQuotaSectionWidth({ accountQuota: [openCodeGo] }, true, []) >= 425);
+  });
+
+  it("is driven by the widest visible row and ignores hidden or disabled quota", () => {
+    const both = estimateQuotaSectionWidth({ accountQuota: [claude, openCodeGo] }, true, []);
+    const claudeOnly = estimateQuotaSectionWidth({ accountQuota: [claude, openCodeGo] }, true, ["extra:opencode-go"]);
+    assert.equal(both, estimateQuotaSectionWidth({ accountQuota: [openCodeGo] }, true, []));
+    assert.ok(claudeOnly < both);
+    assert.equal(estimateQuotaSectionWidth({ accountQuota: [claude] }, false, []), 0);
+  });
+});

@@ -864,7 +864,9 @@ test("HUD draws session rows and quota rows as two sections of one box", async (
   assert.strictEqual(byClass(harness.sections.sessions, "title")[0].textContent, "local");
   const quotaRows = byClass(harness.sections.quota, "quota-row");
   assert.strictEqual(quotaRows.length, 1);
-  assert.deepStrictEqual(byClass(quotaRows[0], "quota-value").map((el) => el.textContent), ["7d 33%", "5h 11%"]);
+  // Each window reads "label(time to reset) percentage".
+  const textOf = (el) => el.textContent + el.children.map(textOf).join("");
+  assert.deepStrictEqual(byClass(quotaRows[0], "quota-value").map(textOf), ["7d(1d) 33%", "5h(1h) 11%"]);
   await quotaRows[0].dispatch("click");
   assert.strictEqual(harness.dashboardCalls.count, 1);
   assert.ok(harness.root.classList.contains("has-pin"));

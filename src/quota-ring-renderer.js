@@ -392,7 +392,37 @@ function displayedWindowPercent(item) {
   return Math.round(quotaDisplayPercent(item.pct));
 }
 
-function buildQuotaRow(model) {
+// Time left until a window resets, in at most two units so it fits inside the
+// window's parentheses on the one quota line: "3d4h", "12d", "2h13m", "13h",
+// "45m". Minutes round up so a live window never reads "0m" and the text
+// changes on the same minute boundary the fingerprint re-renders on.
+function formatResetCountdown(resetAt, now) {
+  const ms = Number(resetAt) - now;
+  if (!Number.isFinite(ms) || ms <= 0) return "";
+  const totalMinutes = Math.ceil(ms / 60000);
+  const days = Math.floor(totalMinutes / DAY_MINUTES);
+  const hours = Math.floor((totalMinutes % DAY_MINUTES) / 60);
+  const minutes = totalMinutes % 60;
+  if (days > 0) return days < 10 && hours > 0 ? `${days}d${hours}h` : `${days}d`;
+  if (hours > 0) return hours < 10 && minutes > 0 ? `${hours}h${minutes}m` : `${hours}h`;
+  return `${minutes}m`;
+}
+
+// One window reads "7d(2d2h) 29%": window label, time to reset in smaller
+// type inside parentheses, then the percentage. Plain inline spans, so the
+// space before the percentage survives and the parts share one baseline.
+function buildWindowValue(model, item, now) {
+  const value = createElement("span", identityClasses(model, item));
+  value.appendChild(createElement("span", "quota-window-label", item.label));
+  // A window that already reset reads 0% (or 100% left); a countdown would
+  // point at the next cycle the snapshot has not reported yet.
+  const countdown = item.reset ? "" : formatResetCountdown(item.resetAt, now);
+  if (countdown) value.appendChild(createElement("span", "quota-reset-in", `(${countdown})`));
+  value.appendChild(createElement("span", "quota-window-pct", ` ${displayedWindowPercent(item)}%`));
+  return value;
+}
+
+function buildQuotaRow(model, now) {
   const row = createElement("div", `quota-row${model.state === "stale" ? " is-stale" : ""}`);
   row.setAttribute("role", "button");
   row.setAttribute("tabindex", "0");
@@ -425,10 +455,7 @@ function buildQuotaRow(model) {
     const slotOrder = (item) => (item.slot === "third" ? 0 : item.ring === "inner" ? 1 : 2);
     const windows = [...model.windows].sort((a, b) =>
       slotOrder(a) - slotOrder(b) || (Number(b.windowMinutes) || 0) - (Number(a.windowMinutes) || 0));
-    for (const item of windows) {
-      values.appendChild(createElement("span", identityClasses(model, item),
-        `${item.label} ${displayedWindowPercent(item)}%`));
-    }
+    for (const item of windows) values.appendChild(buildWindowValue(model, item, now));
   }
   row.appendChild(values);
   return row;
@@ -467,7 +494,7 @@ function render() {
   if (!rows.length) return;
   const overflow = Math.max(0, payload.overflow);
   const providerLimit = overflow > 0 ? Math.max(0, payload.visibleRows - 1) : payload.visibleRows;
-  for (const model of rows.slice(0, providerLimit)) clusterEl.appendChild(buildQuotaRow(model));
+  for (const model of rows.slice(0, providerLimit)) clusterEl.appendChild(buildQuotaRow(model, now));
   if (overflow > 0) clusterEl.appendChild(buildOverflowRow(overflow));
 }
 
