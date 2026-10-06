@@ -24,7 +24,7 @@ function makeFakeElectron() {
   return {
     app: { quit() {}, setActivationPolicy() {}, dock: { show() {}, hide() {} } },
     BrowserWindow: function BrowserWindow() {},
-    Menu: { buildFromTemplate(template) { return { template }; } },
+    Menu: { buildFromTemplate(template) { return { template, on() {} }; } },
     Tray: function Tray() {},
     nativeImage: { createFromPath() { return { resize() { return this; }, setTemplateImage() {} }; } },
     screen: {

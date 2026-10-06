@@ -301,7 +301,7 @@ describe("menu recovery action", () => {
       BrowserWindow: function BrowserWindow() {},
       Menu: {
         buildFromTemplate(template) {
-          return { template };
+          return { template, on() {} };
         },
       },
       Tray: function Tray() {
@@ -347,7 +347,7 @@ describe("menu recovery action", () => {
       BrowserWindow: function BrowserWindow() {},
       Menu: {
         buildFromTemplate(template) {
-          return { template };
+          return { template, on() {} };
         },
       },
       Tray: function Tray() {
@@ -493,7 +493,7 @@ describe("menu dashboard action", () => {
       BrowserWindow: function BrowserWindow() {},
       Menu: {
         buildFromTemplate(template) {
-          return { template };
+          return { template, on() {} };
         },
       },
       Tray: function Tray() {

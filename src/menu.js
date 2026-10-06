@@ -362,7 +362,22 @@ module.exports = function initMenu(ctx) {
     ];
 
     const items = joinGroups([stateGroup, quotaGroup, noiseGroup, workGroup, systemGroup, appGroup, quitGroup]);
-    ctx.tray.setContextMenu(Menu.buildFromTemplate(items));
+    const menu = Menu.buildFromTemplate(items);
+    // Opening the tray menu is how the user acknowledges a completion alert:
+    // it stops the tray flash and the repeating chime (#722).
+    //
+    // macOS 26+ hands an *attached* context menu to AppKit, which shows it
+    // itself and no longer routes that click into Electron's status-item view,
+    // so Tray's mouse events ("click" / "mouse-down" / "mouse-up") stop firing
+    // while a menu is attached — silence there is expected, not a wiring bug.
+    // The menu's own show signal still arrives, so the dismissal hangs off it.
+    // Keeping the wiring on every platform leaves one code path: where the
+    // event is never emitted, the tray "click" listener in main.js does the
+    // same job.
+    menu.on("menu-will-show", () => {
+      if (typeof ctx.dismissCompletionAlerts === "function") ctx.dismissCompletionAlerts();
+    });
+    ctx.tray.setContextMenu(menu);
   }
 
   function rebuildAllMenus() {

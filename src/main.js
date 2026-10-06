@@ -1872,6 +1872,11 @@ function dismissCompletionAlerts() {
 }
 
 // A tray click dismisses both the flash and the repeating chime.
+//
+// Windows / Linux only: those platforms deliver "click" with a context menu
+// attached. On macOS 26+ the attached menu swallows every Tray mouse event, so
+// menu.js dismisses from the tray menu's "menu-will-show" instead (see
+// buildTrayMenu).
 function armTrayAlertDismiss() {
   const tray = _menu.getTray ? _menu.getTray() : null;
   if (!tray) return;
@@ -4765,6 +4770,10 @@ const _menuCtx = {
   flushRuntimeStateToPrefs,
   settings: _settingsController,
   syncHitWin,
+  // main.js owns the completion-alert state (flash timers + chime repeat);
+  // menu.js calls this from the tray menu's show signal (macOS) and main.js
+  // arms it on the tray "click" event for the platforms that deliver it.
+  dismissCompletionAlerts: () => dismissCompletionAlerts(),
   getPetWindowBounds,
   applyPetWindowBounds,
   getCurrentPixelSize,

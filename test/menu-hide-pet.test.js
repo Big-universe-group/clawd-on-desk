@@ -31,7 +31,7 @@ function fakeElectron() {
     BrowserWindow: function BrowserWindow() {},
     Menu: {
       buildFromTemplate(template) {
-        return { template };
+        return { template, on() {} };
       },
     },
     Tray: function Tray() {},
