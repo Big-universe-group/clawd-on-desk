@@ -198,7 +198,7 @@ function computeHudBoxHeight({ sessionRows = 0, quotaRows = 0 } = {}) {
 }
 
 // Box width with a quota section: at least QUOTA_MIN_WIDTH, and wide enough
-// for the widest quota row's estimate (row width + the box's 1px side borders)
+// for the quota table's estimate (its width + the box's 1px side borders)
 // so "7d(2d2h) 29%"-style values never push the provider label to an ellipsis.
 function getHudBoxWidth(sessionWidth, quotaRows, quotaRowWidth = 0) {
   if (!(quotaRows > 0)) return sessionWidth;

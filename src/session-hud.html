@@ -375,17 +375,34 @@ body { padding: 2px 3px 8px; }
   }
 }
 
+/* The quota section is a table. Tracks: 10px edge, 16px glyph, identity
+   (takes the slack and ellipsizes), then one `auto` column each for the
+   long (month/balance), week and short windows, and a 4px edge. Spacing is
+   item margin/padding rather than column-gap, so a column no row uses
+   collapses to nothing. Each row is a subgrid of these tracks, keeping its
+   own hover background and click target while its values share the
+   columns. */
+.hud-quota {
+  position: relative;
+  display: grid;
+  grid-template-columns: 10px 16px minmax(0, 1fr) auto auto auto 4px;
+  grid-auto-rows: 26px;
+}
+
 .quota-row {
+  grid-column: 1 / -1;
   min-width: 0;
   height: 26px;
-  flex: 0 0 26px;
-  display: flex;
+  display: grid;
+  grid-template-columns: subgrid;
   align-items: center;
-  gap: 8px;
-  padding: 0 10px;
   cursor: pointer;
   transition: background 80ms ease;
 }
+/* Horizontal rule between quota rows (and above "+N"), completing the
+   table grid with the column rules. It sits inside the row's fixed 26px
+   (border-box), so the section height main computes is unchanged. */
+.quota-row + .quota-row { border-top: 1px solid var(--hud-border); }
 
 .quota-row:hover { background: rgba(0, 0, 0, 0.06); }
 .quota-row:active { background: rgba(0, 0, 0, 0.10); }
@@ -394,8 +411,14 @@ body { padding: 2px 3px 8px; }
   .quota-row:active { background: rgba(255, 255, 255, 0.12); }
 }
 
-.quota-row.is-stale { opacity: 0.6; }
+/* Dim the row's content rather than the row, so its top rule keeps the same
+   weight as every other rule in the table. .quota-values is display:contents
+   and cannot carry opacity itself. */
+.quota-row.is-stale .provider-glyph,
+.quota-row.is-stale .provider-identity,
+.quota-row.is-stale .quota-value { opacity: 0.6; }
 .provider-glyph {
+  grid-column: 2;
   width: 16px;
   height: 16px;
   flex: 0 0 16px;
@@ -414,8 +437,9 @@ body { padding: 2px 3px 8px; }
   font-weight: 700;
 }
 .provider-identity {
+  grid-column: 3;
+  margin-left: 8px;
   min-width: 0;
-  flex: 1 1 auto;
   display: flex;
   align-items: baseline;
   overflow: hidden;
@@ -438,18 +462,48 @@ body { padding: 2px 3px 8px; }
   color: var(--text-muted);
   font-weight: 400;
 }
+/* Wrapper only: its values become cells of the row's subgrid while still
+   inheriting the value typography. */
 .quota-values {
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  display: contents;
   white-space: nowrap;
   font-size: 12px;
   font-weight: 700;
   line-height: 1;
   font-variant-numeric: tabular-nums;
 }
-.quota-value { color: var(--quota-hue, var(--id-outer)); }
+/* 6px on both sides, so a column rule at the cell's left edge sits midway
+   between two columns' values. */
+.quota-value {
+  padding: 0 6px;
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  color: var(--quota-hue, var(--id-outer));
+}
+.quota-col-long { grid-column: 4; }
+.quota-col-week { grid-column: 5; }
+.quota-col-short { grid-column: 6; }
+/* Vertical rule at the start of a value column. Absolutely positioned with
+   auto grid rows, it spans the section's full height, so it stays one
+   unbroken line across rows that leave this column empty; it stops above
+   a "+N" row. */
+.quota-col-rule {
+  position: absolute;
+  top: 5px;
+  bottom: 5px;
+  left: 0;
+  width: 0;
+  border-left: 1px solid var(--hud-border);
+  pointer-events: none;
+}
+.quota-col-rule.above-overflow { bottom: 31px; }
+/* Label and countdown stay left; the percentage rides the cell's right edge
+   so a column's percentages align (a balance-only cell is right-aligned). */
+.quota-window-pct {
+  margin-left: auto;
+  padding-left: 4px;
+}
 .quota-value.sev-warn { color: var(--sev-warn); }
 .quota-value.sev-hot { color: var(--sev-hot); }
 .quota-value.sev-reset { color: var(--sev-reset); }
@@ -493,6 +547,8 @@ body { padding: 2px 3px 8px; }
 }
 
 .quota-overflow {
+  display: flex;
+  align-items: center;
   justify-content: center;
   color: var(--text-muted);
   font-size: 12px;

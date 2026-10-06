@@ -75,7 +75,10 @@ function loadRenderer() {
       // Array.from runs in this realm, so deepStrictEqual compares plain arrays.
       return Array.from(api.collectQuotaRows({ accountQuota: snapshot, hiddenQuotaProviders }), (row) => row.providerKey);
     },
-    rows: () => cluster.children,
+    rows: () => cluster.children.filter((child) => /\bquota-row\b/.test(child.className)),
+    rules: () => cluster.children
+      .filter((child) => /\bquota-col-rule\b/.test(child.className))
+      .map((child) => child.className.match(/quota-col-(long|week|short)/)[1]),
     update: (payload) => api.update(cluster, payload),
   };
 }
@@ -328,6 +331,49 @@ describe("HUD quota section rows", () => {
     const source = plan("claudeQuota", 11, 33);
     renderer.update({ accountQuota: [source], visibleRows: 0, overflow: 0 });
     assert.equal(renderer.rows().length, 0);
+  });
+
+  // The section is a table: a value's column follows its window role, so a
+  // weekly-only or balance-only row still lines up under the other rows.
+  it("places every value in the long, week or short column by window role", () => {
+    const renderer = loadRenderer();
+    const claude = plan("claudeQuota", 11, 33);
+    const codexWeeklyOnly = plan("codexQuota", undefined, 12);
+    const openCodeGo = { extraQuota: { "opencode-go": { label: "OpenCode Go", lastSeenAt: now, limits: [
+      { kind: "window", usedPercent: 1, windowMinutes: 300 },
+      { kind: "window", usedPercent: 2, windowMinutes: 10080 },
+      { kind: "window", usedPercent: 3, label: "Monthly limit" },
+    ] } } };
+    const dailyOnly = { extraQuota: { daily: { label: "Daily", lastSeenAt: now, limits: [
+      { kind: "window", usedPercent: 4, windowMinutes: 1440 },
+    ] } } };
+    const command = { extraQuota: { command: { label: "Command Code", lastSeenAt: now, limits: [
+      { kind: "window", usedPercent: 5, windowMinutes: 300 },
+      { kind: "balance", remaining: 9, unit: "credits" },
+    ] } } };
+    const deepseek = { extraQuota: { deepseek: { label: "DeepSeek", lastSeenAt: now, limits: [
+      { kind: "balance", remaining: 43.62, unit: "cny" },
+    ] } } };
+    renderer.render([claude, codexWeeklyOnly, openCodeGo, dailyOnly, command, deepseek], { visibleRows: 6, overflow: 0 });
+    const columns = (row) => rowValues(row).map((value) => value.className.match(/quota-col-(\w+)/)[1]);
+    assert.deepEqual(Object.fromEntries(renderer.rows().map((row) => [providerName(row), columns(row)])), {
+      Claude: ["week", "short"],
+      Codex: ["week"],
+      "Command Code": ["long", "short"],
+      Daily: ["week"],
+      DeepSeek: ["long"],
+      "OpenCode Go": ["long", "week", "short"],
+    });
+    // Rules separate the used columns: one before every column but the first.
+    assert.deepEqual(Array.from(renderer.rules()), ["week", "short"]);
+  });
+
+  it("draws column rules only between columns the visible rows use", () => {
+    const renderer = loadRenderer();
+    renderer.render([plan("claudeQuota", 11, 33), plan("codexQuota", undefined, 12)]);
+    assert.deepEqual(Array.from(renderer.rules()), ["short"]);
+    renderer.render([plan("codexQuota", undefined, 12)]);
+    assert.deepEqual(Array.from(renderer.rules()), []);
   });
 });
 

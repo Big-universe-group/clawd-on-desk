@@ -382,9 +382,19 @@ function attachDashboardClick(row) {
   });
 }
 
-function identityClasses(model, window) {
+// The quota section is a table: every row places its values in shared
+// columns, longest window first — `long` (a third/monthly window or a
+// balance), `week` (the inner ring) and `short` (the outer ring) — so a 7d
+// value lines up under every other row's 7d even when a row lacks a column.
+// quota-ring-geometry.js mirrors this mapping for the width estimate.
+function valueColumn(item) {
+  if (item.slot === "third") return "long";
+  return item.ring === "inner" ? "week" : "short";
+}
+
+function identityClasses(model, window, column = valueColumn(window)) {
   const severity = window.reset ? "sev-reset" : severityClass(window.pct);
-  return `quota-value pv-${model.paletteKey} rg-${window.ring} ${severity}`;
+  return `quota-value pv-${model.paletteKey} rg-${window.ring} ${severity} quota-col-${column}`;
 }
 
 function displayedWindowPercent(item) {
@@ -409,8 +419,9 @@ function formatResetCountdown(resetAt, now) {
 }
 
 // One window reads "7d(2d2h) 29%": window label, time to reset in smaller
-// type inside parentheses, then the percentage. Plain inline spans, so the
-// space before the percentage survives and the parts share one baseline.
+// type inside parentheses, then the percentage. The cell is a baseline flex
+// box that pins the percentage to its right edge, so percentages line up
+// down a column; the leading space keeps the text readable as plain text.
 function buildWindowValue(model, item, now) {
   const value = createElement("span", identityClasses(model, item));
   value.appendChild(createElement("span", "quota-window-label", item.label));
@@ -445,13 +456,12 @@ function buildQuotaRow(model, now) {
 
   const values = createElement("span", "quota-values");
   if (model.kind === "balance") {
-    values.appendChild(createElement("span", identityClasses(model, { ring: "outer", pct: 0 }), model.balance.text));
+    values.appendChild(createElement("span", identityClasses(model, { ring: "outer", pct: 0 }, "long"), model.balance.text));
   } else {
     if (model.balance) {
-      values.appendChild(createElement("span", identityClasses(model, { ring: "inner", pct: 0 }), model.balance.text));
+      values.appendChild(createElement("span", identityClasses(model, { ring: "inner", pct: 0 }, "long"), model.balance.text));
     }
-    // Longest first: the third (monthly) window, then the long ring, then
-    // the rolling one.
+    // DOM order follows the columns: long, week, short.
     const slotOrder = (item) => (item.slot === "third" ? 0 : item.ring === "inner" ? 1 : 2);
     const windows = [...model.windows].sort((a, b) =>
       slotOrder(a) - slotOrder(b) || (Number(b.windowMinutes) || 0) - (Number(a.windowMinutes) || 0));
@@ -482,6 +492,28 @@ function fingerprint(now) {
   })) });
 }
 
+const COLUMN_ORDER = ["long", "week", "short"];
+
+function modelColumns(model) {
+  const columns = new Set(model.windows.map(valueColumn));
+  if (model.balance) columns.add("long");
+  return columns;
+}
+
+// One vertical rule at the start of every used value column after the
+// first, spanning the provider rows, so long/week/short read as separate
+// columns even where a row leaves a cell empty.
+function buildColumnRules(models, overflow) {
+  const used = new Set();
+  for (const model of models) for (const column of modelColumns(model)) used.add(column);
+  const columns = COLUMN_ORDER.filter((column) => used.has(column));
+  return columns.slice(1).map((column) => {
+    const rule = createElement("div", `quota-col-rule quota-col-${column}${overflow > 0 ? " above-overflow" : ""}`);
+    rule.setAttribute("aria-hidden", "true");
+    return rule;
+  });
+}
+
 function render() {
   if (!clusterEl) return;
   const now = Date.now();
@@ -494,8 +526,10 @@ function render() {
   if (!rows.length) return;
   const overflow = Math.max(0, payload.overflow);
   const providerLimit = overflow > 0 ? Math.max(0, payload.visibleRows - 1) : payload.visibleRows;
-  for (const model of rows.slice(0, providerLimit)) clusterEl.appendChild(buildQuotaRow(model, now));
+  const visible = rows.slice(0, providerLimit);
+  for (const model of visible) clusterEl.appendChild(buildQuotaRow(model, now));
   if (overflow > 0) clusterEl.appendChild(buildOverflowRow(overflow));
+  for (const rule of buildColumnRules(visible, overflow)) clusterEl.appendChild(rule);
 }
 
 // Reset times and staleness move on their own; re-render only when what the

@@ -132,11 +132,23 @@ describe("quota section width estimate", () => {
     assert.ok(estimateQuotaSectionWidth({ accountQuota: [openCodeGo] }, true, []) >= 425);
   });
 
-  it("is driven by the widest visible row and ignores hidden or disabled quota", () => {
+  it("grows with the widest row's columns and ignores hidden or disabled quota", () => {
     const both = estimateQuotaSectionWidth({ accountQuota: [claude, openCodeGo] }, true, []);
     const claudeOnly = estimateQuotaSectionWidth({ accountQuota: [claude, openCodeGo] }, true, ["extra:opencode-go"]);
     assert.equal(both, estimateQuotaSectionWidth({ accountQuota: [openCodeGo] }, true, []));
     assert.ok(claudeOnly < both);
     assert.equal(estimateQuotaSectionWidth({ accountQuota: [claude] }, false, []), 0);
+  });
+
+  // Rows share columns, so a long identity on one row and a balance column
+  // on another both widen the table: neither row alone is enough.
+  it("sums each shared column's widest cell across rows", () => {
+    const remoteClaude = { ...claude, host: "build-server-eu-west" };
+    const deepseek = { host: null, extraQuota: { deepseek: {
+      label: "DeepSeek", limits: [{ kind: "balance", remaining: 43.62, unit: "cny" }],
+    } } };
+    const table = estimateQuotaSectionWidth({ accountQuota: [remoteClaude, deepseek] }, true, []);
+    assert.ok(table > estimateQuotaSectionWidth({ accountQuota: [remoteClaude] }, true, []));
+    assert.ok(table > estimateQuotaSectionWidth({ accountQuota: [deepseek] }, true, []));
   });
 });

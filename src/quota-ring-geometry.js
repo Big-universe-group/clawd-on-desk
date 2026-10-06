@@ -19,22 +19,27 @@ const RING_PROVIDERS = [
 
 // Quota section of the Session HUD: one 26px row per provider, at most six
 // rows (five providers plus a "+N" row past that). The box grows to at least
-// QUOTA_MIN_WIDTH while it carries quota, and further to the widest row's
-// estimate (estimateQuotaSectionWidth) so labels never truncate.
+// QUOTA_MIN_WIDTH while it carries quota, and further to the table's estimate
+// (estimateQuotaSectionWidth) so labels never truncate.
 const QUOTA_ROW_HEIGHT = 26;
 const QUOTA_MAX_ROWS = 6;
 const QUOTA_MIN_WIDTH = 280;
-// Row width model, CSS px at text scale 1, measured from the HUD's system
-// font (session-hud.html): 20 row padding + 16 glyph + two 8px gaps around
-// the identity, 8px between values. A window value is "7d(5d12h) 100%": its
-// label in 12px bold (~8px/char), a countdown of at most "(5d12h)" in 10px
-// (~40px) and " 100%" (~39px). Balances take at most ~9 bold chars.
-const QUOTA_ROW_CHROME_WIDTH = 20 + 16 + 8 + 8;
-const QUOTA_VALUE_GAP = 8;
+// Table width model, CSS px at text scale 1, measured from the HUD's system
+// font (session-hud.html): 10px left edge + 16 glyph + 8px before the
+// identity + 4px right edge, then each value column padded 6px on both
+// sides (its separator rule sits in that padding). Rows share the columns
+// `long` (third window or balance), `week` (inner ring) and `short` (outer
+// ring), each as wide as its widest cell. A window value is
+// "7d(5d12h) 100%": its label in 12px bold (~8px/char), a countdown of at
+// most "(5d12h)" in 10px (~40px) and " 100%" (~39px). Balances take at most
+// ~9 bold chars.
+const QUOTA_ROW_CHROME_WIDTH = 10 + 16 + 8 + 4;
+const QUOTA_COLUMN_PADDING = 6 + 6;
 const QUOTA_CHAR_WIDTH = 8;
 const QUOTA_WIDE_CHAR_WIDTH = 13;
 const QUOTA_WINDOW_FIXED_WIDTH = 40 + 39;
 const QUOTA_BALANCE_WIDTH = 9 * QUOTA_CHAR_WIDTH;
+const QUOTA_COLUMNS = ["long", "week", "short"];
 const EXTRA_HIDDEN_PREFIX = "extra:";
 const EXTRA_PROVIDER_ID_RE = /^[a-z0-9][a-z0-9._-]{0,47}$/;
 const DAY_MINUTES = 24 * 60;
@@ -218,43 +223,47 @@ function estimateWindowWidth(label) {
   return estimateTextWidth(label) + QUOTA_WINDOW_FIXED_WIDTH;
 }
 
-function estimateRowWidth(label, host, valueWidths) {
-  if (!valueWidths.length) return 0;
-  const identity = estimateTextWidth(label) + (host ? estimateTextWidth(` · ${host}`) : 0);
-  const values = valueWidths.reduce((sum, width) => sum + width, 0)
-    + QUOTA_VALUE_GAP * (valueWidths.length - 1);
-  return QUOTA_ROW_CHROME_WIDTH + identity + values;
+function estimateIdentityWidth(label, host) {
+  return estimateTextWidth(label) + (host ? estimateTextWidth(` · ${host}`) : 0);
 }
 
+// Per-column value widths of one row, keyed like the renderer's
+// quota-col-* classes.
 function ringProviderValueWidths(group, def) {
-  const widths = [];
-  for (const fields of [def.inner, def.outer]) {
+  const widths = {};
+  for (const [column, fields, fallback] of [["week", def.inner, "7d"], ["short", def.outer, "5h"]]) {
     const field = fields.find((name) => group[name] && typeof group[name] === "object");
-    if (!field) continue;
-    const fallback = fields === def.inner ? "7d" : "5h";
-    widths.push(estimateWindowWidth(formatWindowLabel(group[field].windowMinutes, fallback)));
+    if (field) widths[column] = estimateWindowWidth(formatWindowLabel(group[field].windowMinutes, fallback));
   }
   return widths;
 }
 
 function extraProviderValueWidths(provider) {
   const selected = selectExtraRingLimits(provider.limits);
-  if (!selected) return [];
-  if (selected.balance) return [QUOTA_BALANCE_WIDTH];
-  const widths = [];
-  for (const limit of [selected.third, selected.inner, selected.outer]) {
-    if (!limit) continue;
-    widths.push(isExtraBalanceLimit(limit)
+  if (!selected) return {};
+  if (selected.balance) return { long: QUOTA_BALANCE_WIDTH };
+  const widths = {};
+  if (selected.third) {
+    widths.long = isExtraBalanceLimit(selected.third)
       ? QUOTA_BALANCE_WIDTH
-      : estimateWindowWidth(formatExtraWindowLabel(limit)));
+      : estimateWindowWidth(formatExtraWindowLabel(selected.third));
   }
+  if (selected.inner) widths.week = estimateWindowWidth(formatExtraWindowLabel(selected.inner));
+  // Without a weekly window, a day-plus first window is drawn as the long
+  // ring, so it lands in the week column.
+  const outerMinutes = Number(selected.outer.windowMinutes);
+  const outerColumn = !selected.inner && Number.isFinite(outerMinutes) && outerMinutes >= DAY_MINUTES
+    ? "week"
+    : "short";
+  widths[outerColumn] = estimateWindowWidth(formatExtraWindowLabel(selected.outer));
   return widths;
 }
 
-// Row width (CSS px, text scale 1) the widest visible quota row needs to show
-// its label and every "label(countdown) percent" value without truncation;
-// 0 when no row is drawn. Walks providers in the renderer's row order and
-// stops at the rows that fit before a "+N" overflow row.
+// Width (CSS px, text scale 1) the quota table needs to show every visible
+// row's label and "label(countdown) percent" values without truncation: the
+// widest identity plus each used column at its widest cell; 0 when no row
+// is drawn. Walks providers in the renderer's row order and stops at the
+// rows that fit before a "+N" overflow row.
 function estimateQuotaSectionWidth(snapshot, showQuota, hiddenProviders) {
   const layout = computeQuotaSectionLayout(countQuotaCoins(snapshot, showQuota, hiddenProviders));
   const rowLimit = layout.overflow > 0 ? layout.visibleRows - 1 : layout.visibleRows;
@@ -262,10 +271,22 @@ function estimateQuotaSectionWidth(snapshot, showQuota, hiddenProviders) {
   const sources = snapshot && Array.isArray(snapshot.accountQuota) ? snapshot.accountQuota : [];
   const hidden = hiddenProviderSet(hiddenProviders);
   let rows = 0;
-  let widest = 0;
-  const take = (width) => {
+  let identity = 0;
+  const columns = {};
+  const tableWidth = () => {
+    if (!rows) return 0;
+    let width = QUOTA_ROW_CHROME_WIDTH + identity;
+    for (const column of QUOTA_COLUMNS) {
+      if (columns[column] > 0) width += QUOTA_COLUMN_PADDING + columns[column];
+    }
+    return Math.ceil(width);
+  };
+  const take = (label, host, valueWidths) => {
     rows += 1;
-    widest = Math.max(widest, width);
+    identity = Math.max(identity, estimateIdentityWidth(label, host));
+    for (const [column, width] of Object.entries(valueWidths)) {
+      columns[column] = Math.max(columns[column] || 0, width);
+    }
     return rows >= rowLimit;
   };
   for (const source of sources) {
@@ -273,15 +294,14 @@ function estimateQuotaSectionWidth(snapshot, showQuota, hiddenProviders) {
     const host = typeof source.host === "string" && source.host ? source.host : null;
     for (const def of RING_PROVIDERS) {
       if (!isProviderDrawn(source, def, hidden)) continue;
-      const width = estimateRowWidth(def.label, host, ringProviderValueWidths(source[def.key].group, def));
-      if (take(width)) return Math.ceil(widest);
+      if (take(def.label, host, ringProviderValueWidths(source[def.key].group, def))) return tableWidth();
     }
     for (const entry of extraProviderEntries(source)) {
       if (hidden && hidden.has(entry.key)) continue;
-      if (take(estimateRowWidth(entry.label, host, extraProviderValueWidths(entry.provider)))) return Math.ceil(widest);
+      if (take(entry.label, host, extraProviderValueWidths(entry.provider))) return tableWidth();
     }
   }
-  return Math.ceil(widest);
+  return tableWidth();
 }
 
 module.exports = {
