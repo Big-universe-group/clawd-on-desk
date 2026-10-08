@@ -39,17 +39,17 @@ on:
       - "src/runtime/state/state.js"
       - "src/agents/integration-sync.js"
       - "src/agents/doctor/descriptors.js"
-      - "test/traecode-*.test.js"
-      - "test/minimax-*.test.js"
-      - "test/recap*.test.js"
+      - "test/hooks/traecode/traecode-*.test.js"
+      - "test/hooks/minimax/minimax-*.test.js"
+      - "test/runtime/recap/recap*.test.js"
       - "test/fixtures/recap-private-permissions-*.js"
-      - "test/state-stale-cleanup.test.js"
-      - "test/integration-sync.test.js"
-      - "test/doctor-agent-descriptors.test.js"
-      - "test/doctor-agent-integrations.test.js"
-      - "test/server-hook-management.test.js"
-      - "test/hook-adapter-offline-contract.test.js"
-      - "test/accessory-motion-electron.test.js"
+      - "test/runtime/state/state-stale-cleanup.test.js"
+      - "test/agents/integration-sync.test.js"
+      - "test/features/doctor/doctor-agent-descriptors.test.js"
+      - "test/features/doctor/doctor-agent-integrations.test.js"
+      - "test/core/server/server-hook-management.test.js"
+      - "test/hooks/shared/hook-adapter-offline-contract.test.js"
+      - "test/features/accessories/accessory-motion-electron.test.js"
       - "test/fixtures/accessory-motion-electron.js"
       - "scripts/assert-no-retired-telegram-sidecar.js"
       - "scripts/audit-repository-assets.js"
@@ -58,27 +58,27 @@ on:
       - "scripts/native-package-policy.json"
       - "scripts/run-packaged-koffi-smoke.js"
       - "scripts/verify-updater-metadata.js"
-      - "test/assert-no-retired-telegram-sidecar.test.js"
-      - "test/after-pack-koffi.test.js"
-      - "test/audit-packaged-native.test.js"
-      - "test/koffi-lockfile.test.js"
-      - "test/native-package-target.test.js"
-      - "test/package-koffi-smoke.test.js"
-      - "test/package-build-config.test.js"
-      - "test/mobile-preview-lifecycle.test.js"
-      - "test/mobile-preview-server.test.js"
-      - "test/pet-window-runtime.test.js"
-      - "test/topmost-runtime.test.js"
-      - "test/win-hit-window-activation.test.js"
-      - "test/verify-updater-metadata.test.js"
-      - "test/win-foreground-terminal.test.js"
-      - "test/win-fullscreen-detect.test.js"
-      - "test/settings-renderer-browser-env.test.js"
-      - "test/settings-picker-layout-electron.test.js"
+      - "test/repo/assert-no-retired-telegram-sidecar.test.js"
+      - "test/repo/after-pack-koffi.test.js"
+      - "test/repo/audit-packaged-native.test.js"
+      - "test/platform/koffi/koffi-lockfile.test.js"
+      - "test/platform/koffi/native-package-target.test.js"
+      - "test/platform/koffi/package-koffi-smoke.test.js"
+      - "test/repo/package-build-config.test.js"
+      - "test/features/mobile/mobile-preview-lifecycle.test.js"
+      - "test/features/mobile/mobile-preview-server.test.js"
+      - "test/ui/pet/pet-window-runtime.test.js"
+      - "test/ui/pet/topmost-runtime.test.js"
+      - "test/platform/win/win-hit-window-activation.test.js"
+      - "test/repo/verify-updater-metadata.test.js"
+      - "test/platform/win/win-foreground-terminal.test.js"
+      - "test/platform/win/win-fullscreen-detect.test.js"
+      - "test/ui/settings/settings-renderer-browser-env.test.js"
+      - "test/ui/settings/settings-picker-layout-electron.test.js"
       - "test/fixtures/settings-picker-layout-electron.js"
-      - "test/settings-recap.test.js"
-      - "test/telegram-legacy-retirement.test.js"
-      - "test/telegram-migration-*.test.js"
+      - "test/ui/settings/settings-recap.test.js"
+      - "test/features/telegram/telegram-legacy-retirement.test.js"
+      - "test/features/telegram/telegram-migration-*.test.js"
       - ".github/workflows/build.yml"
       - ".github/workflows/telegram-retirement-package-audit.yml"
   workflow_dispatch:
@@ -97,61 +97,61 @@ jobs:
       - run: npm ci
       - run: |
           node --test \
-            test/assert-no-retired-telegram-sidecar.test.js \
-            test/after-pack-koffi.test.js \
-            test/appimage-apprun.test.js \
-            test/audit-packaged-native.test.js \
-            test/dependency-security-floor.test.js \
-            test/koffi-lockfile.test.js \
-            test/native-package-target.test.js \
-            test/mobile-preview-lifecycle.test.js \
-            test/mobile-preview-server.test.js \
-            test/package-koffi-smoke.test.js \
-            test/package-build-config.test.js \
-            test/pet-window-runtime.test.js \
-            test/telegram-legacy-retirement.test.js \
-            test/telegram-migration-state.test.js \
-            test/telegram-migration-controller.test.js \
-            test/telegram-migration-user-data.test.js \
-            test/verify-updater-metadata.test.js \
-            test/win-foreground-terminal.test.js \
-            test/win-fullscreen-detect.test.js \
-            test/win-hit-window-activation.test.js \
-            test/topmost-runtime.test.js
+            test/repo/assert-no-retired-telegram-sidecar.test.js \
+            test/repo/after-pack-koffi.test.js \
+            test/repo/appimage-apprun.test.js \
+            test/repo/audit-packaged-native.test.js \
+            test/repo/dependency-security-floor.test.js \
+            test/platform/koffi/koffi-lockfile.test.js \
+            test/platform/koffi/native-package-target.test.js \
+            test/features/mobile/mobile-preview-lifecycle.test.js \
+            test/features/mobile/mobile-preview-server.test.js \
+            test/platform/koffi/package-koffi-smoke.test.js \
+            test/repo/package-build-config.test.js \
+            test/ui/pet/pet-window-runtime.test.js \
+            test/features/telegram/telegram-legacy-retirement.test.js \
+            test/features/telegram/telegram-migration-state.test.js \
+            test/features/telegram/telegram-migration-controller.test.js \
+            test/features/telegram/telegram-migration-user-data.test.js \
+            test/repo/verify-updater-metadata.test.js \
+            test/platform/win/win-foreground-terminal.test.js \
+            test/platform/win/win-fullscreen-detect.test.js \
+            test/platform/win/win-hit-window-activation.test.js \
+            test/ui/pet/topmost-runtime.test.js
       - name: Run TraeCode integration tests
         run: |
           node --test \
-            test/traecode-hook.test.js \
-            test/traecode-install.test.js \
-            test/registry.test.js \
-            test/state-stale-cleanup.test.js \
-            test/integration-sync.test.js \
-            test/doctor-agent-descriptors.test.js \
-            test/doctor-agent-integrations.test.js \
-            test/server-hook-management.test.js \
-            test/settings-renderer-browser-env.test.js \
-            test/hook-adapter-offline-contract.test.js
+            test/hooks/traecode/traecode-hook.test.js \
+            test/hooks/traecode/traecode-install.test.js \
+            test/agents/registry.test.js \
+            test/runtime/state/state-stale-cleanup.test.js \
+            test/agents/integration-sync.test.js \
+            test/features/doctor/doctor-agent-descriptors.test.js \
+            test/features/doctor/doctor-agent-integrations.test.js \
+            test/core/server/server-hook-management.test.js \
+            test/ui/settings/settings-renderer-browser-env.test.js \
+            test/hooks/shared/hook-adapter-offline-contract.test.js
       - name: Run MiniMax Code integration tests
         run: |
           node --test \
-            test/minimax-hook.test.js \
-            test/minimax-install.test.js \
-            test/registry.test.js \
-            test/integration-sync.test.js \
-            test/doctor-agent-descriptors.test.js \
-            test/doctor-agent-integrations.test.js \
-            test/server-hook-management.test.js \
-            test/settings-renderer-browser-env.test.js \
-            test/hook-adapter-offline-contract.test.js
+            test/hooks/minimax/minimax-hook.test.js \
+            test/hooks/minimax/minimax-install.test.js \
+            test/agents/registry.test.js \
+            test/agents/integration-sync.test.js \
+            test/features/doctor/doctor-agent-descriptors.test.js \
+            test/features/doctor/doctor-agent-integrations.test.js \
+            test/core/server/server-hook-management.test.js \
+            test/ui/settings/settings-renderer-browser-env.test.js \
+            test/hooks/shared/hook-adapter-offline-contract.test.js
       - name: Run recap unit tests
         run: >-
           node --test
-          test/recap*.test.js
-          test/settings-recap.test.js
+          test/runtime/recap/recap*.test.js
+          test/ui/settings/settings-recap.test.js
       - name: Run Settings picker layout under Electron
-        run: xvfb-run -a node --test test/settings-picker-layout-electron.test.js
+        run: xvfb-run -a node --test test/ui/settings/settings-picker-layout-electron.test.js
       - name: Run native SVG motion audit
-        run: xvfb-run -a node --test test/accessory-motion-electron.test.js
+        run: xvfb-run -a node --test test/features/accessories/accessory-motion-electron.test.js
 
   package:
     needs: unit
@@ -218,10 +218,10 @@ jobs:
         if: runner.os == 'Windows'
         run: >-
           node --test
-          test/recap-private-permissions.test.js
-          test/recap-private-permissions-electron.test.js
-          test/recap-runtime.test.js
-          test/recap-store.test.js
+          test/runtime/recap/recap-private-permissions.test.js
+          test/runtime/recap/recap-private-permissions-electron.test.js
+          test/runtime/recap/recap-runtime.test.js
+          test/runtime/recap/recap-store.test.js
       - run: npm run ${{ matrix.build_script }} -- --publish never
       - name: Assert installer exists
         shell: bash

@@ -65,9 +65,9 @@ jobs:
       - name: Install dependencies and verify the Ozone resolver
         run: |
           npm ci
-          node --test test/linux-ozone.test.js
-          node --test test/appimage-apprun.test.js
-          node --test test/appimage-launcher.test.js
+          node --test test/platform/linux/linux-ozone.test.js
+          node --test test/repo/appimage-apprun.test.js
+          node --test test/repo/appimage-launcher.test.js
 
       - name: Build the AppImage from this ref
         run: |

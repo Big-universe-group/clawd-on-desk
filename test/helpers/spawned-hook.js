@@ -6,7 +6,7 @@ const os = require("node:os");
 const path = require("node:path");
 const { spawnSync } = require("node:child_process");
 
-const HTTP_BLOCKER = path.resolve(__dirname, "..", "hook-http-blocker.js");
+const HTTP_BLOCKER = path.resolve(__dirname, "hook-http-blocker.js");
 const HTTP_RECORDER = path.resolve(__dirname, "hook-post-recorder.js");
 const OFFLINE_PROBE = path.resolve(__dirname, "hook-offline-probe.js");
 const SPAWN_RECORDER = path.resolve(__dirname, "hook-spawn-recorder.js");

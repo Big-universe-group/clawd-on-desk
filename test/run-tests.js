@@ -52,14 +52,15 @@ function resolveTestRunnerInvocation(env = process.env) {
   // Node expands this single glob itself (Node 24 is pinned in .nvmrc).
   // Passing every absolute filename exceeded Windows' command-line limit once
   // the suite grew past 500 files and failed with ENAMETOOLONG before a single
-  // assertion ran. Default recursive discovery is intentionally not used: it
-  // would also execute helper scripts under test/fixtures/.
+  // assertion ran. Tests live in area folders (test/<layer>/<area>/), so the
+  // glob recurses but only matches *.test.js: helper scripts under
+  // test/fixtures/ and test/helpers/ never match it.
   return {
     args: [
       "--test",
       ...resolveTimeoutArgs(env),
       ...resolveReporterArgs(env),
-      "test/*.test.js",
+      "test/**/*.test.js",
     ],
     cwd: path.join(__dirname, ".."),
   };
@@ -77,13 +78,13 @@ module.exports = {
 if (require.main !== module) return;
 
 const testDir = __dirname;
-const files = readdirSync(testDir)
+const files = readdirSync(testDir, { recursive: true })
   .filter((name) => name.endsWith(".test.js"))
   .sort()
   .map((name) => path.join(testDir, name));
 
 if (files.length === 0) {
-  console.error("No test/*.test.js files found.");
+  console.error("No test/**/*.test.js files found.");
   process.exit(1);
 }
 

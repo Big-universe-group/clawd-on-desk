@@ -12,8 +12,8 @@ on:
       - "hooks/server-config.js"
       - "hooks/json-utils.js"
       - "src/features/remote-ssh/deploy.js"
-      - "test/cursor-*.test.js"
-      - "test/shared-process.test.js"
+      - "test/hooks/cursor-agent/*.test.js"
+      - "test/hooks/shared/shared-process.test.js"
       - "test/helpers/spawned-hook.js"
       - "test/helpers/hook-post-recorder.js"
       - "test/helpers/cursor-hook-delivery-probe.js"
@@ -46,17 +46,17 @@ jobs:
       - name: Test Cursor hooks, title delivery, and dependency closure
         run: >-
           node --test
-          test/cursor-hook-delivery.test.js
-          test/cursor-install.test.js
-          test/cursor-session-title.test.js
-          test/remote-deploy.test.js
-          test/hook-adapter-b1a-contract.test.js
-          test/hook-adapter-offline-contract.test.js
-          test/hook-pid-cache-contexts.test.js
-          test/doctor-node-bin-parser.test.js
-          test/doctor-find-hook-commands.test.js
+          test/hooks/cursor-agent/cursor-hook-delivery.test.js
+          test/hooks/cursor-agent/cursor-install.test.js
+          test/hooks/cursor-agent/cursor-session-title.test.js
+          test/hooks/claude-code/remote-deploy.test.js
+          test/hooks/shared/hook-adapter-b1a-contract.test.js
+          test/hooks/shared/hook-adapter-offline-contract.test.js
+          test/hooks/shared/hook-pid-cache-contexts.test.js
+          test/features/doctor/doctor-node-bin-parser.test.js
+          test/features/doctor/doctor-find-hook-commands.test.js
       - name: Verify the unchanged production stdin read deadline
-        run: node --test --test-name-pattern=readStdinJson test/shared-process.test.js
+        run: node --test --test-name-pattern=readStdinJson test/hooks/shared/shared-process.test.js
       - name: Exercise SQLite on the supported Node 22.12 floor
         if: matrix.runtime == 'node-22-floor'
-        run: node --experimental-sqlite --test test/cursor-session-title.test.js test/remote-deploy.test.js
+        run: node --experimental-sqlite --test test/hooks/cursor-agent/cursor-session-title.test.js test/hooks/claude-code/remote-deploy.test.js
