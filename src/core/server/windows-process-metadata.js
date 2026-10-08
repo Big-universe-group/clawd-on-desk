@@ -1,6 +1,6 @@
 "use strict";
 
-const { getPlatformConfig } = require("../../../hooks/shared-process");
+const { getPlatformConfig } = require("../../../hooks/shared/shared-process");
 const {
   DEFAULT_MAX_DEPTH,
   MAX_PID,

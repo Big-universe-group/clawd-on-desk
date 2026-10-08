@@ -16,9 +16,9 @@ const {
   resolveStopDisposition,
   notificationIsIdlePrompt,
   buildHookDecision,
-} = require("../../../hooks/grok-hook");
+} = require("../../../hooks/grok-build/grok-hook");
 
-const HOOK_PATH = path.join(__dirname, "..", "..", "..", "hooks", "grok-hook.js");
+const HOOK_PATH = path.join(__dirname, "..", "..", "..", "hooks", "grok-build", "grok-hook.js");
 
 describe("Grok hook adapter", () => {
   it("maps the Phase 1 main-session events", () => {
@@ -316,7 +316,7 @@ describe("Grok hook adapter", () => {
     assert.ok(source.includes("postStateToRunningServer"), "adapter must use the shared runtime helper");
     assert.ok(!/require\("http"\)/.test(source), "adapter must not hand-roll HTTP");
     assert.ok(
-      source.includes('const { postStateToRunningServer } = require("./server-config");'),
+      source.includes('const { postStateToRunningServer } = require("../shared/server-config");'),
       "adapter must import only the state helper from server-config"
     );
     assert.ok(!/postPermission|buildPermissionUrl|permissionUrl/.test(source), "adapter must not post a permission request");

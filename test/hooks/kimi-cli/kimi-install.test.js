@@ -14,7 +14,7 @@ const {
   MODE_EXPLICIT,
   MODE_SUSPECT,
   FLAVOR_KIMI_CODE,
-} = require("../../../hooks/kimi-install");
+} = require("../../../hooks/kimi-cli/kimi-install");
 
 // Hook command format depends on real-environment WSL signals; clear them so
 // assertions stay deterministic when the suite itself runs inside WSL.
@@ -133,7 +133,7 @@ describe("Kimi hook installer", () => {
     const content = fs.readFileSync(settingsPath, "utf8");
     assert.ok(!content.includes("/old/path/kimi-hook.js"));
     assert.ok(content.includes("/usr/local/bin/node"));
-    assert.ok(content.includes("hooks/kimi-hook.js"));
+    assert.ok(content.includes("hooks/kimi-cli/kimi-hook.js"));
     assert.ok(result.updated >= 1);
   });
 
@@ -718,7 +718,7 @@ describe("Kimi Code hook installer (kimi-code flavor, #563)", () => {
   });
 
   it("aggregateRegisterResults surfaces partial failure as an error status", () => {
-    const { aggregateRegisterResults } = require("../../../hooks/kimi-install");
+    const { aggregateRegisterResults } = require("../../../hooks/kimi-cli/kimi-install");
     const ok = { added: 0, skipped: 1, updated: 0, flavor: "legacy", settingsPath: "/a/.kimi/config.toml" };
     const bad = {
       added: 0, skipped: 0, updated: 0,

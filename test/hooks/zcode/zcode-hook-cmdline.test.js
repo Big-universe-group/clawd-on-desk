@@ -6,7 +6,7 @@ const {
   getZcodePidResolverOptions,
   getZcodePlatformConfig,
   isZcodeAgentCommandLine,
-} = require("../../../hooks/zcode-hook");
+} = require("../../../hooks/zcode/zcode-hook");
 
 // The ZCode Windows runtime reuses the ZCode.exe desktop shell to run
 // `resources/glm/zcode.cjs app-server --stdio` (ELECTRON_RUN_AS_NODE=1). The
@@ -49,7 +49,7 @@ describe("isZcodeAgentCommandLine", () => {
 
   it("still checks unpacked/dev node launches under every name ps lists node by", () => {
     // Including Node's Linux main-thread names (MainThread / node-MainThread).
-    const { DEFAULT_AGENT_CMDLINE_NAMES } = require("../../../hooks/shared-process");
+    const { DEFAULT_AGENT_CMDLINE_NAMES } = require("../../../hooks/shared/shared-process");
     const names = getZcodePidResolverOptions({}).agentCmdlineNames;
     for (const name of DEFAULT_AGENT_CMDLINE_NAMES) assert.ok(names.has(name), name);
   });

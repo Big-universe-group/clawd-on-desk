@@ -21,7 +21,7 @@ const {
   extractSessionTitleFromTranscript,
   extractApiErrorFromEntries,
   extractLastAssistantTextFromEntries,
-} = require("../../../hooks/clawd-hook.js");
+} = require("../../../hooks/claude-code/clawd-hook.js");
 const { buildToolInputFingerprint } = require("../../../src/core/server/server").__test;
 
 function writeTmpJsonl(entries) {

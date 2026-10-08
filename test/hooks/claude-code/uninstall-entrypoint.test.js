@@ -26,7 +26,7 @@ test("requiring the Claude uninstall entrypoint has no filesystem side effects",
 
   const result = spawnSync(process.execPath, [
     "-e",
-    "const entry=require('./hooks/uninstall.js'); if(typeof entry.main!=='function') process.exit(2);",
+    "const entry=require('./hooks/claude-code/uninstall.js'); if(typeof entry.main!=='function') process.exit(2);",
   ], {
     cwd: path.join(__dirname, "..", "..", ".."),
     env: { ...process.env, CLAUDE_CONFIG_DIR: claudeHome },

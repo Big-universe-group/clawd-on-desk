@@ -6,7 +6,7 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 
-const pc = require("../../../hooks/pid-cache");
+const pc = require("../../../hooks/shared/pid-cache");
 
 // Isolate the cache directory for this whole file (#634): the sweep and its
 // fake-liveness tests would otherwise scan the shared os.tmpdir() — interfering
@@ -369,16 +369,16 @@ describe("pid-cache sweepStalePidCaches() — age floor + injected liveness (§4
 
 describe("pid-cache module boundary (#627 residual §4.4)", () => {
   it("does not require ./shared-process (would create a PR2 circular dependency)", () => {
-    const src = fs.readFileSync(require.resolve("../../../hooks/pid-cache.js"), "utf8");
+    const src = fs.readFileSync(require.resolve("../../../hooks/shared/pid-cache.js"), "utf8");
     assert.ok(
       !/require\(["']\.\/shared-process["']\)/.test(src),
       "pid-cache.js must stay independent of shared-process.js — liveness is dependency-injected instead"
     );
     // Cross-check via the actual module graph too, not just source text.
-    const key = require.resolve("../../../hooks/pid-cache.js");
+    const key = require.resolve("../../../hooks/shared/pid-cache.js");
     delete require.cache[key];
-    require("../../../hooks/pid-cache.js");
-    const sharedProcessKey = require.resolve("../../../hooks/shared-process.js");
+    require("../../../hooks/shared/pid-cache.js");
+    const sharedProcessKey = require.resolve("../../../hooks/shared/shared-process.js");
     const loadedChildren = (require.cache[key].children || []).map((c) => c.id);
     assert.ok(
       !loadedChildren.includes(sharedProcessKey),

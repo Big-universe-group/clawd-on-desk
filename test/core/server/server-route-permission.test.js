@@ -10,7 +10,7 @@ const {
   CLAWD_SERVER_ID,
   CLAWD_HOOK_PID_HEADER,
   CLAWD_PROCESS_INSTANCE_HEADER,
-} = require("../../../hooks/server-config");
+} = require("../../../hooks/shared/server-config");
 const { PREVIEW_MAX } = require("../../../src/core/server/permission-utils");
 const {
   MAX_PERMISSION_BODY_BYTES,

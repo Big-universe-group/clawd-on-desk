@@ -7,7 +7,7 @@ const {
   isCodexMonitorMetadataOnlyEvent,
 } = require("./codex/monitor-callback");
 const { resolveSessionIdentity } = require("../core/util/session-key");
-const { bareCodexSessionId } = require("../../hooks/codex-session-index");
+const { bareCodexSessionId } = require("../../hooks/codex/codex-session-index");
 const { digestCodexTurnId, normalizeCodexTurnId } = require("./codex/turn-id");
 const createCodexTurnFence = require("./codex/turn-fence");
 const createCodexOfficialActivity = require("./codex/official-activity");

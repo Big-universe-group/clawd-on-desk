@@ -11,8 +11,8 @@ const {
   CLAWD_HOOK_PID_HEADER,
   CLAWD_LEGACY_PROCESS_CACHE_HEADER,
   CLAWD_PROCESS_INSTANCE_HEADER,
-} = require("../../../hooks/server-config");
-const { isCodexDesktopOriginator } = require("../../../hooks/codex-originator");
+} = require("../../../hooks/shared/server-config");
+const { isCodexDesktopOriginator } = require("../../../hooks/codex/codex-originator");
 const {
   assessWindowsProcessChainRequest,
   buildShadowComparison,
@@ -36,14 +36,14 @@ const {
   resolveHookAgentId,
 } = require("../../agents/server-agent-id");
 const { resolveCodexOfficialHookState } = require("../../agents/codex/server-official-turns");
-const { normalizeClaudePhaseId, normalizeClaudeBatchToolUseIds } = require("../../../hooks/claude-tool-batch");
+const { normalizeClaudePhaseId, normalizeClaudeBatchToolUseIds } = require("../../../hooks/claude-code/claude-tool-batch");
 const { normalizeTranscriptPath } = require("../../agents/transcript-path");
-const { normalizeQuotaGroup } = require("../../../hooks/quota-bucket");
-const { ANTIGRAVITY_QUOTA_FIELDS } = require("../../../hooks/antigravity-context-usage");
-const { CLAUDE_QUOTA_FIELDS } = require("../../../hooks/claude-rate-limits");
-const { CODEX_QUOTA_FIELDS } = require("../../../hooks/codex-rate-limits");
-const { extractPermissionToolInput } = require("../../../hooks/kimi-hook");
-const { normalizeCodexUserInputWire } = require("../../../hooks/codex-user-input");
+const { normalizeQuotaGroup } = require("../../../hooks/shared/quota-bucket");
+const { ANTIGRAVITY_QUOTA_FIELDS } = require("../../../hooks/antigravity-cli/antigravity-context-usage");
+const { CLAUDE_QUOTA_FIELDS } = require("../../../hooks/claude-code/claude-rate-limits");
+const { CODEX_QUOTA_FIELDS } = require("../../../hooks/codex/codex-rate-limits");
+const { extractPermissionToolInput } = require("../../../hooks/kimi-cli/kimi-hook");
+const { normalizeCodexUserInputWire } = require("../../../hooks/codex/codex-user-input");
 const { sanitizeShadowRecord } = require("../../platform/win/process-chain-shadow-log");
 
 // /state POST body size cap. Raised 1024 → 4096 → 16384: a CJK

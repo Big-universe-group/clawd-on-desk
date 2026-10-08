@@ -13,7 +13,7 @@ const {
   registerOpenClawPlugin,
   resolvePluginDir,
   unregisterOpenClawPlugin,
-} = require("../../../hooks/openclaw-install");
+} = require("../../../hooks/openclaw/openclaw-install");
 
 const tempDirs = [];
 

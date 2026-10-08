@@ -3,9 +3,9 @@
 const { describe, it } = require("node:test");
 const assert = require("node:assert");
 const { getAllAgents } = require("../../../src/agents/registry");
-const { ANTIGRAVITY_HOOK_EVENTS } = require("../../../hooks/antigravity-install");
-const { __test: antigravityHook } = require("../../../hooks/antigravity-hook");
-const { CURSOR_HOOK_EVENTS } = require("../../../hooks/cursor-install");
+const { ANTIGRAVITY_HOOK_EVENTS } = require("../../../hooks/antigravity-cli/antigravity-install");
+const { __test: antigravityHook } = require("../../../hooks/antigravity-cli/antigravity-hook");
+const { CURSOR_HOOK_EVENTS } = require("../../../hooks/cursor-agent/cursor-install");
 const {
   AGENT_METRIC_POLICIES,
   assertRegistryCoverage,

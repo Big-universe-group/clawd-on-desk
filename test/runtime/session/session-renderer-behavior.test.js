@@ -729,7 +729,7 @@ test("Dashboard hides unsupported non-Codex rows while retaining exact grant rev
 });
 
 test("Dashboard labels only known Desktop originators as Codex Desktop", async () => {
-  const { isCodexDesktopOriginator } = require("../../../hooks/codex-originator");
+  const { isCodexDesktopOriginator } = require("../../../hooks/codex/codex-originator");
   for (const originator of ["codex desktop", " CODEX_WORK_DESKTOP ", "codex_vscode", "codex-exec", "unknown", null]) {
     const harness = await loadDashboard([session("unsupported", { agentId: "codex",
       canConfigureSessionAutomation: false, codexOriginator: originator,

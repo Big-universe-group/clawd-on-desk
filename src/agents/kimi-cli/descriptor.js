@@ -7,7 +7,7 @@
 const {
   KIMI_PROCESS_NAMES,
   KIMI_STARTUP_RECOVERY_PROCESS_NAMES,
-} = require("../../../hooks/kimi-process-names");
+} = require("../../../hooks/kimi-cli/kimi-process-names");
 
 module.exports = {
   id: "kimi-cli",

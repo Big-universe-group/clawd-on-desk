@@ -9,7 +9,7 @@ const {
   isCodexCliOriginator,
   isCodexDesktopOriginator,
   isCodexPlaceholderSessionId,
-} = require("../../../hooks/codex-originator");
+} = require("../../../hooks/codex/codex-originator");
 
 describe("Codex originator classification", () => {
   it("recognizes current and legacy Codex Desktop values", () => {

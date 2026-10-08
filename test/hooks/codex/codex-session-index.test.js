@@ -5,7 +5,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
-const { readCodexThreadName, readCodexThreadNames } = require("../../../hooks/codex-session-index");
+const { readCodexThreadName, readCodexThreadNames } = require("../../../hooks/codex/codex-session-index");
 
 describe("Codex session index titles", () => {
   let dir;

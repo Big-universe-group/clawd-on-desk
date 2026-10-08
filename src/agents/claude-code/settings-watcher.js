@@ -3,15 +3,15 @@
 const fs = require("fs");
 const path = require("path");
 const os = require("os");
-const { buildPermissionUrl } = require("../../../hooks/server-config");
-const { classifyManagedClaudeStateHookCommand, stripUtf8Bom } = require("../../../hooks/json-utils");
+const { buildPermissionUrl } = require("../../../hooks/shared/server-config");
+const { classifyManagedClaudeStateHookCommand, stripUtf8Bom } = require("../../../hooks/shared/json-utils");
 const {
   getClaudeHookScriptPath,
   getClaudeAutoStartScriptPath,
   checkClaudeMaterializationFs,
   resolveClaudeHookPaths,
   CLAUDE_CORE_HOOK_EVENTS,
-} = require("../../../hooks/install");
+} = require("../../../hooks/claude-code/install");
 const {
   inspectClaudeHookHealth,
   buildClaudeRepairSignature,

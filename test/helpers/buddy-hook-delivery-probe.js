@@ -69,7 +69,7 @@ for (const method of ["get", "request"]) {
 }
 
 const hooksDir = path.resolve(__dirname, "..", "..", "hooks");
-const serverConfigPath = path.join(hooksDir, "server-config");
+const serverConfigPath = path.join(hooksDir, "shared", "server-config");
 
 if (process.env.CLAWD_BUDDY_STALL === "1") {
   // Verify the hook's own exit backstop independently of the HTTP helper's
@@ -84,7 +84,7 @@ if (process.env.CLAWD_BUDDY_THROW === "1") {
   };
 }
 
-const shared = require(path.join(hooksDir, "shared-process"));
+const shared = require(path.join(hooksDir, "shared", "shared-process"));
 // The hook destructures readStdinJson at load time, so replacing the export
 // here (before the hook is required) is what the hook actually calls.
 const originalReadStdinJson = shared.readStdinJson;

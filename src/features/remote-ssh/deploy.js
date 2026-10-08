@@ -70,48 +70,63 @@ const {
 //
 // Single source of truth. The former shell deploy path is now a fail-fast
 // tombstone because it cannot participate in profile identity transactions.
+// Entries are paths relative to the layered hooks root (hooks/shared,
+// hooks/<agent-id>); the remote ~/.claude/hooks tree mirrors that layout.
 const HOOK_FILES = [
-  "server-config.js",
-  "appimage-hook-materializer.js",
-  "hook-dependency-preflight.js",
-  "json-utils.js",
-  "shared-process.js",
-  "pid-cache.js",
-  "context-usage.js",
-  "antigravity-context-usage.js",
-  "claude-rate-limits.js",
-  "claude-statusline.js",
-  "claude-statusline-local-chain.js",
-  "codex-rate-limits.js",
-  "quota-bucket.js",
-  "state-payload-size.js",
-  "claude-stop-disposition.js",
-  "claude-tool-batch.js",
-  "session-recovery-lease.js",
-  "session-history.js",
-  "claude-session-id.js",
-  "cursor-session-title.js",
-  "clawd-hook.js",
-  "install.js",
-  "uninstall.js",
-  "codex-hook.js",
-  "codex-originator.js",
-  "codex-assistant-output.js",
-  "codex-user-input.js",
-  "codex-log-event.js",
-  "codex-install.js",
-  "codex-install-utils.js",
-  "codex-remote-monitor.js",
-  "codex-session-index.js",
-  "codex-subagent-fields.js",
-  "codex-internal-worker.js",
-  "copilot-hook.js",
-  "copilot-install.js",
-  "hermes-install.js",
+  "shared/server-config.js",
+  "shared/appimage-hook-materializer.js",
+  "shared/hook-dependency-preflight.js",
+  "shared/json-utils.js",
+  "shared/shared-process.js",
+  "shared/pid-cache.js",
+  "shared/context-usage.js",
+  "antigravity-cli/antigravity-context-usage.js",
+  "claude-code/claude-rate-limits.js",
+  "claude-code/claude-statusline.js",
+  "claude-code/claude-statusline-local-chain.js",
+  "codex/codex-rate-limits.js",
+  "shared/quota-bucket.js",
+  "shared/state-payload-size.js",
+  "claude-code/claude-stop-disposition.js",
+  "claude-code/claude-tool-batch.js",
+  "shared/session-recovery-lease.js",
+  "shared/session-history.js",
+  "claude-code/claude-session-id.js",
+  "cursor-agent/cursor-session-title.js",
+  "claude-code/clawd-hook.js",
+  "claude-code/install.js",
+  "claude-code/uninstall.js",
+  "codex/codex-hook.js",
+  "codex/codex-originator.js",
+  "codex/codex-assistant-output.js",
+  "codex/codex-user-input.js",
+  "codex/codex-log-event.js",
+  "codex/codex-install.js",
+  "codex/codex-install-utils.js",
+  "codex/codex-remote-monitor.js",
+  "codex/codex-session-index.js",
+  "codex/codex-subagent-fields.js",
+  "codex/codex-internal-worker.js",
+  "copilot-cli/copilot-hook.js",
+  "copilot-cli/copilot-install.js",
+  "hermes/hermes-install.js",
 ];
+// Pre-layered deployments copied every file flat into ~/.claude/hooks/. A
+// redeploy or uninstall removes exactly those Clawd-owned leftovers.
+const LEGACY_FLAT_HOOK_FILES = Object.freeze(HOOK_FILES.map((name) => path.posix.basename(name)));
+const HOOK_SUBDIRS = Object.freeze([...new Set(HOOK_FILES.map((name) => path.posix.dirname(name)))]);
+// Remote entry scripts, relative to the remote hooks root.
+const REMOTE_SCRIPTS = Object.freeze({
+  claudeInstall: "claude-code/install.js",
+  claudeUninstall: "claude-code/uninstall.js",
+  codexInstall: "codex/codex-install.js",
+  codexMonitor: "codex/codex-remote-monitor.js",
+  copilotInstall: "copilot-cli/copilot-install.js",
+  hermesInstall: "hermes/hermes-install.js",
+});
 // Hermes plugin assets never join HOOK_FILES: they are not hook scripts and
 // go to their own exact staging directory, not ~/.claude/hooks.
-const HERMES_PLUGIN_DIR = "hermes-plugin";
+const HERMES_PLUGIN_DIR = "hermes/hermes-plugin";
 const HERMES_CLI_TIMEOUT_MS = 15000;
 const HERMES_OUTER_TIMEOUT_BASE_MS = 30000;
 const HERMES_OUTER_TIMEOUT_PER_TARGET_MS = 5000;
@@ -416,7 +431,9 @@ async function legacyDeploy({ profile, runtime, deps = {} }) {
   // 1. mkdir -p ~/.claude/hooks
   progress("mkdir", "start");
   {
-    const args = buildSshArgs(profile).concat(["mkdir -p ~/.claude/hooks"]);
+    const args = buildSshArgs(profile).concat([
+      `mkdir -p ~/.claude/hooks ${HOOK_SUBDIRS.map((dir) => `~/.claude/hooks/${dir}`).join(" ")}`,
+    ]);
     const r = await spawnAndWait(spawn, "ssh", args, { runtime });
     if (r.code !== 0) {
       progress("mkdir", "fail", summarizeStderr(r.stderr) || `ssh exited ${formatExit(r)}`);
@@ -457,19 +474,21 @@ async function legacyDeploy({ profile, runtime, deps = {} }) {
     progress("check-node", "ok", label);
   }
 
-  // 3. scp hook files. Single scp invocation with all files for efficiency.
+  // 3. scp hook files: one invocation per layered subfolder (shared/, codex/, …).
   progress("scp", "start");
-  {
-    const localFiles = HOOK_FILES.map((name) => path.join(hooksDir, name));
-    const remoteTarget = `${profile.host}:~/.claude/hooks/`;
+  for (const dir of HOOK_SUBDIRS) {
+    const localFiles = HOOK_FILES
+      .filter((name) => path.posix.dirname(name) === dir)
+      .map((name) => path.join(hooksDir, name));
+    const remoteTarget = `${profile.host}:~/.claude/hooks/${dir}/`;
     const args = buildScpArgs(profile).concat([...localFiles, remoteTarget]);
     const r = await spawnAndWait(spawn, "scp", args, { timeoutMs: 120000, runtime });
     if (r.code !== 0) {
       progress("scp", "fail", summarizeStderr(r.stderr) || `scp exited ${formatExit(r)}`);
       return { ok: false, step: "scp", message: r.stderr || `scp exited ${formatExit(r)}` };
     }
-    progress("scp", "ok", `${HOOK_FILES.length} files copied`);
   }
+  progress("scp", "ok", `${HOOK_FILES.length} files copied`);
 
   // 4. host prefix — write via ssh stdin (`cat > path`) to avoid any remote
   // shell interpolation of the hostPrefix string. v7 hardening: schema
@@ -500,7 +519,7 @@ async function legacyDeploy({ profile, runtime, deps = {} }) {
       ? ["--remote", "--chain-existing"]
       : ["--remote"];
     const args = buildSshArgs(profile).concat([
-      buildRemoteHookNodeCommand(remoteNode, "install.js", installClaudeArgs),
+      buildRemoteHookNodeCommand(remoteNode, REMOTE_SCRIPTS.claudeInstall, installClaudeArgs),
     ]);
     const r = await spawnAndWait(spawn, "ssh", args, { timeoutMs: 60000, runtime });
     if (r.code !== 0) {
@@ -515,7 +534,7 @@ async function legacyDeploy({ profile, runtime, deps = {} }) {
   progress("install-codex", "start");
   {
     const args = buildSshArgs(profile).concat([
-      buildRemoteHookNodeCommand(remoteNode, "codex-install.js", ["--remote"]),
+      buildRemoteHookNodeCommand(remoteNode, REMOTE_SCRIPTS.codexInstall, ["--remote"]),
     ]);
     const r = await spawnAndWait(spawn, "ssh", args, { timeoutMs: 60000, runtime });
     if (r.code !== 0) {
@@ -531,7 +550,7 @@ async function legacyDeploy({ profile, runtime, deps = {} }) {
   progress("install-copilot", "start");
   {
     const args = buildSshArgs(profile).concat([
-      buildRemoteHookNodeCommand(remoteNode, "copilot-install.js", ["--remote"]),
+      buildRemoteHookNodeCommand(remoteNode, REMOTE_SCRIPTS.copilotInstall, ["--remote"]),
     ]);
     const r = await spawnAndWait(spawn, "ssh", args, { timeoutMs: 60000, runtime });
     if (r.code !== 0) {
@@ -771,6 +790,7 @@ function buildOwnershipPreflightScript({ profile, layout, installId }) {
     layout.monitorPidFile,
     ...(layout.legacyMonitorPidFile ? [layout.legacyMonitorPidFile] : []),
     path.posix.join(layout.claudeHooksDir, "server-config.js"),
+    path.posix.join(layout.claudeHooksDir, "shared", "server-config.js"),
   ];
   const configTracePaths = [
     layout.claudeSettingsFile,
@@ -991,7 +1011,7 @@ function buildMonitorVerificationCommand(layout, remoteNode) {
   const script = [
     "const fs=require('fs'),cp=require('child_process');",
     `const pidFile=${JSON.stringify(layout.monitorPidFile)};`,
-    `const marker=${JSON.stringify(path.posix.join(layout.claudeHooksDir, "codex-remote-monitor.js"))};`,
+    `const marker=${JSON.stringify(path.posix.join(layout.claudeHooksDir, REMOTE_SCRIPTS.codexMonitor))};`,
     "let pid,stat;try{pid=Number(fs.readFileSync(pidFile,'utf8').trim());stat=fs.statSync(pidFile)}catch{process.exit(1)}",
     "if(!Number.isInteger(pid)||pid<=0)process.exit(2);",
     "try{process.kill(pid,0)}catch{process.exit(3)}",
@@ -1560,9 +1580,14 @@ async function secureDeploy({
       { timeoutMs: 120000, runtime, role: "hook-files-upload", mutation: true },
     );
     if (scp.code !== 0) return fail("hook-files", scp.stderr || "Hook staging upload failed", null, "hookFiles");
-    const promotion = HOOK_FILES
-      .map((name) => `mv -f ${quoteForPosixShellArg(path.posix.join(stagingDir, name))} ${quoteForPosixShellArg(path.posix.join(layout.claudeHooksDir, name))}`)
-      .join(" && ");
+    // scp lands every file flat in the staging dir (basenames are unique across
+    // the layered tree). Promotion recreates hooks/<subdir>/ on the remote and
+    // then drops the pre-layered flat copies an older Clawd deployed.
+    const promotion = [
+      `mkdir -p ${HOOK_SUBDIRS.map((dir) => quoteForPosixShellArg(path.posix.join(layout.claudeHooksDir, dir))).join(" ")}`,
+      ...HOOK_FILES.map((name) => `mv -f ${quoteForPosixShellArg(path.posix.join(stagingDir, path.posix.basename(name)))} ${quoteForPosixShellArg(path.posix.join(layout.claudeHooksDir, name))}`),
+      `rm -f ${LEGACY_FLAT_HOOK_FILES.map((name) => quoteForPosixShellArg(path.posix.join(layout.claudeHooksDir, name))).join(" ")}`,
+    ].join(" && ");
     const promote = await spawnAndWait(
       spawn,
       "ssh",
@@ -1627,9 +1652,9 @@ async function secureDeploy({
 
     const envPrefix = buildRemoteInstallerEnv(layout, profile.remotePermissionTransport);
     const installers = [
-      ["installClaude", "install-claude", "install.js", profile.chainStatusline ? ["--remote", "--chain-existing"] : ["--remote"], componentPresence.claudePresent],
-      ["installCodex", "install-codex", "codex-install.js", ["--remote"], componentPresence.codexPresent],
-      ["installCopilot", "install-copilot", "copilot-install.js", ["--remote"], componentPresence.copilotPresent],
+      ["installClaude", "install-claude", REMOTE_SCRIPTS.claudeInstall, profile.chainStatusline ? ["--remote", "--chain-existing"] : ["--remote"], componentPresence.claudePresent],
+      ["installCodex", "install-codex", REMOTE_SCRIPTS.codexInstall, ["--remote"], componentPresence.codexPresent],
+      ["installCopilot", "install-copilot", REMOTE_SCRIPTS.copilotInstall, ["--remote"], componentPresence.copilotPresent],
     ];
     for (const [txnStep, progressStep, script, argv, present] of installers) {
       progress(progressStep, "start");
@@ -1712,7 +1737,7 @@ async function secureDeploy({
     } else {
       const monitorCommand = [
         secureMonitorStopCommand(layout),
-        `nohup env ${envPrefix} ${buildRemoteHookNodeCommand(remoteNode, "codex-remote-monitor.js", [], { hooksDir: layout.claudeHooksDir })} >/dev/null 2>&1 &`,
+        `nohup env ${envPrefix} ${buildRemoteHookNodeCommand(remoteNode, REMOTE_SCRIPTS.codexMonitor, [], { hooksDir: layout.claudeHooksDir })} >/dev/null 2>&1 &`,
         `printf '%s\\n' "$!" > ${quoteForPosixShellArg(layout.monitorPidFile)}`,
         buildMonitorVerificationCommand(layout, remoteNode),
       ].join("\n");
@@ -1869,7 +1894,7 @@ async function secureDeploy({
             layout,
             leaseId,
             remoteNode,
-            `${envPrefix} ${buildRemoteHookNodeCommand(remoteNode, "hermes-install.js", hermesArgs, {
+            `${envPrefix} ${buildRemoteHookNodeCommand(remoteNode, REMOTE_SCRIPTS.hermesInstall, hermesArgs, {
               hooksDir: layout.claudeHooksDir,
             })}`,
           ),
@@ -2194,7 +2219,7 @@ async function legacyStartCodexMonitor({ profile, runtime = null, deps = {} }) {
 
   // Launch new monitor in background and capture its PID.
   const startCmd =
-    `nohup ${buildRemoteHookNodeCommand(remoteNode, "codex-remote-monitor.js", ["--port", profile.remoteForwardPort])} ` +
+    `nohup ${buildRemoteHookNodeCommand(remoteNode, REMOTE_SCRIPTS.codexMonitor, ["--port", profile.remoteForwardPort])} ` +
     "> /dev/null 2>&1 & echo $! > ~/.clawd-codex-monitor.pid";
   const startArgs = buildSshArgs(profile).concat([startCmd]);
   const r = await spawnAndWait(spawn, "ssh", startArgs, { runtime });
@@ -2236,7 +2261,8 @@ async function legacyUninstallRemoteIntegrations({ profile, runtime = null, deps
     }
     remoteNode = resolved.nodeBin;
   }
-  const claudeUninstall = buildRemoteHookNodeCommand(remoteNode, "uninstall.js", []);
+  const claudeUninstall = buildRemoteHookNodeCommand(remoteNode, REMOTE_SCRIPTS.claudeUninstall, []);
+  const flatClaudeUninstall = buildRemoteHookNodeCommand(remoteNode, "uninstall.js", []);
   // Profiles deployed before uninstall.js joined the manifest still have
   // install.js. Fall back to its exported unregister functions so an app
   // upgrade can clean those remotes instead of silently stranding hooks.
@@ -2244,10 +2270,12 @@ async function legacyUninstallRemoteIntegrations({ profile, runtime = null, deps
     'const i=require(process.env.HOME+"/.claude/hooks/install.js");'
     + 'i.unregisterHooks();'
     + 'if(typeof i.unregisterClaudeStatusline==="function")i.unregisterClaudeStatusline();');
-  const claudeCleanupStep = `if [ -f "$HOME/.claude/hooks/uninstall.js" ]; then ${claudeUninstall}; else ${legacyClaudeUninstall}; fi`;
+  // Layered payload first, then the pre-layered flat payload, then the oldest
+  // install.js-only payload.
+  const claudeCleanupStep = `if [ -f "$HOME/.claude/hooks/${REMOTE_SCRIPTS.claudeUninstall}" ]; then ${claudeUninstall}; elif [ -f "$HOME/.claude/hooks/uninstall.js" ]; then ${flatClaudeUninstall}; else ${legacyClaudeUninstall}; fi`;
   const steps = [
     claudeCleanupStep,
-    buildRemoteHookNodeCommand(remoteNode, "codex-install.js", ["--uninstall"]),
+    buildRemoteHookNodeCommand(remoteNode, REMOTE_SCRIPTS.codexInstall, ["--uninstall"]),
   ];
   let lastStderr = null;
   let ok = true;
@@ -2390,13 +2418,15 @@ async function withOwnedRemoteLease({ profile, runtime, deps = {}, operation }) 
 
 function secureMonitorStopCommand(layout) {
   const pidFile = quoteForPosixShellArg(layout.monitorPidFile);
-  const marker = quoteForPosixShellArg(path.posix.join(layout.claudeHooksDir, "codex-remote-monitor.js"));
+  const marker = quoteForPosixShellArg(path.posix.join(layout.claudeHooksDir, REMOTE_SCRIPTS.codexMonitor));
+  // A monitor started by a pre-layered deployment still runs the flat script.
+  const legacyMarker = quoteForPosixShellArg(path.posix.join(layout.claudeHooksDir, path.posix.basename(REMOTE_SCRIPTS.codexMonitor)));
   return [
     `pidfile=${pidFile}`,
     "if [ -f \"$pidfile\" ]; then",
     "  pid=\"$(cat \"$pidfile\" 2>/dev/null || true)\"",
     "  case \"$pid\" in ''|*[!0-9]*) ;; *)",
-    `    cmd="$(ps -p "$pid" -o command= 2>/dev/null || true)"; case "$cmd" in *${marker}*) kill "$pid" 2>/dev/null || true ;; esac`,
+    `    cmd="$(ps -p "$pid" -o command= 2>/dev/null || true)"; case "$cmd" in *${marker}*|*${legacyMarker}*) kill "$pid" 2>/dev/null || true ;; esac`,
     "  ;; esac",
     "fi",
     "rm -f \"$pidfile\"",
@@ -2413,7 +2443,7 @@ async function secureStartCodexMonitor({ profile, runtime = null, deps = {} }) {
       const stop = secureMonitorStopCommand(layout);
       const start = [
         stop,
-        `nohup env ${envPrefix} ${buildRemoteHookNodeCommand(remoteNode, "codex-remote-monitor.js", [], { hooksDir: layout.claudeHooksDir })} >/dev/null 2>&1 &`,
+        `nohup env ${envPrefix} ${buildRemoteHookNodeCommand(remoteNode, REMOTE_SCRIPTS.codexMonitor, [], { hooksDir: layout.claudeHooksDir })} >/dev/null 2>&1 &`,
         `printf '%s\\n' "$!" > ${quoteForPosixShellArg(layout.monitorPidFile)}`,
         buildMonitorVerificationCommand(layout, remoteNode),
       ].join("\n");
@@ -2461,20 +2491,25 @@ async function secureUninstallRemoteIntegrations({
     deps,
     operation: async ({ spawn, layout, remoteNode, leaseId }) => {
       const envPrefix = buildRemoteInstallerEnv(layout, profile.remotePermissionTransport);
+      // Prefer the layered installer; a remote that was never redeployed after
+      // the hooks tree became layered still has the flat copy at the root.
       const optionalInstaller = (script, argv, whenAbsent = "") => {
         const scriptPath = path.posix.join(layout.claudeHooksDir, script);
-        return `if [ -f ${quoteForPosixShellArg(scriptPath)} ]; then ${envPrefix} ${buildRemoteHookNodeCommand(remoteNode, script, argv, { hooksDir: layout.claudeHooksDir })};${whenAbsent ? ` else ${whenAbsent};` : ""} fi`;
+        const flatScript = path.posix.basename(script);
+        const flatPath = path.posix.join(layout.claudeHooksDir, flatScript);
+        const run = (name) => `${envPrefix} ${buildRemoteHookNodeCommand(remoteNode, name, argv, { hooksDir: layout.claudeHooksDir })}`;
+        return `if [ -f ${quoteForPosixShellArg(scriptPath)} ]; then ${run(script)}; elif [ -f ${quoteForPosixShellArg(flatPath)} ]; then ${run(flatScript)};${whenAbsent ? ` else ${whenAbsent};` : ""} fi`;
       };
       const hermesCommand = resolveRemoteHermesHome(layout)
-        ? optionalInstaller("hermes-install.js", ["--uninstall", "--remote", "--json"],
+        ? optionalInstaller(REMOTE_SCRIPTS.hermesInstall, ["--uninstall", "--remote", "--json"],
           `printf '%s\\n' ${quoteForPosixShellArg(HERMES_RESULT_SENTINEL + JSON.stringify({ schemaVersion: 1, operation: "uninstall", status: "ok", remote: true, targets: [], skipped: "installer-absent" }))}`)
         : null;
       let hermes = null;
       const commands = [
         secureMonitorStopCommand(layout),
-        optionalInstaller("uninstall.js", []),
-        optionalInstaller("codex-install.js", ["--uninstall"]),
-        optionalInstaller("copilot-install.js", ["--uninstall"]),
+        optionalInstaller(REMOTE_SCRIPTS.claudeUninstall, []),
+        optionalInstaller(REMOTE_SCRIPTS.codexInstall, ["--uninstall"]),
+        optionalInstaller(REMOTE_SCRIPTS.copilotInstall, ["--uninstall"]),
         // Runs before the hook payload is removed, under the same lease and
         // fence. The installer discovers its own targets from HERMES_HOME
         // (exported by buildRemoteInstallerEnv) and removes exactly the
@@ -2485,7 +2520,11 @@ async function secureUninstallRemoteIntegrations({
           layout.statuslineSidecarFile,
           layout.lastLogFile,
           ...HOOK_FILES.map((name) => path.posix.join(layout.claudeHooksDir, name)),
+          ...LEGACY_FLAT_HOOK_FILES.map((name) => path.posix.join(layout.claudeHooksDir, name)),
         ].map(quoteForPosixShellArg).join(" ")}`,
+        // Drop the layered subfolders once empty; non-empty ones (files the user
+        // added) are left alone.
+        `rmdir ${HOOK_SUBDIRS.map((dir) => quoteForPosixShellArg(path.posix.join(layout.claudeHooksDir, dir))).join(" ")} 2>/dev/null || true`,
       ];
       if (!preserveIdentity) {
         commands.push(

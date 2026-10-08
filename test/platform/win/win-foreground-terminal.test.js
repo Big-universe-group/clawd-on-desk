@@ -9,7 +9,7 @@ const { createForegroundWindowsTerminalProbe } = require("../../../src/platform/
 const {
   WINDOWS_TERMINAL_WINDOW_CLASS,
   WINDOWS_TERMINAL_PROCESS_NAMES,
-} = require("../../../hooks/shared-process");
+} = require("../../../hooks/shared/shared-process");
 
 // A koffi stand-in mirroring the real ABI shape this module declares:
 // user32!GetForegroundWindow/GetAncestor/GetClassNameW/GetWindowThreadProcessId,

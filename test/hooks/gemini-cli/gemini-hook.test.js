@@ -2,10 +2,10 @@ const { describe, it } = require("node:test");
 const assert = require("node:assert");
 const path = require("path");
 const { runSpawnedHook } = require("../../helpers/spawned-hook");
-const { __test } = require("../../../hooks/gemini-hook");
+const { __test } = require("../../../hooks/gemini-cli/gemini-hook");
 
 function runGeminiHook(argvEvent, payload = {}) {
-  const scriptPath = path.resolve(__dirname, "..", "..", "..", "hooks", "gemini-hook.js");
+  const scriptPath = path.resolve(__dirname, "..", "..", "..", "hooks", "gemini-cli", "gemini-hook.js");
   return runSpawnedHook({
     script: scriptPath,
     args: [argvEvent],

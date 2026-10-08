@@ -13,7 +13,7 @@ const {
   applyDshNoticeOutcome,
   acknowledgeDshNotice,
   clearDshNotices,
-} = require("../../../hooks/dsh-notices");
+} = require("../../../hooks/deepseek-harness/dsh-notices");
 const {
   BRIDGE_PACKAGE_NAME,
   DSH_VERSION_FAMILIES,
@@ -21,10 +21,10 @@ const {
   uninstallDeepSeekHarnessBridge,
   readDeepSeekHarnessNotices,
   acknowledgeDeepSeekHarnessNotice,
-} = require("../../../hooks/dsh-install");
+} = require("../../../hooks/deepseek-harness/dsh-install");
 const { desktopFound: platformDesktopFound, symlinkDir } = require("../../helpers/dsh-desktop-fixtures");
 
-const SOURCE_DIR = path.join(__dirname, "..", "..", "..", "hooks", "dsh-clawd-bridge");
+const SOURCE_DIR = path.join(__dirname, "..", "..", "..", "hooks", "deepseek-harness", "dsh-clawd-bridge");
 const FAMILY = DSH_VERSION_FAMILIES[0];
 const FAMILY_VERSION = FAMILY.minVersion;
 
@@ -454,7 +454,7 @@ test("startup sync records a disabled plugin as a failed-target notice", async (
   const harness = makeHarness(t);
   const profileDir = path.join(harness.dshHome, "profiles", "web");
   // Dependency present but no bundle row: DSH disabled.
-  const bundleHash = require("../../../hooks/dsh-install").__test.hashBridgeDirectorySync(fs, SOURCE_DIR, {
+  const bundleHash = require("../../../hooks/deepseek-harness/dsh-install").__test.hashBridgeDirectorySync(fs, SOURCE_DIR, {
     supportedDshRange: FAMILY.range,
   });
   const generationDir = path.join(harness.managedRoot, "generations", bundleHash);

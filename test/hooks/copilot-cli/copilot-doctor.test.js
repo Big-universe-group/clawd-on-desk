@@ -13,7 +13,7 @@ const path = require("path");
 const os = require("os");
 
 const { checkAgentIntegrations } = require("../../../src/agents/doctor/integrations");
-const { COPILOT_HOOK_EVENTS, MARKER } = require("../../../hooks/copilot-install");
+const { COPILOT_HOOK_EVENTS, MARKER } = require("../../../hooks/copilot-cli/copilot-install");
 
 const tempDirs = [];
 

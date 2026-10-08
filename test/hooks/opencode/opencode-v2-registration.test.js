@@ -15,8 +15,8 @@ const os = require("node:os");
 const path = require("node:path");
 const { describe, it, after } = require("node:test");
 
-const { registerOpencodePlugin, unregisterOpencodePlugin } = require("../../../hooks/opencode-install");
-const v2Registry = require("../../../hooks/opencode-family-v2-registration");
+const { registerOpencodePlugin, unregisterOpencodePlugin } = require("../../../hooks/opencode/opencode-install");
+const v2Registry = require("../../../hooks/opencode/opencode-family-v2-registration");
 
 const tempDirs = [];
 after(() => {
@@ -81,7 +81,7 @@ describe("opencode v2 plugins-key registration", () => {
       "foreign entries preserved value-for-value"
     );
     assert.strictEqual(v2Registry.verifyV2RegisterPostcondition({
-      cfg: require("../../../hooks/opencode-family").getFamilyConfig("opencode"),
+      cfg: require("../../../hooks/opencode/opencode-family").getFamilyConfig("opencode"),
       configPath: configPath(home),
       makeContext: () => ({
         fs, platform: process.platform, pluginDirName: "opencode-plugin-v2",

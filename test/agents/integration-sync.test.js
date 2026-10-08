@@ -197,9 +197,9 @@ describe("integration sync runtime", () => {
     const { runtime } = makeRuntime({
       ctx: { syncClawdHooksImpl: undefined, claudeQuotaCollectionEnabled: true },
     });
-    withPatchedExport("../../hooks/install.js", "registerHooks", () => ({ added: 1, updated: 0, removed: 0 }), () => {
+    withPatchedExport("../../hooks/claude-code/install.js", "registerHooks", () => ({ added: 1, updated: 0, removed: 0 }), () => {
       withPatchedExport(
-        "../../hooks/install.js",
+        "../../hooks/claude-code/install.js",
         "registerClaudeStatusline",
         () => ({ installed: false, error: { reason: "invalid-appimage-path", message: "boom" } }),
         () => {
@@ -525,7 +525,7 @@ describe("integration sync runtime", () => {
     const { runtime } = makeRuntime({
       ctx: { syncCodeBuddyHooksImpl: null },
     });
-    const modulePath = require.resolve("../../hooks/codebuddy-install.js");
+    const modulePath = require.resolve("../../hooks/codebuddy/codebuddy-install.js");
 
     withPatchedExport(modulePath, "registerCodeBuddyHooks", (options) => {
       received = options;
@@ -540,91 +540,91 @@ describe("integration sync runtime", () => {
       {
         agentId: "gemini-cli",
         ctxKey: "syncGeminiHooksImpl",
-        modulePath: "../../hooks/gemini-install.js",
+        modulePath: "../../hooks/gemini-cli/gemini-install.js",
         exportName: "registerGeminiHooks",
         reason: "gemini-not-installed",
       },
       {
         agentId: "cursor-agent",
         ctxKey: "syncCursorHooksImpl",
-        modulePath: "../../hooks/cursor-install.js",
+        modulePath: "../../hooks/cursor-agent/cursor-install.js",
         exportName: "registerCursorHooks",
         reason: "cursor-not-installed",
       },
       {
         agentId: "copilot-cli",
         ctxKey: "syncCopilotHooksImpl",
-        modulePath: "../../hooks/copilot-install.js",
+        modulePath: "../../hooks/copilot-cli/copilot-install.js",
         exportName: "registerCopilotHooks",
         reason: "copilot-not-installed",
       },
       {
         agentId: "codebuddy",
         ctxKey: "syncCodeBuddyHooksImpl",
-        modulePath: "../../hooks/codebuddy-install.js",
+        modulePath: "../../hooks/codebuddy/codebuddy-install.js",
         exportName: "registerCodeBuddyHooks",
         reason: "codebuddy-not-installed",
       },
       {
         agentId: "workbuddy",
         ctxKey: "syncWorkBuddyHooksImpl",
-        modulePath: "../../hooks/workbuddy-install.js",
+        modulePath: "../../hooks/workbuddy/workbuddy-install.js",
         exportName: "registerWorkBuddyHooks",
         reason: "workbuddy-not-installed",
       },
       {
         agentId: "grok-build",
         ctxKey: "syncGrokBuildHooksImpl",
-        modulePath: "../../hooks/grok-install.js",
+        modulePath: "../../hooks/grok-build/grok-install.js",
         exportName: "registerGrokHooks",
         reason: "grok-not-installed",
       },
       {
         agentId: "kiro-cli",
         ctxKey: "syncKiroHooksImpl",
-        modulePath: "../../hooks/kiro-install.js",
+        modulePath: "../../hooks/kiro-cli/kiro-install.js",
         exportName: "registerKiroHooks",
         reason: "kiro-not-installed",
       },
       {
         agentId: "kimi-cli",
         ctxKey: "syncKimiHooksImpl",
-        modulePath: "../../hooks/kimi-install.js",
+        modulePath: "../../hooks/kimi-cli/kimi-install.js",
         exportName: "registerKimiHooks",
         reason: "kimi-not-installed",
       },
       {
         agentId: "qwen-code",
         ctxKey: "syncQwenHooksImpl",
-        modulePath: "../../hooks/qwen-code-install.js",
+        modulePath: "../../hooks/qwen-code/qwen-code-install.js",
         exportName: "registerQwenCodeHooks",
         reason: "qwen-not-installed",
       },
       {
         agentId: "codewhale",
         ctxKey: "syncCodewhaleHooksImpl",
-        modulePath: "../../hooks/codewhale-install.js",
+        modulePath: "../../hooks/codewhale/codewhale-install.js",
         exportName: "registerCodewhaleHooks",
         reason: "codewhale-not-installed",
       },
       {
         agentId: "codex",
         ctxKey: "syncCodexHooksImpl",
-        modulePath: "../../hooks/codex-install.js",
+        modulePath: "../../hooks/codex/codex-install.js",
         exportName: "registerCodexHooks",
         reason: "codex-not-installed",
       },
       {
         agentId: "qoder",
         ctxKey: "syncQoderHooksImpl",
-        modulePath: "../../hooks/qoder-install.js",
+        modulePath: "../../hooks/qoder/qoder-install.js",
         exportName: "registerQoderHooks",
         reason: "qoder-not-installed",
       },
       {
         agentId: "reasonix",
         ctxKey: "syncReasonixHooksImpl",
-        modulePath: "../../hooks/reasonix-install.js",
+        modulePath: "../../hooks/reasonix/reasonix-install.js",
         exportName: "registerReasonixHooks",
         reason: "reasonix-not-installed",
       },
@@ -686,28 +686,28 @@ describe("integration sync runtime", () => {
       {
         agentId: "antigravity-cli",
         ctxKey: "syncAntigravityHooksImpl",
-        modulePath: "../../hooks/antigravity-install.js",
+        modulePath: "../../hooks/antigravity-cli/antigravity-install.js",
         exportName: "registerAntigravityHooks",
         reason: "antigravity-not-installed",
       },
       {
         agentId: "pi",
         ctxKey: "syncPiExtensionImpl",
-        modulePath: "../../hooks/pi-install.js",
+        modulePath: "../../hooks/pi/pi-install.js",
         exportName: "registerPiExtension",
         reason: "pi-not-found",
       },
       {
         agentId: "omp",
         ctxKey: "syncOmpExtensionImpl",
-        modulePath: "../../hooks/omp-install.js",
+        modulePath: "../../hooks/omp/omp-install.js",
         exportName: "registerOmpExtension",
         reason: "omp-not-found",
       },
       {
         agentId: "openclaw",
         ctxKey: "syncOpenClawPluginImpl",
-        modulePath: "../../hooks/openclaw-install.js",
+        modulePath: "../../hooks/openclaw/openclaw-install.js",
         exportName: "registerOpenClawPlugin",
         reason: "openclaw-not-found",
       },
@@ -718,7 +718,7 @@ describe("integration sync runtime", () => {
     // stub too, or this test would hit the real ~/.gemini/antigravity-cli
     // on any machine that has Antigravity CLI installed.
     const runEntry = (entry, run) => (entry.agentId === "antigravity-cli"
-      ? withPatchedExport("../../hooks/antigravity-install.js", "registerAntigravityStatusline", () => ({ installed: false, changed: false, skippedExisting: false }), run)
+      ? withPatchedExport("../../hooks/antigravity-cli/antigravity-install.js", "registerAntigravityStatusline", () => ({ installed: false, changed: false, skippedExisting: false }), run)
       : run());
 
     for (const entry of cases) {
@@ -748,7 +748,7 @@ describe("integration sync runtime", () => {
     }
 
     const unmanagedPi = withPatchedExport(
-      "../../hooks/pi-install.js",
+      "../../hooks/pi/pi-install.js",
       "registerPiExtension",
       () => ({
         installed: false,
@@ -768,7 +768,7 @@ describe("integration sync runtime", () => {
 
   it("syncIntegrationForAgent distinguishes opencode missing from already registered", () => {
     const missing = withPatchedExport(
-      "../../hooks/opencode-install.js",
+      "../../hooks/opencode/opencode-install.js",
       "registerOpencodePlugin",
       () => ({ added: false, skipped: true, created: false, reason: "opencode-not-found" }),
       () => {
@@ -781,7 +781,7 @@ describe("integration sync runtime", () => {
     assert.strictEqual(missing.reason, "opencode-not-found");
 
     const alreadyCurrent = withPatchedExport(
-      "../../hooks/opencode-install.js",
+      "../../hooks/opencode/opencode-install.js",
       "registerOpencodePlugin",
       () => ({ added: false, skipped: true, created: false }),
       () => {
@@ -799,7 +799,7 @@ describe("integration sync runtime", () => {
     // no-op and the whole Settings-Install / startup / Doctor-Repair sync
     // chain would fail green.
     const missing = withPatchedExport(
-      "../../hooks/mimocode-install.js",
+      "../../hooks/opencode/mimocode-install.js",
       "registerMimocodePlugin",
       () => ({ added: false, skipped: true, created: false, reason: "mimocode-not-found" }),
       () => {
@@ -812,7 +812,7 @@ describe("integration sync runtime", () => {
     assert.strictEqual(missing.reason, "mimocode-not-found");
 
     const alreadyCurrent = withPatchedExport(
-      "../../hooks/mimocode-install.js",
+      "../../hooks/opencode/mimocode-install.js",
       "registerMimocodePlugin",
       () => ({ added: false, skipped: true, created: false }),
       () => {
@@ -946,7 +946,7 @@ describe("integration sync runtime", () => {
   });
 
   it("does not log Pi extension sync when the managed files are already current", () => {
-    const piInstall = require("../../hooks/pi-install");
+    const piInstall = require("../../hooks/pi/pi-install");
     const originalRegister = piInstall.registerPiExtension;
     const originalLog = console.log;
     const logs = [];
@@ -972,7 +972,7 @@ describe("integration sync runtime", () => {
   });
 
   it("does not log CodeWhale hook sync when the config is already current", () => {
-    const codewhaleInstall = require("../../hooks/codewhale-install");
+    const codewhaleInstall = require("../../hooks/codewhale/codewhale-install");
     const originalRegister = codewhaleInstall.registerCodewhaleHooks;
     const originalLog = console.log;
     const logs = [];

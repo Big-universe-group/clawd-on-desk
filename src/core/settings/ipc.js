@@ -7,7 +7,7 @@ const { detectAgentInstallations: defaultDetectAgentInstallations } = require(".
 const {
   readDeepSeekHarnessNotices: defaultReadDshNotices,
   acknowledgeDeepSeekHarnessNotice: defaultAcknowledgeDshNotice,
-} = require("../../../hooks/dsh-install");
+} = require("../../../hooks/deepseek-harness/dsh-install");
 const { DEFAULT_INTEGRATION_INSTALLED_IDS } = require("./prefs");
 const settingsThemeImporter = require("../../features/themes/settings-importer");
 const {
@@ -336,7 +336,7 @@ function registerSettingsIpc(options = {}) {
   const refreshDshDesktopDiscovery = typeof options.refreshDshDesktopDiscovery === "function"
     ? options.refreshDshDesktopDiscovery
     : async () => {
-      const { refreshDshDesktopDiscovery: refresh } = require("../../../hooks/dsh-install.js");
+      const { refreshDshDesktopDiscovery: refresh } = require("../../../hooks/deepseek-harness/dsh-install.js");
       return refresh({});
     };
   const refreshWslDetection = typeof options.refreshWslDetection === "function"

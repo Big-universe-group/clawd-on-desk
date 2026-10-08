@@ -2,7 +2,7 @@ const { describe, it } = require("node:test");
 const assert = require("node:assert");
 const path = require("node:path");
 const { runSpawnedHook } = require("../../helpers/spawned-hook");
-const { __test } = require("../../../hooks/codewhale-hook");
+const { __test } = require("../../../hooks/codewhale/codewhale-hook");
 
 function cacheDeps(initial = null) {
   let cached = initial;
@@ -104,7 +104,7 @@ describe("CodeWhale hook script", () => {
   });
 
   it("exits cleanly without stdout or stderr for unknown CLI events", () => {
-    const scriptPath = path.resolve(__dirname, "..", "..", "..", "hooks", "codewhale-hook.js");
+    const scriptPath = path.resolve(__dirname, "..", "..", "..", "hooks", "codewhale", "codewhale-hook.js");
     const result = runSpawnedHook({
       script: scriptPath,
       args: ["shell_env"],

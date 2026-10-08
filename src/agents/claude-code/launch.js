@@ -11,8 +11,8 @@ const {
   escapeAppleScriptString,
 } = require("../../features/remote-ssh/quote");
 
-const { normalizeClaudeSessionId } = require("../../../hooks/claude-session-id");
-const { normalizeClaudeProfile } = require("../../../hooks/session-history");
+const { normalizeClaudeSessionId } = require("../../../hooks/claude-code/claude-session-id");
+const { normalizeClaudeProfile } = require("../../../hooks/shared/session-history");
 
 // PowerShell single-quoted string quoting.
 //

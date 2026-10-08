@@ -12,7 +12,7 @@ const {
   normalizeQwenSessionId,
   run,
   sanitizeQwenPermissionOutput,
-} = require("../../../hooks/qwen-code-hook");
+} = require("../../../hooks/qwen-code/qwen-code-hook");
 
 const mockResolve = () => ({
   stablePid: 123,
@@ -182,7 +182,7 @@ describe("Qwen Code hook", () => {
   });
 
   it("prints exact no-decision stdout and empty stderr for unknown events", () => {
-    const scriptPath = path.resolve(__dirname, "..", "..", "..", "hooks", "qwen-code-hook.js");
+    const scriptPath = path.resolve(__dirname, "..", "..", "..", "hooks", "qwen-code", "qwen-code-hook.js");
     const result = runSpawnedHook({
       script: scriptPath,
       payload: {

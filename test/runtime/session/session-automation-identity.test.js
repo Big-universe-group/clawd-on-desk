@@ -9,7 +9,7 @@ const {
 } = require("../../../src/runtime/session/automation/identity");
 const {
   CODEX_PLACEHOLDER_SESSION_IDS,
-} = require("../../../hooks/codex-originator");
+} = require("../../../hooks/codex/codex-originator");
 
 function assess(agentId, rawSessionId, overrides = {}) {
   return assessSessionAutomationIdentity({

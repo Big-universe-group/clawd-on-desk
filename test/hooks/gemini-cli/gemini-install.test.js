@@ -3,7 +3,7 @@ const assert = require("node:assert");
 const fs = require("fs");
 const path = require("path");
 const os = require("os");
-const { registerGeminiHooks, GEMINI_HOOK_EVENTS, __test } = require("../../../hooks/gemini-install");
+const { registerGeminiHooks, GEMINI_HOOK_EVENTS, __test } = require("../../../hooks/gemini-cli/gemini-install");
 
 const MARKER = "gemini-hook.js";
 const tempDirs = [];

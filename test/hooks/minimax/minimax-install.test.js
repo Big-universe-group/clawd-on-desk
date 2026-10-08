@@ -20,8 +20,8 @@ const {
   recordedNodeBin,
   resolveDesiredNodeBin,
   hooksReferenceClawdHook,
-} = require("../../../hooks/minimax-install");
-const { writeJsonAtomic } = require("../../../hooks/json-utils");
+} = require("../../../hooks/minimax/minimax-install");
+const { writeJsonAtomic } = require("../../../hooks/shared/json-utils");
 
 const MARKER = "minimax-hook.js";
 const tempDirs = [];
@@ -89,7 +89,7 @@ describe("MiniMax plugin installer", () => {
       // in args — spawned directly, no shell, no quoting pitfalls.
       assert.strictEqual(handler.command, "/usr/local/bin/node");
       assert.deepStrictEqual(handler.args, [
-        path.resolve(__dirname, "../../../hooks/minimax-hook.js").replace(/\\/g, "/"),
+        path.resolve(__dirname, "../../../hooks/minimax/minimax-hook.js").replace(/\\/g, "/"),
       ]);
       assert.ok(handler.args[0].includes(MARKER), `handler must reference the ${MARKER} marker`);
       assert.ok(Number.isInteger(handler.timeout) && handler.timeout >= 1 && handler.timeout <= 10,

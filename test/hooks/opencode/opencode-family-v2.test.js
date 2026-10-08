@@ -31,7 +31,7 @@ after(async () => {
 
 const HOOKS_DIR = path.join(__dirname, "..", "..", "..", "hooks");
 async function loadCore() {
-  const modulePath = path.join(HOOKS_DIR, "opencode-family-plugin", "core.mjs");
+  const modulePath = path.join(HOOKS_DIR, "opencode", "opencode-family-plugin", "core.mjs");
   return import(pathToFileURL(modulePath).href);
 }
 
@@ -546,10 +546,10 @@ describe("opencode v2 permission evaluate hook", () => {
 describe("opencode v2 entry drift locks", () => {
   it("entry literals match the family registry's v2 fields", async () => {
     const source = fs.readFileSync(
-      path.join(HOOKS_DIR, "opencode-plugin-v2", "index.mjs"),
+      path.join(HOOKS_DIR, "opencode", "opencode-plugin-v2", "index.mjs"),
       "utf8"
     );
-    const family = require("../../../hooks/opencode-family.js");
+    const family = require("../../../hooks/opencode/opencode-family.js");
     const cfg = family.getFamilyConfig("opencode");
     assert.ok(source.includes('agentId: "opencode"'), "agentId literal");
     assert.ok(source.includes(`hookSource: "${cfg.v2HookSource}"`));
@@ -1235,8 +1235,8 @@ describe("opencode v2 recovered-child identity race", () => {
 
 describe("opencode v2 activation and ownership gates", () => {
   it("keeps exactly one V2-valid implementation across the dual entries", async () => {
-    const v1 = await import(pathToFileURL(path.join(HOOKS_DIR, "opencode-plugin", "index.mjs")).href);
-    const v2 = await import(pathToFileURL(path.join(HOOKS_DIR, "opencode-plugin-v2", "index.mjs")).href);
+    const v1 = await import(pathToFileURL(path.join(HOOKS_DIR, "opencode", "opencode-plugin", "index.mjs")).href);
+    const v2 = await import(pathToFileURL(path.join(HOOKS_DIR, "opencode", "opencode-plugin-v2", "index.mjs")).href);
     assert.strictEqual(typeof v1.default, "function", "the v1 entry stays a function (the v2 loader rejects it)");
     assert.strictEqual(typeof v2.default, "object");
     assert.strictEqual(v2.default.id, "clawd-on-desk-opencode");
@@ -1252,7 +1252,7 @@ describe("opencode v2 activation and ownership gates", () => {
     const genDir = path.join(TEMP_HOME, "homes", "cfg", "generations", "a".repeat(64), "opencode-family-plugin");
     fs.mkdirSync(genDir, { recursive: true });
     for (const name of ["core.mjs", "session-ids.mjs"]) {
-      fs.copyFileSync(path.join(HOOKS_DIR, "opencode-family-plugin", name), path.join(genDir, name));
+      fs.copyFileSync(path.join(HOOKS_DIR, "opencode", "opencode-family-plugin", name), path.join(genDir, name));
     }
     const orphanCore = await import(pathToFileURL(path.join(genDir, "core.mjs")).href);
     const orphan = orphanCore.createOpencodeFamilyPluginV2(V2_PARAMS);

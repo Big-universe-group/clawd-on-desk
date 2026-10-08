@@ -17,7 +17,7 @@ const {
   findManagedClaudeEnvNodeBinCandidates,
   parseClaudeEnvStateHookCommand,
   stripUtf8Bom,
-} = require("../../../hooks/json-utils");
+} = require("../../../hooks/shared/json-utils");
 
 // Deliberately NOT imported from ./claude-settings-watcher: that module will
 // require this one (Phase 2's periodic audit calls inspectClaudeHookHealth()),

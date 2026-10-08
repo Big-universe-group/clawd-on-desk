@@ -211,7 +211,7 @@ describe("package build config", () => {
     );
     // The shared opencode family contract moved into the unpacked hooks
     // closure that external hook scripts read outside app.asar.
-    const familyContract = "hooks/opencode-family.js";
+    const familyContract = "hooks/opencode/opencode-family.js";
     assert.ok(
       fs.existsSync(path.join(ROOT, familyContract)),
       `${familyContract} should exist as the shipped family contract`

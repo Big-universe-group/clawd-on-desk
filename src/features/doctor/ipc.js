@@ -60,7 +60,7 @@ function createDoctorRunChecksDeduper(runChecks, options = {}) {
 function defaultDshDesktopPreheat(platform) {
   return async () => {
     if ((platform || process.platform) !== "win32") return;
-    const { refreshDshDesktopDiscovery } = require("../../../hooks/dsh-install.js");
+    const { refreshDshDesktopDiscovery } = require("../../../hooks/deepseek-harness/dsh-install.js");
     await refreshDshDesktopDiscovery({});
   };
 }

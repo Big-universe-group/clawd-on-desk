@@ -8,7 +8,7 @@ const {
   appendDebugEntry,
   buildDebugEntry,
   parsePayload,
-} = require("../../../hooks/codex-debug-hook");
+} = require("../../../hooks/codex/codex-debug-hook");
 
 const tempDirs = [];
 
@@ -82,7 +82,7 @@ describe("Codex debug hook", () => {
   it("writes no stdout and exits 0 when run as a command hook", () => {
     const tmpDir = makeTempDir();
     const logPath = path.join(tmpDir, "debug.jsonl");
-    const scriptPath = path.resolve(__dirname, "..", "..", "..", "hooks", "codex-debug-hook.js");
+    const scriptPath = path.resolve(__dirname, "..", "..", "..", "hooks", "codex", "codex-debug-hook.js");
     const result = runSpawnedHook({
       script: scriptPath,
       payload: { hook_event_name: "Stop", session_id: "session-1" },

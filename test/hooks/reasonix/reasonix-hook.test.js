@@ -4,7 +4,7 @@ const path = require("node:path");
 const { runSpawnedHook } = require("../../helpers/spawned-hook");
 
 function runReasonixHook(payload) {
-  const scriptPath = path.resolve(__dirname, "..", "..", "..", "hooks", "reasonix-hook.js");
+  const scriptPath = path.resolve(__dirname, "..", "..", "..", "hooks", "reasonix", "reasonix-hook.js");
   return runSpawnedHook({
     script: scriptPath,
     payload,

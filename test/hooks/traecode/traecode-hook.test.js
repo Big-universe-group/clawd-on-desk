@@ -1,10 +1,10 @@
 const { describe, it } = require("node:test");
 const assert = require("node:assert");
 
-const { __test } = require("../../../hooks/traecode-hook");
+const { __test } = require("../../../hooks/traecode/traecode-hook");
 const { runSpawnedHook } = require("../../helpers/spawned-hook");
 
-const HOOK_PATH = require("node:path").resolve(__dirname, "..", "..", "..", "hooks", "traecode-hook.js");
+const HOOK_PATH = require("node:path").resolve(__dirname, "..", "..", "..", "hooks", "traecode", "traecode-hook.js");
 
 function runTraeHook(payload, options = {}) {
   return runSpawnedHook({

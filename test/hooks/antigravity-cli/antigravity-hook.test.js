@@ -7,10 +7,10 @@ const {
   createSpawnedHookHarness,
   runSpawnedHook,
 } = require("../../helpers/spawned-hook");
-const { __test } = require("../../../hooks/antigravity-hook");
+const { __test } = require("../../../hooks/antigravity-cli/antigravity-hook");
 
 function runAntigravityHook(argvEvent, payload = {}) {
-  const scriptPath = path.resolve(__dirname, "..", "..", "..", "hooks", "antigravity-hook.js");
+  const scriptPath = path.resolve(__dirname, "..", "..", "..", "hooks", "antigravity-cli", "antigravity-hook.js");
   return runSpawnedHook({
     script: scriptPath,
     args: [argvEvent],
@@ -351,7 +351,7 @@ describe("Antigravity hook script", () => {
   });
 
   it("fails open when local hook setup throws", () => {
-    const scriptPath = path.resolve(__dirname, "..", "..", "..", "hooks", "antigravity-hook.js");
+    const scriptPath = path.resolve(__dirname, "..", "..", "..", "hooks", "antigravity-cli", "antigravity-hook.js");
     const harness = createSpawnedHookHarness({ prefix: "clawd-antigravity-hook-" });
     try {
       const preloadPath = path.join(harness.home, "preload.js");

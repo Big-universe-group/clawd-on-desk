@@ -11,7 +11,7 @@ const {
   parseOpencodeVersion,
   detectOpencodeHost,
   __test,
-} = require("../../../hooks/opencode-host-detect");
+} = require("../../../hooks/opencode/opencode-host-detect");
 
 function failingExecFile(message = "spawn ENOENT") {
   return () => {

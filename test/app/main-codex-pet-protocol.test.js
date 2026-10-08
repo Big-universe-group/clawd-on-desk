@@ -8,7 +8,7 @@ const MAIN = path.join(ROOT, "src", "main.js");
 const CODEX_PET_MAIN = path.join(ROOT, "src", "features", "codex-pet", "main.js");
 const PACKAGE_JSON = path.join(ROOT, "package.json");
 const LAUNCH = path.join(ROOT, "launch.js");
-const SHARED_PROCESS = path.join(ROOT, "hooks", "shared-process.js");
+const SHARED_PROCESS = path.join(ROOT, "hooks", "shared", "shared-process.js");
 
 test("main wires clawd:// protocol dispatch through the Codex Pet importer", () => {
   const source = fs.readFileSync(MAIN, "utf8");

@@ -13,13 +13,13 @@
 
 const fs = require("fs");
 const path = require("path");
-const { getFamilyConfig } = require("../../../hooks/opencode-family");
-const managedGeneration = require("../../../hooks/opencode-family-managed-generation");
-const entryOwnership = require("../../../hooks/opencode-family-entry-ownership");
-const jsoncEditor = require("../../../hooks/opencode-family-jsonc");
-const v2Registry = require("../../../hooks/opencode-family-v2-registration");
-const hostDetect = require("../../../hooks/opencode-host-detect");
-const { resolveSourcePluginDir } = require("../../../hooks/opencode-install");
+const { getFamilyConfig } = require("../../../hooks/opencode/opencode-family");
+const managedGeneration = require("../../../hooks/opencode/opencode-family-managed-generation");
+const entryOwnership = require("../../../hooks/opencode/opencode-family-entry-ownership");
+const jsoncEditor = require("../../../hooks/opencode/opencode-family-jsonc");
+const v2Registry = require("../../../hooks/opencode/opencode-family-v2-registration");
+const hostDetect = require("../../../hooks/opencode/opencode-host-detect");
+const { resolveSourcePluginDir } = require("../../../hooks/opencode/opencode-install");
 
 const SAFE_CATEGORIES = entryOwnership.OWNED_SAFE_CATEGORIES;
 const FAIL_CLOSED = entryOwnership.FAIL_CLOSED_CATEGORIES;

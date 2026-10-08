@@ -7,7 +7,7 @@ const {
   classifyHookPayload,
   classifySessionMeta,
   normalizeRole,
-} = require("../../../hooks/codex-subagent-fields");
+} = require("../../../hooks/codex/codex-subagent-fields");
 
 describe("codex-subagent-fields", () => {
   it("classifies root session_meta from current Codex CLI shape", () => {

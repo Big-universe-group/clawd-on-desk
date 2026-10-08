@@ -5,7 +5,7 @@ const path = require("path");
 const os = require("os");
 const { loadFocusWithMock } = require("../../helpers/load-focus-with-mock");
 
-const { orcaPaneKeyFromEnv, applyOrcaPaneKey, NESTED_TERMINAL_ENV } = require("../../../hooks/shared-process");
+const { orcaPaneKeyFromEnv, applyOrcaPaneKey, NESTED_TERMINAL_ENV } = require("../../../hooks/shared/shared-process");
 
 const PANE_KEY = "8ce1fff7-tab:9813824b-leaf";
 const CWD = "D:\\Repos\\Apps\\clawd-on-desk";
@@ -221,7 +221,7 @@ describe("orcaPaneKeyFromEnv / applyOrcaPaneKey", () => {
 
     // AGENTS.md:155 — OpenClaw's Phase 1 integration is state-only, with no
     // permission bubble and no terminal focus, so it has nothing to focus.
-    const stateOnly = new Set([path.join("openclaw-plugin", "index.js")]);
+    const stateOnly = new Set([path.join("openclaw", "openclaw-plugin", "index.js")]);
 
     const missing = [];
     for (const file of files) {
@@ -245,14 +245,21 @@ describe("orcaPaneKeyFromEnv / applyOrcaPaneKey", () => {
   it("is copied before every focus-capable producer leaves through its remote branch", () => {
     const fs = require("fs");
     const hooksDir = path.join(__dirname, "..", "..", "..", "hooks");
-    const files = fs.readdirSync(hooksDir)
-      .filter((name) => name.endsWith("-hook.js"))
-      .map((name) => path.join(hooksDir, name))
+    const files = [];
+    const walkHooks = (dir) => {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) { walkHooks(full); continue; }
+        if (entry.name.endsWith("-hook.js")) files.push(full);
+      }
+    };
+    walkHooks(hooksDir);
+    const pidChainFiles = files
       .filter((file) => /["']?pid_chain["']?\s*[:=]/.test(fs.readFileSync(file, "utf8")));
     const missing = [];
     let checked = 0;
 
-    for (const file of files) {
+    for (const file of pidChainFiles) {
       const lines = fs.readFileSync(file, "utf8").split(/\r?\n/);
       for (let i = 0; i < lines.length; i++) {
         if (!/^\s*if \((?:process\.env\.CLAWD_REMOTE|options\.remote|remote)\) \{\s*$/.test(lines[i])) continue;
@@ -281,10 +288,10 @@ describe("Orca pane key validator copies", () => {
   // opencode-family plugin each ship standalone, and the tmux siblings set that
   // precedent. Nothing but this test keeps the copies in step.
   const jsCopies = [
-    "hooks/shared-process.js",
-    "hooks/pi-extension-core.js",
-    "hooks/omp-extension-core.js",
-    "hooks/opencode-family-plugin/core.mjs",
+    "hooks/shared/shared-process.js",
+    "hooks/pi/pi-extension-core.js",
+    "hooks/omp/omp-extension-core.js",
+    "hooks/opencode/opencode-family-plugin/core.mjs",
     "src/core/server/route-state.js",
     "src/core/server/route-permission.js",
     "src/runtime/focus/focus.js",
@@ -305,7 +312,7 @@ describe("Orca pane key validator copies", () => {
       assert.ok(trimsDirectly || trimsViaNormalizer,
         `${rel} must trim before matching`);
     }
-    const py = fs.readFileSync(path.join(repo, "hooks/hermes-plugin/__init__.py"), "utf8");
+    const py = fs.readFileSync(path.join(repo, "hooks/hermes/hermes-plugin/__init__.py"), "utf8");
     assert.ok(py.includes(String.raw`r"[\w-]+:[\w-]+"`), "the Python copy must use the same pattern");
     assert.ok(/re\.fullmatch\(r"\[\\w-\]\+:\[\\w-\]\+", pane_key, re\.ASCII\)/.test(py),
       "the Python copy must pin \\w to ASCII so it is not laxer than the JS copies");
@@ -315,8 +322,8 @@ describe("Orca pane key validator copies", () => {
   // to shared-process.js alone would leave the standalone copies trusting an
   // inherited key, with the wrong window reported as a successful focus.
   it("keeps the nested-terminal marker list in step across every copy", () => {
-    for (const rel of ["hooks/pi-extension-core.js", "hooks/omp-extension-core.js",
-      "hooks/opencode-family-plugin/core.mjs", "hooks/hermes-plugin/__init__.py"]) {
+    for (const rel of ["hooks/pi/pi-extension-core.js", "hooks/omp/omp-extension-core.js",
+      "hooks/opencode/opencode-family-plugin/core.mjs", "hooks/hermes/hermes-plugin/__init__.py"]) {
       const src = fs.readFileSync(path.join(repo, rel), "utf8");
       const match = /NESTED_TERMINAL_ENV\s*=\s*[[(]/.exec(src);
       assert.ok(match, `${rel} must declare the nested-terminal marker list`);

@@ -14,10 +14,10 @@ const os = require("node:os");
 const path = require("node:path");
 const { describe, it, afterEach } = require("node:test");
 
-const mg = require("../../../hooks/opencode-family-managed-generation");
-const ownership = require("../../../hooks/opencode-family-entry-ownership");
-const jsonc = require("../../../hooks/opencode-family-jsonc");
-const { getFamilyConfig } = require("../../../hooks/opencode-family");
+const mg = require("../../../hooks/opencode/opencode-family-managed-generation");
+const ownership = require("../../../hooks/opencode/opencode-family-entry-ownership");
+const jsonc = require("../../../hooks/opencode/opencode-family-jsonc");
+const { getFamilyConfig } = require("../../../hooks/opencode/opencode-family");
 
 const OPENCODE_CFG = getFamilyConfig("opencode");
 const tempDirs = [];

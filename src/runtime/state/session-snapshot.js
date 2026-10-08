@@ -8,7 +8,7 @@ const {
   buildLatestLocalCodexProcessIds,
   isSupersededLocalCodexProcessSession,
 } = require("./session-dedupe");
-const { bareCodexSessionId, readCodexThreadName, readCodexThreadNames } = require("../../../hooks/codex-session-index");
+const { bareCodexSessionId, readCodexThreadName, readCodexThreadNames } = require("../../../hooks/codex/codex-session-index");
 const { isWslSourced } = require("../../core/server/remote-process-metadata");
 
 // ── Session source derivation ────────────────────────────────────────

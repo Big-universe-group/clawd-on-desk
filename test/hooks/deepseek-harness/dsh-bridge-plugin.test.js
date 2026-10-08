@@ -7,7 +7,7 @@ const { pathToFileURL } = require("node:url");
 
 let bridgePromise;
 function bridge() {
-  bridgePromise ||= import(pathToFileURL(path.join(__dirname, "..", "..", "..", "hooks", "dsh-clawd-bridge", "lib", "index.js")).href);
+  bridgePromise ||= import(pathToFileURL(path.join(__dirname, "..", "..", "..", "hooks", "deepseek-harness", "dsh-clawd-bridge", "lib", "index.js")).href);
   return bridgePromise;
 }
 

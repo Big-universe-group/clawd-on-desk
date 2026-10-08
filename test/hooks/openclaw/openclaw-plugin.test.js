@@ -8,7 +8,7 @@ const path = require("node:path");
 const { pathToFileURL } = require("node:url");
 
 async function loadPluginModule() {
-  const pluginPath = path.join(__dirname, "..", "..", "..", "hooks", "openclaw-plugin", "index.js");
+  const pluginPath = path.join(__dirname, "..", "..", "..", "hooks", "openclaw", "openclaw-plugin", "index.js");
   return import(pathToFileURL(pluginPath).href);
 }
 
@@ -95,7 +95,7 @@ async function withEnv(vars, fn) {
 
 describe("openclaw plugin runtime", () => {
   it("keeps the runtime free of child_process so OpenClaw install scan accepts it", () => {
-    const pluginPath = path.join(__dirname, "..", "..", "..", "hooks", "openclaw-plugin", "index.js");
+    const pluginPath = path.join(__dirname, "..", "..", "..", "hooks", "openclaw", "openclaw-plugin", "index.js");
     const source = fs.readFileSync(pluginPath, "utf8");
 
     assert.strictEqual(source.includes("child_process"), false);

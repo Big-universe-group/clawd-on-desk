@@ -16,12 +16,12 @@ const {
   resolveDshCommand,
   runDshCommand,
   resolveDshTargets,
-} = require("../../../hooks/dsh-install");
-const { __test: dshInstallTest } = require("../../../hooks/dsh-install");
+} = require("../../../hooks/deepseek-harness/dsh-install");
+const { __test: dshInstallTest } = require("../../../hooks/deepseek-harness/dsh-install");
 const { desktopFound: platformDesktopFound, DSH_CMD_TEMPLATE } = require("../../helpers/dsh-desktop-fixtures");
 
 const FAMILY_VERSION = DSH_VERSION_FAMILIES[0].minVersion;
-const SOURCE_DIR = path.join(__dirname, "..", "..", "..", "hooks", "dsh-clawd-bridge");
+const SOURCE_DIR = path.join(__dirname, "..", "..", "..", "hooks", "deepseek-harness", "dsh-clawd-bridge");
 
 const WIN_BIN = "D:\\软件\\DeepSeek Harness\\resources\\runtime\\cli\\bin";
 const WIN_CMD = `${WIN_BIN}\\dsh.cmd`;

@@ -3,7 +3,7 @@
 const fs = require("fs");
 const crypto = require("crypto");
 
-const { CODEX_HOOK_EVENTS } = require("../../../hooks/codex-install-utils");
+const { CODEX_HOOK_EVENTS } = require("../../../hooks/codex/codex-install-utils");
 
 const CODEX_TRUST_EVENT_KEYS = Object.fromEntries(
   CODEX_HOOK_EVENTS.map((eventName) => [

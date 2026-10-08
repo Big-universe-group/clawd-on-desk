@@ -11,15 +11,15 @@ const path = require("node:path");
 const { pathToFileURL } = require("node:url");
 const { describe, it, afterEach } = require("node:test");
 
-const mg = require("../../../hooks/opencode-family-managed-generation");
-const ownership = require("../../../hooks/opencode-family-entry-ownership");
-const { getFamilyConfig } = require("../../../hooks/opencode-family");
+const mg = require("../../../hooks/opencode/opencode-family-managed-generation");
+const ownership = require("../../../hooks/opencode/opencode-family-entry-ownership");
+const { getFamilyConfig } = require("../../../hooks/opencode/opencode-family");
 const {
   registerOpencodePlugin,
   unregisterOpencodePlugin,
   resolveSourcePluginDir,
-} = require("../../../hooks/opencode-install");
-const { registerMimocodePlugin, unregisterMimocodePlugin } = require("../../../hooks/mimocode-install");
+} = require("../../../hooks/opencode/opencode-install");
+const { registerMimocodePlugin, unregisterMimocodePlugin } = require("../../../hooks/opencode/mimocode-install");
 
 const OPENCODE_CFG = getFamilyConfig("opencode");
 const MIMOCODE_CFG = getFamilyConfig("mimocode");
@@ -851,7 +851,7 @@ describe("#1026 plugin orphan inert gate", () => {
     const genDir = path.join(agentHome, "generations", bundleHash);
     const familyDir = path.join(genDir, "opencode-family-plugin");
     fs.mkdirSync(familyDir, { recursive: true });
-    const sourceFamily = path.join(__dirname, "..", "..", "..", "hooks", "opencode-family-plugin");
+    const sourceFamily = path.join(__dirname, "..", "..", "..", "hooks", "opencode", "opencode-family-plugin");
     fs.copyFileSync(path.join(sourceFamily, "core.mjs"), path.join(familyDir, "core.mjs"));
     fs.copyFileSync(path.join(sourceFamily, "session-ids.mjs"), path.join(familyDir, "session-ids.mjs"));
     const marker = path.join(root, "app", "hooks", "opencode-plugin", "index.mjs");
@@ -898,7 +898,7 @@ describe("#1026 plugin orphan inert gate", () => {
   });
 
   it("goes inert on a foreign owner, agent mismatch and a missing source marker", async () => {
-    const core = path.join(__dirname, "..", "..", "..", "hooks", "opencode-family-plugin", "core.mjs");
+    const core = path.join(__dirname, "..", "..", "..", "hooks", "opencode", "opencode-family-plugin", "core.mjs");
     const mod = await import(pathToFileURL(core).href);
 
     const foreign = tmp("clawd-inert-foreign-");
@@ -928,14 +928,14 @@ describe("#1026 plugin orphan inert gate", () => {
   });
 
   it("source-direct layouts are never treated as inert", async () => {
-    const sourceCore = path.join(__dirname, "..", "..", "..", "hooks", "opencode-family-plugin", "core.mjs");
+    const sourceCore = path.join(__dirname, "..", "..", "..", "hooks", "opencode", "opencode-family-plugin", "core.mjs");
     const mod = await import(pathToFileURL(sourceCore).href);
     const result = mod.evaluateManagedLayoutGate(pathToFileURL(sourceCore).href, { agentId: "opencode", pluginDirName: "opencode-plugin" });
     assert.strictEqual(result.mode, "source-direct");
   });
 
   it("goes inert when the owner source root/marker shape is wrong", async () => {
-    const core = path.join(__dirname, "..", "..", "..", "hooks", "opencode-family-plugin", "core.mjs");
+    const core = path.join(__dirname, "..", "..", "..", "hooks", "opencode", "opencode-family-plugin", "core.mjs");
     const mod = await import(pathToFileURL(core).href);
 
     // Wrong plugin directory under the same root.
@@ -968,7 +968,7 @@ describe("#1026 plugin orphan inert gate", () => {
   });
 
   it("goes inert on malformed owner records (missing dir, bad hash, oversized history)", async () => {
-    const core = path.join(__dirname, "..", "..", "..", "hooks", "opencode-family-plugin", "core.mjs");
+    const core = path.join(__dirname, "..", "..", "..", "hooks", "opencode", "opencode-family-plugin", "core.mjs");
     const mod = await import(pathToFileURL(core).href);
     const gate = (layout) => mod.evaluateManagedLayoutGate(pathToFileURL(layout.corePath).href, {
       agentId: "opencode",
@@ -1001,7 +1001,7 @@ describe("#1026 plugin orphan inert gate", () => {
     const layout = writeManagedLayout(root);
     fs.rmSync(layout.marker);
     fs.mkdirSync(layout.marker, { recursive: true });
-    const core = path.join(__dirname, "..", "..", "..", "hooks", "opencode-family-plugin", "core.mjs");
+    const core = path.join(__dirname, "..", "..", "..", "hooks", "opencode", "opencode-family-plugin", "core.mjs");
     const mod = await import(pathToFileURL(core).href);
     const gate = mod.evaluateManagedLayoutGate(pathToFileURL(layout.corePath).href, { agentId: "opencode", pluginDirName: "opencode-plugin" });
     assert.strictEqual(gate.mode, "inert");
@@ -1163,7 +1163,7 @@ describe("#1026 r1 uninstall must never report a remaining active entry removed"
     // Classification uses an injected `exists:false` (a stale scan), but the
     // path really exists on disk — the pre-write recheck must abort.
     const configPath = dirConfig(home, [realPlugin.replace(/\\/g, "/")]);
-    const jsonc = require("../../../hooks/opencode-family-jsonc");
+    const jsonc = require("../../../hooks/opencode/opencode-family-jsonc");
 
     const staleCtx = {
       pluginDirName: "opencode-plugin",

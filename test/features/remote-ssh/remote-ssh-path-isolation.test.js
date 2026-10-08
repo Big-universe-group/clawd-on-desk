@@ -11,13 +11,13 @@ const {
   resolveRemoteRuntimeLayout,
   collectRemoteLayoutPathSet,
 } = require("../../../src/features/remote-ssh/layout");
-const serverConfig = require("../../../hooks/server-config");
-const claudeInstall = require("../../../hooks/install");
-const codexInstall = require("../../../hooks/codex-install-utils");
-const copilotInstall = require("../../../hooks/copilot-install");
-const { __test: statuslineTest } = require("../../../hooks/claude-statusline");
-const { __test: monitorTest } = require("../../../hooks/codex-remote-monitor");
-const recoveryLease = require("../../../hooks/session-recovery-lease");
+const serverConfig = require("../../../hooks/shared/server-config");
+const claudeInstall = require("../../../hooks/claude-code/install");
+const codexInstall = require("../../../hooks/codex/codex-install-utils");
+const copilotInstall = require("../../../hooks/copilot-cli/copilot-install");
+const { __test: statuslineTest } = require("../../../hooks/claude-code/claude-statusline");
+const { __test: monitorTest } = require("../../../hooks/codex/codex-remote-monitor");
+const recoveryLease = require("../../../hooks/shared/session-recovery-lease");
 const { __test: deployTest } = require("../../../src/features/remote-ssh/deploy");
 
 const REPO_ROOT = path.join(__dirname, "..", "..", "..");
@@ -140,10 +140,10 @@ test("remote hook modules execute in a fresh process without reading or writing 
 
     const script = [
       "const path=require('path');",
-      `const serverConfig=require(${JSON.stringify(path.join(REPO_ROOT, "hooks", "server-config.js"))});`,
-      `const statusline=require(${JSON.stringify(path.join(REPO_ROOT, "hooks", "claude-statusline.js"))}).__test;`,
-      `const monitor=require(${JSON.stringify(path.join(REPO_ROOT, "hooks", "codex-remote-monitor.js"))}).__test;`,
-      `const recovery=require(${JSON.stringify(path.join(REPO_ROOT, "hooks", "session-recovery-lease.js"))});`,
+      `const serverConfig=require(${JSON.stringify(path.join(REPO_ROOT, "hooks", "shared", "server-config.js"))});`,
+      `const statusline=require(${JSON.stringify(path.join(REPO_ROOT, "hooks", "claude-code", "claude-statusline.js"))}).__test;`,
+      `const monitor=require(${JSON.stringify(path.join(REPO_ROOT, "hooks", "codex", "codex-remote-monitor.js"))}).__test;`,
+      `const recovery=require(${JSON.stringify(path.join(REPO_ROOT, "hooks", "shared", "session-recovery-lease.js"))});`,
       "const identity=serverConfig.readRemoteIdentity({env:process.env});",
       "if(!identity.ok)process.exit(11);",
       "if(serverConfig.readHostPrefix({env:process.env})!=='runtime-child')process.exit(12);",
@@ -205,13 +205,13 @@ test("two isolated layouts expose disjoint complete live path sets, including wr
 
 test("remote-capable modules resolve mutable HOME paths at call time, never module load", () => {
   const files = [
-    "hooks/server-config.js",
-    "hooks/install.js",
-    "hooks/codex-install-utils.js",
-    "hooks/copilot-install.js",
-    "hooks/codex-remote-monitor.js",
-    "hooks/claude-statusline.js",
-    "hooks/session-recovery-lease.js",
+    "hooks/shared/server-config.js",
+    "hooks/claude-code/install.js",
+    "hooks/codex/codex-install-utils.js",
+    "hooks/copilot-cli/copilot-install.js",
+    "hooks/codex/codex-remote-monitor.js",
+    "hooks/claude-code/claude-statusline.js",
+    "hooks/shared/session-recovery-lease.js",
     "src/features/remote-ssh/layout.js",
     "src/features/remote-ssh/runtime.js",
     "src/features/remote-ssh/deploy.js",

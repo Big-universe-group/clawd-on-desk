@@ -389,7 +389,12 @@ async function resolveRemoteNodeBin(options = {}) {
 }
 
 function remoteHookPath(scriptName, hooksDir = null) {
-  if (typeof scriptName !== "string" || !/^[a-zA-Z0-9._-]+$/.test(scriptName)) {
+  // Layered hooks tree: an optional single agent folder plus the file name
+  // (e.g. "codex/codex-install.js"). Each segment uses the same safe charset
+  // and dot-only segments are rejected, so the path never leaves the root.
+  if (typeof scriptName !== "string"
+    || !/^(?:[a-zA-Z0-9_-][a-zA-Z0-9._-]*\/)?[a-zA-Z0-9._-]+$/.test(scriptName)
+    || scriptName.split("/").some((segment) => /^\.+$/.test(segment))) {
     throw new Error("remoteHookPath: unsafe script name");
   }
   if (hooksDir != null) {

@@ -10,7 +10,7 @@ const {
   CLAWD_SERVER_ID,
   CLAWD_HOOK_PID_HEADER,
   CLAWD_PROCESS_INSTANCE_HEADER,
-} = require("../../../hooks/server-config");
+} = require("../../../hooks/shared/server-config");
 const {
   MAX_STATE_BODY_BYTES,
   CLAWD_METADATA_ACCEPTED_HEADER,
@@ -18,7 +18,7 @@ const {
   handleStatePost,
 } = require("../../../src/core/server/route-state");
 const { classifyPermissionInteraction } = require("../../../src/runtime/permission/automation-policy");
-const { buildStateBody } = require("../../../hooks/clawd-hook");
+const { buildStateBody } = require("../../../hooks/claude-code/clawd-hook");
 const { createMemoryRecapSink } = require("../../../src/runtime/recap/sink");
 const { makeSessionKey } = require("../../../src/core/util/session-key");
 const createAgentRuntimeMain = require("../../../src/agents/runtime-main");

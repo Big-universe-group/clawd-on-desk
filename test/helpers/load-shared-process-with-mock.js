@@ -7,7 +7,7 @@
 
 function loadSharedProcessWithMock({ execFileSyncMock, env, platform }) {
   const cpKey = require.resolve("child_process");
-  const spKey = require.resolve("../../hooks/shared-process");
+  const spKey = require.resolve("../../hooks/shared/shared-process");
 
   const origCp = require.cache[cpKey];
   const origSp = require.cache[spKey];
@@ -35,7 +35,7 @@ function loadSharedProcessWithMock({ execFileSyncMock, env, platform }) {
   }
 
   delete require.cache[spKey];
-  const mod = require("../../hooks/shared-process");
+  const mod = require("../../hooks/shared/shared-process");
 
   // Keep cp cache and process.platform patched until cleanup() — shared-process's
   // resolve() function re-requires child_process at call time and the factory

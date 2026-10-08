@@ -330,7 +330,7 @@ const {
   isAllBubblesHidden,
 } = require("./runtime/permission/bubble-policy");
 const loginItemHelpers = require("./platform/login-item");
-const { writeCodexAutoStartGate } = require("../hooks/server-config");
+const { writeCodexAutoStartGate } = require("../hooks/shared/server-config");
 const { createCodexAutoStartGateEvaluator } = require("./agents/gate");
 const PREFS_PATH = path.join(app.getPath("userData"), "clawd-prefs.json");
 const _initialPrefsLoad = prefsModule.load(PREFS_PATH);
@@ -553,7 +553,7 @@ const _settingsController = createSettingsController({
       // runs. hooks/cleanup-integrations.js records this precomputed result
       // instead of unregistering Claude a second time outside the queue.
       const claudeCleanupResult = await _server.uninstallClaudeHooks({ source: "cleanup", automatic: false });
-      const { cleanupIntegrations } = require("../hooks/cleanup-integrations.js");
+      const { cleanupIntegrations } = require("../hooks/shared/cleanup-integrations.js");
       return cleanupIntegrations({ ...options, backup: true, silent: true, claudeCleanupResult });
     },
     repairLocalServer: () => _server && typeof _server.repairRuntimeStatus === "function"
@@ -4161,7 +4161,7 @@ async function initTelegramMigrationController() {
   const {
     isCodexCliOriginator,
     isCodexDesktopOriginator,
-  } = require("../hooks/codex-originator");
+  } = require("../hooks/codex/codex-originator");
   const { createTelegramNativeRunner } = require("./features/telegram/native-runner");
   const { createTelegramFetchTransport } = require("./features/telegram/fetch-transport");
   const tokenStore = envFileTokenStore({ filePath: paths.tokenEnvFilePath });

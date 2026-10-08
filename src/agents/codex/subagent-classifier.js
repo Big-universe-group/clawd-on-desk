@@ -7,7 +7,7 @@ const {
   classifyHookPayload,
   classifySessionMeta,
   normalizeRole,
-} = require("../../../hooks/codex-subagent-fields");
+} = require("../../../hooks/codex/codex-subagent-fields");
 
 const DEFAULT_CAPACITY = 100;
 

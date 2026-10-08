@@ -33,7 +33,7 @@ before(async () => {
     app: "clawd-on-desk", port: 23333, ownerPid: process.pid,
   }), { mode: 0o600 });
   ({ createOpencodeFamilyPlugin } = await import(pathToFileURL(
-    path.join(__dirname, "..", "..", "..", "hooks", "opencode-family-plugin", "core.mjs")
+    path.join(__dirname, "..", "..", "..", "hooks", "opencode", "opencode-family-plugin", "core.mjs")
   ).href));
 });
 

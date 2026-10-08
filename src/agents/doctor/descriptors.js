@@ -2,35 +2,35 @@
 
 const path = require("path");
 const { getAgent } = require("../registry");
-const { getFamilyConfig } = require("../../../hooks/opencode-family");
+const { getFamilyConfig } = require("../../../hooks/opencode/opencode-family");
 
-const claude = require("../../../hooks/install");
-const codex = require("../../../hooks/codex-install");
-const copilot = require("../../../hooks/copilot-install");
-const cursor = require("../../../hooks/cursor-install");
-const gemini = require("../../../hooks/gemini-install");
-const antigravity = require("../../../hooks/antigravity-install");
-const codebuddy = require("../../../hooks/codebuddy-install");
-const kiro = require("../../../hooks/kiro-install");
-const kimi = require("../../../hooks/kimi-install");
-const qwen = require("../../../hooks/qwen-code-install");
-const zcode = require("../../../hooks/zcode-install");
-const codewhale = require("../../../hooks/codewhale-install");
-const opencode = require("../../../hooks/opencode-install");
-const mimocode = require("../../../hooks/mimocode-install");
-const pi = require("../../../hooks/pi-install");
-const omp = require("../../../hooks/omp-install");
-const openclaw = require("../../../hooks/openclaw-install");
-const hermes = require("../../../hooks/hermes-install");
-const qoder = require("../../../hooks/qoder-install");
-const reasonix = require("../../../hooks/reasonix-install");
-const qoderwork = require("../../../hooks/qoderwork-install");
-const qwenwork = require("../../../hooks/qwenwork-install");
-const workbuddy = require("../../../hooks/workbuddy-install");
-const grok = require("../../../hooks/grok-install");
-const traecode = require("../../../hooks/traecode-install");
-const minimax = require("../../../hooks/minimax-install");
-const dsh = require("../../../hooks/dsh-install");
+const claude = require("../../../hooks/claude-code/install");
+const codex = require("../../../hooks/codex/codex-install");
+const copilot = require("../../../hooks/copilot-cli/copilot-install");
+const cursor = require("../../../hooks/cursor-agent/cursor-install");
+const gemini = require("../../../hooks/gemini-cli/gemini-install");
+const antigravity = require("../../../hooks/antigravity-cli/antigravity-install");
+const codebuddy = require("../../../hooks/codebuddy/codebuddy-install");
+const kiro = require("../../../hooks/kiro-cli/kiro-install");
+const kimi = require("../../../hooks/kimi-cli/kimi-install");
+const qwen = require("../../../hooks/qwen-code/qwen-code-install");
+const zcode = require("../../../hooks/zcode/zcode-install");
+const codewhale = require("../../../hooks/codewhale/codewhale-install");
+const opencode = require("../../../hooks/opencode/opencode-install");
+const mimocode = require("../../../hooks/opencode/mimocode-install");
+const pi = require("../../../hooks/pi/pi-install");
+const omp = require("../../../hooks/omp/omp-install");
+const openclaw = require("../../../hooks/openclaw/openclaw-install");
+const hermes = require("../../../hooks/hermes/hermes-install");
+const qoder = require("../../../hooks/qoder/qoder-install");
+const reasonix = require("../../../hooks/reasonix/reasonix-install");
+const qoderwork = require("../../../hooks/qoderwork/qoderwork-install");
+const qwenwork = require("../../../hooks/qwenwork/qwenwork-install");
+const workbuddy = require("../../../hooks/workbuddy/workbuddy-install");
+const grok = require("../../../hooks/grok-build/grok-install");
+const traecode = require("../../../hooks/traecode/traecode-install");
+const minimax = require("../../../hooks/minimax/minimax-install");
+const dsh = require("../../../hooks/deepseek-harness/dsh-install");
 
 function agentName(agentId) {
   const agent = getAgent(agentId);
@@ -80,7 +80,7 @@ const AGENT_DESCRIPTORS = Object.freeze([
     autoInstall: true,
     marker: copilot.MARKER,
     hookEvents: copilot.COPILOT_HOOK_EVENTS,
-    scriptPath: path.join(__dirname, "..", "..", "..", "hooks", "copilot-hook.js"),
+    scriptPath: path.join(__dirname, "..", "..", "..", "hooks", "copilot-cli", "copilot-hook.js"),
   }),
   Object.freeze({
     agentId: "cursor-agent",

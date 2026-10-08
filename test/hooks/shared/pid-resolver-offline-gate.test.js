@@ -366,7 +366,7 @@ describe("#681 — POSIX never consults the runtime gate", () => {
 // ═══════════════════════════════════════════════════════════════════════════
 
 describe("#681 — processAlive is the gate's liveness primitive (and only that)", () => {
-  const { processAlive } = require("../../../hooks/shared-process");
+  const { processAlive } = require("../../../hooks/shared/shared-process");
 
   it("ESRCH ⇒ false (no such process)", () => {
     assert.strictEqual(processAlive(2147483646), false);
@@ -407,7 +407,7 @@ describe("#681 — the gate structurally precedes child_process", () => {
   const CP_REQUIRE = /^\s*const\s*\{\s*execFileSync\s*\}\s*=\s*require\("child_process"\);/m;
 
   it("computeFreshSnapshot checks the gate before it requires child_process", () => {
-    const src = fs.readFileSync(path.join(__dirname, "..", "..", "..", "hooks", "shared-process.js"), "utf8");
+    const src = fs.readFileSync(path.join(__dirname, "..", "..", "..", "hooks", "shared", "shared-process.js"), "utf8");
     const fnStart = src.indexOf("function computeFreshSnapshot()");
     assert.ok(fnStart > 0, "computeFreshSnapshot must exist");
     const body = src.slice(fnStart);
@@ -425,7 +425,7 @@ describe("#681 — the gate structurally precedes child_process", () => {
     // Module scope in this file is column 0; every lazy require sits indented
     // inside a function. A column-0 binding would load child_process for all 13
     // hooks on every event, gate or no gate.
-    const src = fs.readFileSync(path.join(__dirname, "..", "..", "..", "hooks", "shared-process.js"), "utf8");
+    const src = fs.readFileSync(path.join(__dirname, "..", "..", "..", "hooks", "shared", "shared-process.js"), "utf8");
     for (const line of src.split("\n")) {
       if (line.trimStart().startsWith("//")) continue;
       assert.ok(

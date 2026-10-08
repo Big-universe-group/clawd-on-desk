@@ -36,7 +36,7 @@
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
-const { bareCodexSessionId } = require("../../../hooks/codex-session-index");
+const { bareCodexSessionId } = require("../../../hooks/codex/codex-session-index");
 
 const ARCHIVE_DIR_NAME = "archived_sessions";
 const ROLLOUT_PREFIX = "rollout-";

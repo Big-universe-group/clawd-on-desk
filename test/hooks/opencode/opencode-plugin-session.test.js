@@ -7,13 +7,13 @@ async function loadSessionIdModule() {
   // session-ids moved into the shared family core (plan §3.2). Merge the
   // prefix-independent module exports with the opencode-prefixed helper set so
   // the assertions below keep their original call shape.
-  const modulePath = path.join(__dirname, "..", "..", "..", "hooks", "opencode-family-plugin", "session-ids.mjs");
+  const modulePath = path.join(__dirname, "..", "..", "..", "hooks", "opencode", "opencode-family-plugin", "session-ids.mjs");
   const mod = await import(pathToFileURL(modulePath).href);
   return { ...mod, ...mod.createSessionIdHelpers("opencode:") };
 }
 
 async function loadPluginModule() {
-  const modulePath = path.join(__dirname, "..", "..", "..", "hooks", "opencode-plugin", "index.mjs");
+  const modulePath = path.join(__dirname, "..", "..", "..", "hooks", "opencode", "opencode-plugin", "index.mjs");
   return import(pathToFileURL(modulePath).href);
 }
 

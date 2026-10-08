@@ -16,7 +16,7 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 
-const pidCache = require("../../../hooks/pid-cache");
+const pidCache = require("../../../hooks/shared/pid-cache");
 
 const NS = "claude-code";
 const CWD = "/repo/clawd-hook-cache-test";
@@ -49,7 +49,7 @@ afterEach(() => {
 // Layer 1 — adapter mapping (context-capturing fake resolver)
 // ═══════════════════════════════════════════════════════════════════════════
 describe("buildStateBody adapter → shared resolver context (#634)", () => {
-  const { buildStateBody } = require("../../../hooks/clawd-hook.js");
+  const { buildStateBody } = require("../../../hooks/claude-code/clawd-hook.js");
 
   it("selects the design visual only for an explicit /design expansion", () => {
     const resolve = () => ({ stablePid: null, terminalPid: null, snapshotOk: false });
@@ -232,8 +232,8 @@ function liveSubset(extra = {}) {
 // resolver (clean in-process _cached).
 function loadRealResolver({ platform }) {
   const cpKey = require.resolve("child_process");
-  const spKey = require.resolve("../../../hooks/shared-process");
-  const chKey = require.resolve("../../../hooks/clawd-hook");
+  const spKey = require.resolve("../../../hooks/shared/shared-process");
+  const chKey = require.resolve("../../../hooks/claude-code/clawd-hook");
   const origCp = require.cache[cpKey];
   const origSp = require.cache[spKey];
   const origCh = require.cache[chKey];
@@ -262,9 +262,9 @@ function loadRealResolver({ platform }) {
   Object.defineProperty(process, "platform", { ...origPlatform, value: platform });
 
   delete require.cache[spKey];
-  const sp = require("../../../hooks/shared-process");
+  const sp = require("../../../hooks/shared/shared-process");
   delete require.cache[chKey];
-  const ch = require("../../../hooks/clawd-hook");
+  const ch = require("../../../hooks/claude-code/clawd-hook");
 
   const CLAUDE_OPTS = {
     agentNames: { win: new Set(["claude.exe"]), mac: new Set(["claude"]) },
@@ -292,8 +292,8 @@ function loadRealResolver({ platform }) {
     if (origCp) require.cache[cpKey] = origCp; else delete require.cache[cpKey];
     if (origSp) require.cache[spKey] = origSp; else delete require.cache[spKey];
     if (origCh) require.cache[chKey] = origCh; else delete require.cache[chKey];
-    require("../../../hooks/shared-process");
-    require("../../../hooks/clawd-hook"); // put natively-loaded instances back
+    require("../../../hooks/shared/shared-process");
+    require("../../../hooks/claude-code/clawd-hook"); // put natively-loaded instances back
   };
   return { buildStateBody: ch.buildStateBody, makeResolve, state, restore };
 }

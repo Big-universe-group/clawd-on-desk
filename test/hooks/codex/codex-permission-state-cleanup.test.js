@@ -3,7 +3,7 @@
 const assert = require("node:assert/strict");
 const Module = require("node:module");
 const { describe, it } = require("node:test");
-const { sanitizeCodexPermissionOutput } = require("../../../hooks/codex-hook");
+const { sanitizeCodexPermissionOutput } = require("../../../hooks/codex/codex-hook");
 
 // Exercise real HTTP routes and permission ownership without launching a GUI.
 // Only the Electron window/shortcut boundary is replaced, as in the family

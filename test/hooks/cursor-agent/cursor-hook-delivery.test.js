@@ -8,7 +8,7 @@ const path = require("node:path");
 const http = require("node:http");
 const { spawn } = require("node:child_process");
 
-const HOOK = path.resolve(__dirname, "..", "..", "..", "hooks", "cursor-hook.js");
+const HOOK = path.resolve(__dirname, "..", "..", "..", "hooks", "cursor-agent", "cursor-hook.js");
 const PRELOAD = path.join(__dirname, "..", "..", "helpers", "cursor-hook-delivery-probe.js");
 
 async function runHook(t, options = {}) {

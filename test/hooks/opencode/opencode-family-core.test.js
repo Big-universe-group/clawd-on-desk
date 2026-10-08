@@ -13,19 +13,23 @@ const {
   FAMILY_CAPABILITIES,
   isOpencodeFamily,
   isOpencodeFamilyEntry,
-} = require("../../../hooks/opencode-family");
+} = require("../../../hooks/opencode/opencode-family");
 
-const { NESTED_TERMINAL_ENV } = require("../../../hooks/shared-process");
+const { NESTED_TERMINAL_ENV } = require("../../../hooks/shared/shared-process");
 
 const HOOKS_DIR = path.join(__dirname, "..", "..", "..", "hooks");
+// The whole opencode family (both members and every plugin dir) lives under
+// hooks/opencode/ after the layering refactor; the registry still names plugin
+// dirs by basename, so joins go through here.
+const OPENCODE_DIR = path.join(HOOKS_DIR, "opencode");
 
 async function loadCore() {
-  const modulePath = path.join(HOOKS_DIR, "opencode-family-plugin", "core.mjs");
+  const modulePath = path.join(HOOKS_DIR, "opencode", "opencode-family-plugin", "core.mjs");
   return import(pathToFileURL(modulePath).href);
 }
 
 async function loadSessionIds() {
-  const modulePath = path.join(HOOKS_DIR, "opencode-family-plugin", "session-ids.mjs");
+  const modulePath = path.join(HOOKS_DIR, "opencode", "opencode-family-plugin", "session-ids.mjs");
   return import(pathToFileURL(modulePath).href);
 }
 
@@ -386,7 +390,7 @@ describe("opencode-family registry", () => {
     const { DEFAULT_LOG_BASENAMES } = require("../../../src/features/doctor/logs");
     for (const [agentId, cfg] of Object.entries(OPENCODE_FAMILY)) {
       if (!cfg.v2PluginDirName) continue;
-      const entryPath = path.join(HOOKS_DIR, cfg.v2PluginDirName, "index.mjs");
+      const entryPath = path.join(OPENCODE_DIR, cfg.v2PluginDirName, "index.mjs");
       assert.ok(fs.existsSync(entryPath), `${agentId} v2 entry missing: ${entryPath}`);
       const source = fs.readFileSync(entryPath, "utf8");
       const match = source.match(/logFileName:\s*"([^"]+)"/);
@@ -403,7 +407,7 @@ describe("opencode-family registry", () => {
     // the four identity params as literals — this test is the drift lock
     // (plan §3.1 CJS/ESM note).
     for (const [agentId, cfg] of Object.entries(OPENCODE_FAMILY)) {
-      const entryPath = path.join(HOOKS_DIR, cfg.pluginDirName, "index.mjs");
+      const entryPath = path.join(OPENCODE_DIR, cfg.pluginDirName, "index.mjs");
       // Every registry member ships its thin entry — a missing one must fail
       // loudly here, not silently skip (the pre-#607 escape hatch is gone).
       assert.ok(fs.existsSync(entryPath), `${agentId} plugin entry missing: ${entryPath}`);
@@ -432,7 +436,7 @@ describe("opencode-family registry", () => {
     // The shared installer must keep producing exactly that string — dev and
     // packaged (asar.unpacked) shapes — or every install would need a config
     // migration (plan §3.2).
-    const { resolvePluginDir } = require("../../../hooks/opencode-install");
+    const { resolvePluginDir } = require("../../../hooks/opencode/opencode-install");
     if (process.platform === "win32") {
       assert.strictEqual(resolvePluginDir("D:/app/clawd/hooks"), "D:/app/clawd/hooks/opencode-plugin");
       assert.strictEqual(
@@ -451,7 +455,7 @@ describe("opencode-family registry", () => {
   });
 
   it("registry config paths match the installer defaults", () => {
-    const opencodeInstall = require("../../../hooks/opencode-install");
+    const opencodeInstall = require("../../../hooks/opencode/opencode-install");
     const cfg = OPENCODE_FAMILY.opencode;
     const os = require("os");
     assert.strictEqual(
@@ -482,7 +486,7 @@ describe("opencode-family Orca pane key", () => {
   });
 
   it("emits the pane key outside the process-walk gate", () => {
-    const src = fs.readFileSync(path.join(HOOKS_DIR, "opencode-family-plugin", "core.mjs"), "utf8");
+    const src = fs.readFileSync(path.join(HOOKS_DIR, "opencode", "opencode-family-plugin", "core.mjs"), "utf8");
     const lines = src.split(/\r?\n/);
     const gate = lines.findIndex((line) => line.includes("if (_stablePid) {"));
     assert.ok(gate > 0, "expected the process-walk gate");

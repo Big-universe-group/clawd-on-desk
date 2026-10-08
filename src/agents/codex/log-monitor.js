@@ -18,18 +18,18 @@ const fs = require("fs");
 const path = require("path");
 const os = require("os");
 const CodexSubagentClassifier = require("./subagent-classifier");
-const { bareCodexSessionId, readCodexThreadName, readCodexThreadNames } = require("../../../hooks/codex-session-index");
+const { bareCodexSessionId, readCodexThreadName, readCodexThreadNames } = require("../../../hooks/codex/codex-session-index");
 const {
   clampAssistantOutputText,
   extractAssistantTextFromRecord,
-} = require("../../../hooks/codex-assistant-output");
+} = require("../../../hooks/codex/codex-assistant-output");
 const {
   resolveCodexRateLimitReport,
   resolveCodexModelQuotaProvider,
   isFreshCodexQuotaTimestamp,
-} = require("../../../hooks/codex-rate-limits");
-const { parseCodexUserInputRecord } = require("../../../hooks/codex-user-input");
-const { getCodexLogEventKey } = require("../../../hooks/codex-log-event");
+} = require("../../../hooks/codex/codex-rate-limits");
+const { parseCodexUserInputRecord } = require("../../../hooks/codex/codex-user-input");
+const { getCodexLogEventKey } = require("../../../hooks/codex/codex-log-event");
 const { normalizeCodexTurnId } = require("./turn-id");
 
 const MAX_TRACKED_FILES = 50;

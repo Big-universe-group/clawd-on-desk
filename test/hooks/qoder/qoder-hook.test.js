@@ -7,7 +7,7 @@ const {
   normalizeSessionId,
   normalizeSessionTitle,
   isQoderAgentCommandLine,
-} = require("../../../hooks/qoder-hook");
+} = require("../../../hooks/qoder/qoder-hook");
 
 describe("Qoder hook runtime (Phase 1 state-only)", () => {
   it("maps Stop to attention so the completion animation/sound plays", () => {

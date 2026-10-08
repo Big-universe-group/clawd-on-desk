@@ -25,14 +25,14 @@ for (const method of ["get", "request"]) {
 const hooks = path.resolve(__dirname, "..", "..", "hooks");
 if (process.env.CLAWD_DELIVERY_STALL === "1") {
   // Verify the final watchdog independently of the HTTP helper's own timeouts.
-  require(path.join(hooks, "server-config")).postStateToRunningServer = () => {};
+  require(path.join(hooks, "shared", "server-config")).postStateToRunningServer = () => {};
 }
 if (process.env.CLAWD_DELIVERY_THROW === "1") {
-  require(path.join(hooks, "server-config")).postStateToRunningServer = () => {
+  require(path.join(hooks, "shared", "server-config")).postStateToRunningServer = () => {
     throw new Error("test transport failure");
   };
 }
-const shared = require(path.join(hooks, "shared-process"));
+const shared = require(path.join(hooks, "shared", "shared-process"));
 shared.createPidResolver = () => {
   let resolved = false;
   return () => {
@@ -45,4 +45,4 @@ shared.createPidResolver = () => {
     return { stablePid: process.pid, detectedEditor: "cursor", pidChain: [] };
   };
 };
-require(path.join(hooks, "cursor-session-title")).resolveSessionTitle = () => null;
+require(path.join(hooks, "cursor-agent", "cursor-session-title")).resolveSessionTitle = () => null;

@@ -6,7 +6,7 @@ const os = require("os");
 const crypto = require("crypto");
 const { isDeepStrictEqual } = require("util");
 const { spawnSync } = require("child_process");
-const { writeJsonAtomic } = require("../hooks/json-utils");
+const { writeJsonAtomic } = require("../hooks/shared/json-utils");
 
 let app;
 let nativeImage;

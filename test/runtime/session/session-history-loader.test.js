@@ -20,7 +20,7 @@ const {
   HISTORY_FILE_PREFIX,
   getHistoryFilePath,
   recordSessionHistoryFromStateBody,
-} = require("../../../hooks/session-history");
+} = require("../../../hooks/shared/session-history");
 
 describe("session history loader", () => {
   let root;

@@ -5,7 +5,7 @@ const assert = require("node:assert/strict");
 const { EventEmitter } = require("node:events");
 const path = require("node:path");
 const { createSpawnedHookHarness } = require("../../helpers/spawned-hook");
-const { IGNORED_NOTIFICATION_TYPES } = require("../../../hooks/workbuddy-hook");
+const { IGNORED_NOTIFICATION_TYPES } = require("../../../hooks/workbuddy/workbuddy-hook");
 const { handleStatePost } = require("../../../src/core/server/route-state");
 const initState = require("../../../src/runtime/state/state");
 const { makeSessionKey } = require("../../../src/core/util/session-key");
@@ -14,7 +14,7 @@ const themeLoader = require("../../../src/features/themes/loader");
 
 themeLoader.init(path.join(__dirname, "..", "..", "..", "src"));
 const theme = themeLoader.loadTheme("clawd");
-const HOOK = path.resolve(__dirname, "..", "..", "..", "hooks", "workbuddy-hook.js");
+const HOOK = path.resolve(__dirname, "..", "..", "..", "hooks", "workbuddy", "workbuddy-hook.js");
 const RAW_ID = "workbuddy-notification-fixture";
 const SID = makeSessionKey({ profileId: "local", rawSessionId: RAW_ID });
 

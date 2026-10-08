@@ -18,7 +18,7 @@ const {
   registerHooksAsync,
   getClaudeHookScriptPath,
   getClaudeAutoStartScriptPath,
-} = require("../../../hooks/install");
+} = require("../../../hooks/claude-code/install");
 
 const EXPECTED_HOOK_SCRIPT_PATH = "C:/app/resources/app.asar.unpacked/hooks/clawd-hook.js";
 const EXPECTED_AUTO_START_SCRIPT_PATH = "C:/app/resources/app.asar.unpacked/hooks/auto-start.js";

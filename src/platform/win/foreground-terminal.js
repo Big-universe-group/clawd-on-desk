@@ -25,7 +25,7 @@ const path = require("path");
 const {
   WINDOWS_TERMINAL_WINDOW_CLASS,
   WINDOWS_TERMINAL_PROCESS_NAMES,
-} = require("../../../hooks/shared-process");
+} = require("../../../hooks/shared/shared-process");
 
 // GetAncestor flag: root owner window (matches the PS snapshot script in
 // hooks/shared-process.js, which passes gaFlags=2 / GA_ROOT).

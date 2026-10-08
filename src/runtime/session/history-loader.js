@@ -10,9 +10,9 @@
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
-const { loadSessionHistory, normalizeClaudeProfile } = require("../../../hooks/session-history");
-const { normalizeClaudeSessionId } = require("../../../hooks/claude-session-id");
-const { extractPromptTitle } = require("../../../hooks/cursor-session-title");
+const { loadSessionHistory, normalizeClaudeProfile } = require("../../../hooks/shared/session-history");
+const { normalizeClaudeSessionId } = require("../../../hooks/claude-code/claude-session-id");
+const { extractPromptTitle } = require("../../../hooks/cursor-agent/cursor-session-title");
 
 const DEFAULT_HISTORY_LIMIT = 25;
 

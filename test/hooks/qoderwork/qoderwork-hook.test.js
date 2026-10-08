@@ -8,7 +8,7 @@ const {
   isQoderWorkAgentCommandLine,
   resolveHookName,
   shouldResolvePid,
-} = require("../../../hooks/qoderwork-hook");
+} = require("../../../hooks/qoderwork/qoderwork-hook");
 
 describe("QoderWork hook runtime (Phase 1 state-only)", () => {
   it("maps Stop to attention so the completion animation/sound plays", () => {

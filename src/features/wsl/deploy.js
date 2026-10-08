@@ -20,13 +20,14 @@ const HERMES_TEMP_PARENT = "/tmp";
 const HERMES_TEMP_TEMPLATE = "/tmp/clawd-hermes-XXXXXXXX";
 const HERMES_TEMP_BASENAME_RE = /^clawd-hermes-[A-Za-z0-9]{8}$/;
 const HERMES_WSL_FILES = Object.freeze([
-  "hermes-install.js",
-  "json-utils.js",
-  "wsl-connectivity-probe.js",
-  "server-config.js",
-  "hermes-plugin/plugin.yaml",
-  "hermes-plugin/__init__.py",
+  "hermes/hermes-install.js",
+  "shared/json-utils.js",
+  "shared/wsl-connectivity-probe.js",
+  "shared/server-config.js",
+  "hermes/hermes-plugin/plugin.yaml",
+  "hermes/hermes-plugin/__init__.py",
 ]);
+const WSL_CONNECTIVITY_PROBE = "shared/wsl-connectivity-probe.js";
 
 const AGENT_WSL_OPTIONS = Object.freeze({
   hermes: Object.freeze({
@@ -36,15 +37,22 @@ const AGENT_WSL_OPTIONS = Object.freeze({
   }),
 });
 
-// All top-level .js files are retained for existing persistent hook agents.
+// Every hook script of the layered tree (hooks/shared/*.js and
+// hooks/<agent-id>/*.js) is retained for persistent hook agents, keeping the
+// same folder layout under ~/.claude/hooks. Plugin asset folders nested deeper
+// (hermes-plugin/, opencode-plugin/, …) are not part of this payload.
 function collectHookFiles(hooksDir) {
   const files = [];
   try {
-    for (const name of fs.readdirSync(hooksDir)) {
-      if (!name.endsWith(".js")) continue;
-      const full = path.join(hooksDir, name);
-      if (!fs.statSync(full).isFile()) continue;
-      files.push({ name, relativePath: name, path: full, content: fs.readFileSync(full, "utf8") });
+    for (const dir of fs.readdirSync(hooksDir, { withFileTypes: true })) {
+      if (!dir.isDirectory()) continue;
+      for (const name of fs.readdirSync(path.join(hooksDir, dir.name))) {
+        if (!name.endsWith(".js")) continue;
+        const full = path.join(hooksDir, dir.name, name);
+        if (!fs.statSync(full).isFile()) continue;
+        const relativePath = `${dir.name}/${name}`;
+        files.push({ name: relativePath, relativePath, path: full, content: fs.readFileSync(full, "utf8") });
+      }
     }
   } catch (err) {
     console.warn("Clawd: collectHookFiles failed:", err && err.message ? err.message : err);
@@ -104,28 +112,28 @@ function collectAgentWslFiles(hooksDir, agentId) {
   return files;
 }
 
-// Map agentId to the install script that runs in WSL.
+// Map agentId to the install script (relative to the hooks root) run in WSL.
 const AGENT_INSTALL_SCRIPT = {
-  "claude-code": "install.js",
-  codex: "codex-install.js",
-  "copilot-cli": "copilot-install.js",
-  "cursor-agent": "cursor-install.js",
-  "gemini-cli": "gemini-install.js",
-  "antigravity-cli": "antigravity-install.js",
-  codebuddy: "codebuddy-install.js",
+  "claude-code": "claude-code/install.js",
+  codex: "codex/codex-install.js",
+  "copilot-cli": "copilot-cli/copilot-install.js",
+  "cursor-agent": "cursor-agent/cursor-install.js",
+  "gemini-cli": "gemini-cli/gemini-install.js",
+  "antigravity-cli": "antigravity-cli/antigravity-install.js",
+  codebuddy: "codebuddy/codebuddy-install.js",
   // Grok Build has no WSL support in Phase 1 (local state-only).
   // WorkBuddy has no standalone Linux/WSL runtime.
-  "kiro-cli": "kiro-install.js",
-  "kimi-cli": "kimi-install.js",
-  "qwen-code": "qwen-code-install.js",
-  zcode: "zcode-install.js",
-  codewhale: "codewhale-install.js",
+  "kiro-cli": "kiro-cli/kiro-install.js",
+  "kimi-cli": "kimi-cli/kimi-install.js",
+  "qwen-code": "qwen-code/qwen-code-install.js",
+  zcode: "zcode/zcode-install.js",
+  codewhale: "codewhale/codewhale-install.js",
   // OpenCode / MiMo / Pi / OpenClaw remain unsupported until their complete
   // WSL runtime behavior is independently validated.
-  hermes: "hermes-install.js",
-  qoder: "qoder-install.js",
-  reasonix: "reasonix-install.js",
-  qoderwork: "qoderwork-install.js",
+  hermes: "hermes/hermes-install.js",
+  qoder: "qoder/qoder-install.js",
+  reasonix: "reasonix/reasonix-install.js",
+  qoderwork: "qoderwork/qoderwork-install.js",
   // QwenWork has no standalone Linux/WSL runtime: https://qwenwork.cn/download
   // ships macOS 14+, Windows 10+ and HarmonyOS 6.1+ only. Mapping it here would
   // create a Pair entry that writes hooks into the distro HOME
@@ -147,13 +155,23 @@ function getAgentInstallArgs(agentId) {
 
 // install.js does not implement --uninstall; Claude uses uninstall.js.
 const AGENT_UNINSTALL_COMMAND = {
-  "claude-code": "uninstall.js",
+  "claude-code": "claude-code/uninstall.js",
 };
 
 function getAgentUninstallCommand(agentId) {
   if (AGENT_UNINSTALL_COMMAND[agentId]) return AGENT_UNINSTALL_COMMAND[agentId];
   const installScript = getAgentInstallScriptName(agentId);
   return installScript ? `${installScript} --uninstall` : null;
+}
+
+// Distros set up before hooks/ became layered still hold the flat copy
+// (~/.claude/hooks/<script>.js). Run whichever exists, layered first. Run from
+// inside the hooks root, so both script paths are relative to it.
+function buildLayeredOrFlatNodeCommand(scriptWithArgs) {
+  const [script, ...args] = scriptWithArgs.split(" ");
+  const flat = path.posix.basename(script);
+  const tail = args.length ? ` ${args.join(" ")}` : "";
+  return `if [ -f ${quotePosix(script)} ]; then node ${script}${tail}; elif [ -f ${quotePosix(flat)} ]; then node ${flat}${tail}; fi`;
 }
 
 function resolveHooksDir({ isPackaged, resourcesPath } = {}) {
@@ -378,7 +396,7 @@ async function deployHermesToWsl(distro, hooksDir, entries, options, emit) {
       emit("run-install", "start");
       const runResult = await execInWsl(
         distro,
-        `cd ${escapedDir} && node hermes-install.js --json`,
+        `cd ${escapedDir} && node ${AGENT_INSTALL_SCRIPT.hermes} --json`,
         { ...options, shell: "bash", shellFlags: ["-l", "-i", "-c"], timeout: 60000 }
       );
       const parsed = parseHermesInstallerResult(runResult && runResult.stdout, "install");
@@ -393,7 +411,7 @@ async function deployHermesToWsl(distro, hooksDir, entries, options, emit) {
         emit("verify-connectivity", "start");
         const probeResult = await execInWsl(
           distro,
-          `cd ${escapedDir} && node wsl-connectivity-probe.js`,
+          `cd ${escapedDir} && node ${WSL_CONNECTIVITY_PROBE}`,
           { ...options, shell: "bash", shellFlags: ["-l", "-i", "-c"], timeout: 20000 }
         );
         const connectivity = parseConnectivityProbe(probeResult && probeResult.stdout);
@@ -464,7 +482,7 @@ async function deployPersistentToWsl(distro, agentId, installScript, entries, op
   emit("verify-connectivity", "start");
   const probeResult = await execInWsl(
     distro,
-    `cd ${quotePosix(hooksTargetDir)} && node wsl-connectivity-probe.js`,
+    `cd ${quotePosix(hooksTargetDir)} && node ${WSL_CONNECTIVITY_PROBE}`,
     { ...options, shell: "bash", shellFlags: ["-l", "-i", "-c"], timeout: 20000 }
   );
   const connectivity = parseConnectivityProbe(probeResult && probeResult.stdout);
@@ -590,7 +608,7 @@ async function removePersistentFromWsl(distro, options, emit) {
   if (uninstallCommand) {
     const uninstallResult = await execInWsl(
       distro,
-      `cd ${quotePosix(hooksDir)} && node ${uninstallCommand}`,
+      `cd ${quotePosix(hooksDir)} && ${buildLayeredOrFlatNodeCommand(uninstallCommand)}`,
       { ...options, shell: "bash", shellFlags: ["-l", "-i", "-c"], timeout: 30000 }
     );
     if (!uninstallResult || uninstallResult.code !== 0) {

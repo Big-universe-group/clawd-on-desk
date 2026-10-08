@@ -8,8 +8,8 @@ const {
   registerTraeCodeHooks,
   unregisterTraeCodeHooks,
   TRAECODE_HOOK_EVENTS,
-} = require("../../../hooks/traecode-install");
-const { decodeWindowsEncodedCommand } = require("../../../hooks/json-utils");
+} = require("../../../hooks/traecode/traecode-install");
+const { decodeWindowsEncodedCommand } = require("../../../hooks/shared/json-utils");
 
 const MARKER = "traecode-hook.js";
 const tempDirs = [];
@@ -32,7 +32,7 @@ function commandText(command) {
 }
 
 function expectedWindowsPayload(nodeBin) {
-  const hookScript = path.resolve(__dirname, "../../../hooks/traecode-hook.js").replace(/\\/g, "/");
+  const hookScript = path.resolve(__dirname, "../../../hooks/traecode/traecode-hook.js").replace(/\\/g, "/");
   const quote = (value) => `'${String(value).replace(/'/g, "''")}'`;
   return `& ${quote(nodeBin)} ${quote(hookScript)}`;
 }

@@ -10,19 +10,19 @@ const {
   MANAGED_AGENT_IDS,
   buildCleanupOptionsForHome,
   cleanupIntegrations,
-} = require("../../../hooks/cleanup-integrations");
-const { resolvePluginDir } = require("../../../hooks/opencode-install");
-const { resolveManagedRoot: resolveDshManagedRoot } = require("../../../hooks/dsh-install");
-const { registerQwenWorkHooks } = require("../../../hooks/qwenwork-install");
+} = require("../../../hooks/shared/cleanup-integrations");
+const { resolvePluginDir } = require("../../../hooks/opencode/opencode-install");
+const { resolveManagedRoot: resolveDshManagedRoot } = require("../../../hooks/deepseek-harness/dsh-install");
+const { registerQwenWorkHooks } = require("../../../hooks/qwenwork/qwenwork-install");
 const {
   installMinimaxPlugin,
   readOwnership: readMinimaxOwnership,
   MINIMAX_HOOK_EVENTS,
   PLUGIN_DIR_NAME: MINIMAX_PLUGIN_DIR_NAME,
   REMOVAL_PREFIX: MINIMAX_REMOVAL_PREFIX,
-} = require("../../../hooks/minimax-install");
-const { registerCodexHooks, CODEX_OFFICIAL_HOOK_EVENTS } = require("../../../hooks/codex-install");
-const { stableCodexHookPaths } = require("../../../hooks/codex-install-utils");
+} = require("../../../hooks/minimax/minimax-install");
+const { registerCodexHooks, CODEX_OFFICIAL_HOOK_EVENTS } = require("../../../hooks/codex/codex-install");
+const { stableCodexHookPaths } = require("../../../hooks/codex/codex-install-utils");
 const agentCommands = require("../../../src/agents/settings-actions");
 const { MANAGED_CLEANUP_AGENT_IDS, commandRegistry } = require("../../../src/core/settings/actions");
 const { createIntegrationSyncRuntime } = require("../../../src/agents/integration-sync");

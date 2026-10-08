@@ -3,7 +3,7 @@
 const {
   CODEX_PLACEHOLDER_SESSION_IDS,
   isCodexCliOriginator,
-} = require("../../../../hooks/codex-originator");
+} = require("../../../../hooks/codex/codex-originator");
 
 // Session automation is a security-sensitive opt-in. This table is deliberately
 // small and static: it records only adapter identity facts that have been

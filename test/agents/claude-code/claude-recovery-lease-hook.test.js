@@ -10,10 +10,10 @@ const {
   getLeaseFilePath,
   readLeaseFile,
   updateRecoveryLeaseFromStateBody,
-} = require("../../../hooks/session-recovery-lease");
-const { getHistoryFilePath, readHistoryFile } = require("../../../hooks/session-history");
+} = require("../../../hooks/shared/session-recovery-lease");
+const { getHistoryFilePath, readHistoryFile } = require("../../../hooks/shared/session-history");
 
-const HOOK = path.join(__dirname, "..", "..", "..", "hooks", "clawd-hook.js");
+const HOOK = path.join(__dirname, "..", "..", "..", "hooks", "claude-code", "clawd-hook.js");
 
 describe("Claude hook recovery lease ordering", () => {
   let home;

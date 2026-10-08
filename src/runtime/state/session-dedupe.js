@@ -1,6 +1,6 @@
 "use strict";
 
-const { isCodexDesktopOriginator } = require("../../../hooks/codex-originator");
+const { isCodexDesktopOriginator } = require("../../../hooks/codex/codex-originator");
 
 function normalizeSessionsIterable(sessions) {
   if (!sessions) return [];

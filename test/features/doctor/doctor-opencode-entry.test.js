@@ -162,7 +162,7 @@ describe("validateOpencodeEntry", () => {
   });
 
   it("accepts the real opencode plugin module (single default export)", () => {
-    const entry = path.join(__dirname, "..", "..", "..", "hooks", "opencode-plugin");
+    const entry = path.join(__dirname, "..", "..", "..", "hooks", "opencode", "opencode-plugin");
     assert.deepStrictEqual(validateOpencodeEntry(entry), { ok: true });
   });
 });

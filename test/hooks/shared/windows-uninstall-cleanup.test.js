@@ -6,7 +6,7 @@ const os = require("node:os");
 const path = require("node:path");
 
 const pkg = require("../../../package.json");
-const { SERVER_PORTS } = require("../../../hooks/server-config");
+const { SERVER_PORTS } = require("../../../hooks/shared/server-config");
 
 const ROOT = path.join(__dirname, "..", "..", "..");
 const NSIS_INCLUDE = path.join(ROOT, "build", "installer.nsh");

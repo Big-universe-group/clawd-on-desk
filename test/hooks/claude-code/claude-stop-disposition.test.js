@@ -2,7 +2,7 @@
 
 const { describe, it } = require("node:test");
 const assert = require("node:assert/strict");
-const { getClaudeStopDisposition } = require("../../../hooks/claude-stop-disposition");
+const { getClaudeStopDisposition } = require("../../../hooks/claude-code/claude-stop-disposition");
 
 describe("Claude Stop disposition typed background-subagent gate (#952)", () => {
   it("hard-holds a positive typed count with or without final text, even when debounce is disabled", () => {

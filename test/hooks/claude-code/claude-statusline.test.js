@@ -7,7 +7,7 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 
-const { __test } = require("../../../hooks/claude-statusline");
+const { __test } = require("../../../hooks/claude-code/claude-statusline");
 const { buildStatusLineText, buildStateBody, readChainedCommand, main } = __test;
 
 function makeFakeChild() {

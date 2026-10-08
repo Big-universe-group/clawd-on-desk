@@ -11,12 +11,12 @@ const {
   detectAgentInstallations,
 } = require("../../src/agents/installation-detector");
 const { getAgentDescriptor } = require("../../src/agents/doctor/descriptors");
-const { registerReasonixHooks } = require("../../hooks/reasonix-install");
-const { registerZcodeHooks, unregisterZcodeHooks } = require("../../hooks/zcode-install");
-const { registerQoderHooks, unregisterQoderHooks } = require("../../hooks/qoder-install");
-const { registerCodeBuddyHooks, unregisterCodeBuddyHooks } = require("../../hooks/codebuddy-install");
-const { registerOpenClawPlugin, unregisterOpenClawPlugin } = require("../../hooks/openclaw-install");
-const { registerGeminiHooks, unregisterGeminiHooks } = require("../../hooks/gemini-install");
+const { registerReasonixHooks } = require("../../hooks/reasonix/reasonix-install");
+const { registerZcodeHooks, unregisterZcodeHooks } = require("../../hooks/zcode/zcode-install");
+const { registerQoderHooks, unregisterQoderHooks } = require("../../hooks/qoder/qoder-install");
+const { registerCodeBuddyHooks, unregisterCodeBuddyHooks } = require("../../hooks/codebuddy/codebuddy-install");
+const { registerOpenClawPlugin, unregisterOpenClawPlugin } = require("../../hooks/openclaw/openclaw-install");
+const { registerGeminiHooks, unregisterGeminiHooks } = require("../../hooks/gemini-cli/gemini-install");
 const {
   BRIDGE_PACKAGE_NAME,
   BRIDGE_PROTOCOL_VERSION,
@@ -25,9 +25,9 @@ const {
   SUPPORTED_DSH_RANGE,
   SUPPORTED_DSH_VERSION,
   __test: dshInstallTest,
-} = require("../../hooks/dsh-install");
+} = require("../../hooks/deepseek-harness/dsh-install");
 
-const DSH_BRIDGE_SOURCE_DIR = path.join(__dirname, "..", "..", "hooks", "dsh-clawd-bridge");
+const DSH_BRIDGE_SOURCE_DIR = path.join(__dirname, "..", "..", "hooks", "deepseek-harness", "dsh-clawd-bridge");
 const NO_DSH_DESKTOP = Object.freeze({
   status: "not-found",
   appRoot: null,
@@ -158,12 +158,12 @@ describe("agent installation detector", () => {
   it("keeps the create-vs-skip asymmetry the skip list is derived from", async () => {
     const codexHome = makeHome();
     const codexDir = path.join(codexHome, ".codex");
-    require("../../hooks/codex-install.js").registerCodexHooks({ silent: true, env: { CODEX_HOME: codexDir } });
+    require("../../hooks/codex/codex-install.js").registerCodexHooks({ silent: true, env: { CODEX_HOME: codexDir } });
     assert.strictEqual(fs.existsSync(codexDir), false, "Codex sync must not create ~/.codex");
 
     const claudeHome = makeHome();
     const claudeSettings = path.join(claudeHome, ".claude", "settings.json");
-    await require("../../hooks/install.js").registerHooksAsync({
+    await require("../../hooks/claude-code/install.js").registerHooksAsync({
       silent: true,
       homeDir: claudeHome,
       nodeBin: process.execPath,

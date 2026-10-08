@@ -3,8 +3,8 @@
 const { describe, it } = require("node:test");
 const assert = require("node:assert");
 
-const { CLAUDE_CORE_HOOK_EVENTS } = require("../../../hooks/install");
-const { buildWindowsEncodedNodeHookCommand } = require("../../../hooks/json-utils");
+const { CLAUDE_CORE_HOOK_EVENTS } = require("../../../hooks/claude-code/install");
+const { buildWindowsEncodedNodeHookCommand } = require("../../../hooks/shared/json-utils");
 const {
   inspectClaudeHookHealth,
   buildClaudeRepairSignature,

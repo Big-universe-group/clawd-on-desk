@@ -14,7 +14,7 @@ const {
   isManagedMarker,
   registerPiExtension,
   unregisterPiExtension,
-} = require("../../../hooks/pi-install");
+} = require("../../../hooks/pi/pi-install");
 
 const tempDirs = [];
 

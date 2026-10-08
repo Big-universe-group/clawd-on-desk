@@ -11,7 +11,7 @@ const {
   getLeaseFilePath,
   readLeaseFile,
   updateRecoveryLeaseFromStateBody,
-} = require("../../../hooks/session-recovery-lease");
+} = require("../../../hooks/shared/session-recovery-lease");
 const { restoreSessionsFromRecoveryLeases } = require("../../../src/runtime/session/recovery-loader");
 
 themeLoader.init(path.join(__dirname, "..", "..", "..", "src"));

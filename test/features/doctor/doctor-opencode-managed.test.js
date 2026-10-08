@@ -10,7 +10,7 @@ const path = require("node:path");
 const { describe, it, afterEach } = require("node:test");
 
 const { checkAgentIntegrations } = require("../../../src/agents/doctor/integrations");
-const { registerOpencodePlugin } = require("../../../hooks/opencode-install");
+const { registerOpencodePlugin } = require("../../../hooks/opencode/opencode-install");
 const { getAgentDescriptor } = require("../../../src/agents/doctor/descriptors");
 
 const tempDirs = [];
@@ -232,8 +232,8 @@ describe("#1026 managed OpenCode Doctor", () => {
   it("reports owner-conflict (other live source) as needs-review with no Fix", () => {
     const home = makeHome();
     registerOpencodePlugin({ silent: true, v2Host: "v2", homeDir: home });
-    const target = require("../../../hooks/opencode-family-managed-generation").resolveManagedTarget({
-      cfg: require("../../../hooks/opencode-family").getFamilyConfig("opencode"),
+    const target = require("../../../hooks/opencode/opencode-family-managed-generation").resolveManagedTarget({
+      cfg: require("../../../hooks/opencode/opencode-family").getFamilyConfig("opencode"),
       agentId: "opencode",
       homeDir: home,
       fs,
@@ -281,8 +281,8 @@ describe("#1026 managed OpenCode Doctor", () => {
   });
 
   function managedTarget(home) {
-    return require("../../../hooks/opencode-family-managed-generation").resolveManagedTarget({
-      cfg: require("../../../hooks/opencode-family").getFamilyConfig("opencode"),
+    return require("../../../hooks/opencode/opencode-family-managed-generation").resolveManagedTarget({
+      cfg: require("../../../hooks/opencode/opencode-family").getFamilyConfig("opencode"),
       agentId: "opencode",
       homeDir: home,
       fs,
@@ -397,7 +397,7 @@ describe("#1026 managed OpenCode Doctor", () => {
     // Effective canonical lives in .jsonc; masked .json carries a legacy source.
     fs.writeFileSync(jsoncPath, fs.readFileSync(jsonPath, "utf8"));
     fs.rmSync(jsonPath);
-    writeJson(jsonPath, { plugin: [require("../../../hooks/opencode-install").resolvePluginDir().replace(/\\/g, "/")] });
+    writeJson(jsonPath, { plugin: [require("../../../hooks/opencode/opencode-install").resolvePluginDir().replace(/\\/g, "/")] });
 
     const detail = runOne(managedDescriptor(home)).details[0];
     assert.strictEqual(detail.status, "duplicate-entry");
@@ -410,10 +410,10 @@ describe("#1026 managed OpenCode Doctor", () => {
   // consistent with four files) rather than deleting the v2 key from a current
   // five-file one — the old test never exercised this upgrade path.
   function writeLegacyFourFileGeneration(home) {
-    const mg = require("../../../hooks/opencode-family-managed-generation");
-    const family = require("../../../hooks/opencode-family");
+    const mg = require("../../../hooks/opencode/opencode-family-managed-generation");
+    const family = require("../../../hooks/opencode/opencode-family");
     const cfg = family.getFamilyConfig("opencode");
-    const sourcePluginDir = require("../../../hooks/opencode-install").resolveSourcePluginDir();
+    const sourcePluginDir = require("../../../hooks/opencode/opencode-install").resolveSourcePluginDir();
     const bundle = mg.readSourceBundle(cfg, sourcePluginDir, fs);
     const fourFiles = bundle.files.filter((file) => !file.rel.startsWith(`${cfg.v2PluginDirName}/`));
     assert.strictEqual(fourFiles.length, 4, "legacy generation holds exactly four files");

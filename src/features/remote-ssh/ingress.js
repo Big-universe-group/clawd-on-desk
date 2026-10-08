@@ -6,7 +6,7 @@ const http = require("http");
 const {
   CLAWD_SERVER_HEADER,
   CLAWD_SERVER_ID,
-} = require("../../../hooks/server-config");
+} = require("../../../hooks/shared/server-config");
 const { isValidRoutingNonce } = require("./profile");
 
 const ROUTING_NONCE_HEADER = "x-clawd-routing-nonce";

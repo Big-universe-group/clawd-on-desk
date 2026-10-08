@@ -1,7 +1,7 @@
 "use strict";
 
 const { CODEX_THREAD_ID_RE, getCodexThreadId } = require("../../agents/codex/thread-id");
-const { isCodexDesktopOriginator } = require("../../../hooks/codex-originator");
+const { isCodexDesktopOriginator } = require("../../../hooks/codex/codex-originator");
 
 function normalizeString(value) {
   return typeof value === "string" ? value.trim() : "";

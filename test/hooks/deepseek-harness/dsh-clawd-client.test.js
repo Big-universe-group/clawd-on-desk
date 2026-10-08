@@ -8,7 +8,7 @@ const { pathToFileURL } = require("node:url");
 
 let clientPromise;
 function client() {
-  clientPromise ||= import(pathToFileURL(path.join(__dirname, "..", "..", "..", "hooks", "dsh-clawd-bridge", "lib", "clawd-client.js")).href);
+  clientPromise ||= import(pathToFileURL(path.join(__dirname, "..", "..", "..", "hooks", "deepseek-harness", "dsh-clawd-bridge", "lib", "clawd-client.js")).href);
   return clientPromise;
 }
 

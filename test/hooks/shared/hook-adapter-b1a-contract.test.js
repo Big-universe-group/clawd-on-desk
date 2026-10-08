@@ -8,7 +8,7 @@ const { createSpawnedHookHarness } = require("../../helpers/spawned-hook");
 const {
   CLAWD_HOOK_PID_HEADER,
   CLAWD_PROCESS_INSTANCE_HEADER,
-} = require("../../../hooks/server-config");
+} = require("../../../hooks/shared/server-config");
 
 const HOOKS_DIR = path.resolve(__dirname, "..", "..", "..", "hooks");
 const harness = createSpawnedHookHarness({ prefix: "clawd-b1a-hook-" });

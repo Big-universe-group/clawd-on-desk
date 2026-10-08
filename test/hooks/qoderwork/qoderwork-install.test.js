@@ -8,8 +8,8 @@ const {
   QODERWORK_HOOK_EVENTS,
   registerQoderWorkHooks,
   unregisterQoderWorkHooks,
-} = require("../../../hooks/qoderwork-install");
-const { decodeWindowsEncodedCommand } = require("../../../hooks/json-utils");
+} = require("../../../hooks/qoderwork/qoderwork-install");
+const { decodeWindowsEncodedCommand } = require("../../../hooks/shared/json-utils");
 
 const tempDirs = [];
 
@@ -203,7 +203,7 @@ describe("QoderWork hook installer", () => {
   // form must have that entry migrated in place to the portable form (#597, M6),
   // not left broken. register decodes the marker to detect its own stale entry.
   it("migrates a legacy Windows -EncodedCommand entry to the portable form", () => {
-    const { buildWindowsEncodedNodeHookCommand } = require("../../../hooks/json-utils");
+    const { buildWindowsEncodedNodeHookCommand } = require("../../../hooks/shared/json-utils");
     const legacy = buildWindowsEncodedNodeHookCommand(
       "C:\\Program Files\\nodejs\\node.exe",
       "D:/app/hooks/qoderwork-hook.js",

@@ -30,11 +30,11 @@ const fs = require("fs");
 const path = require("path");
 const os = require("os");
 
-const { readJsonFile } = require("../../hooks/json-utils");
-const { normalizeQuotaGroup } = require("../../hooks/quota-bucket");
-const { ANTIGRAVITY_QUOTA_FIELDS } = require("../../hooks/antigravity-context-usage");
-const { CLAUDE_QUOTA_FIELDS } = require("../../hooks/claude-rate-limits");
-const { CODEX_QUOTA_FIELDS } = require("../../hooks/codex-rate-limits");
+const { readJsonFile } = require("../../hooks/shared/json-utils");
+const { normalizeQuotaGroup } = require("../../hooks/shared/quota-bucket");
+const { ANTIGRAVITY_QUOTA_FIELDS } = require("../../hooks/antigravity-cli/antigravity-context-usage");
+const { CLAUDE_QUOTA_FIELDS } = require("../../hooks/claude-code/claude-rate-limits");
+const { CODEX_QUOTA_FIELDS } = require("../../hooks/codex/codex-rate-limits");
 const { KIMI_QUOTA_FIELDS } = require("../agents/kimi-cli/quota/normalizer");
 
 const QUOTA_PROVIDER_FIELDS = {

@@ -6,7 +6,7 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const { createSessionHistoryRuntime, RESUME_CONFIRMATION_MS } = require("../../../src/runtime/session/history-runtime");
-const { recordSessionHistoryFromStateBody } = require("../../../hooks/session-history");
+const { recordSessionHistoryFromStateBody } = require("../../../hooks/shared/session-history");
 const { launchClaudeSession } = require("../../../src/agents/claude-code/launch");
 
 describe("session history resume owner", () => {

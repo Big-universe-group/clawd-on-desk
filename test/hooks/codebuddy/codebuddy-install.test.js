@@ -9,7 +9,7 @@ const {
   CODEBUDDY_HOOK_EVENTS,
   CLAWD_PERMISSION_HOOK_NAME,
   __test,
-} = require("../../../hooks/codebuddy-install");
+} = require("../../../hooks/codebuddy/codebuddy-install");
 
 const MARKER = "codebuddy-hook.js";
 const tempDirs = [];

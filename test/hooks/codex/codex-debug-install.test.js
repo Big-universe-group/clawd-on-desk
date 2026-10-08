@@ -11,7 +11,7 @@ const {
   registerCodexDebugHooks,
   timeoutForEvent,
   unregisterCodexDebugHooks,
-} = require("../../../hooks/codex-debug-install");
+} = require("../../../hooks/codex/codex-debug-install");
 
 const MARKER = "codex-debug-hook.js";
 const tempDirs = [];

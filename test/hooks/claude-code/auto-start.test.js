@@ -13,7 +13,7 @@ const {
   resolveMacBundleExecutable,
   launchApp,
   main,
-} = require("../../../hooks/auto-start");
+} = require("../../../hooks/claude-code/auto-start");
 
 test("auto-start does not launch Clawd when invoked from a Grok hook", async () => {
   const calls = [];
@@ -48,7 +48,7 @@ test("the packaged auto-start script emits passive stdout under GROK_HOOK_EVENT"
   const path = require("node:path");
   const home = fs.mkdtempSync(path.join(os.tmpdir(), "clawd-auto-start-"));
   try {
-    const result = spawnSync(process.execPath, [path.join(__dirname, "..", "..", "..", "hooks", "auto-start.js")], {
+    const result = spawnSync(process.execPath, [path.join(__dirname, "..", "..", "..", "hooks", "claude-code", "auto-start.js")], {
       encoding: "utf8",
       timeout: 5000,
       env: { ...process.env, HOME: home, USERPROFILE: home, GROK_HOOK_EVENT: "session_start" },

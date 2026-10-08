@@ -15,7 +15,7 @@ const {
   materializeAppImageHookBundle,
   materializeAppImageHookScript,
   AppImageHookMaterializerError,
-} = require("../../../hooks/appimage-hook-materializer");
+} = require("../../../hooks/shared/appimage-hook-materializer");
 
 const tempDirs = [];
 
@@ -30,6 +30,25 @@ function write(dir, name, content) {
   fs.mkdirSync(path.dirname(target), { recursive: true });
   fs.writeFileSync(target, content);
   return target;
+}
+
+// The shipped hooks tree is layered (hooks/<agent-id>/<entry>.js plus
+// hooks/shared/<helper>.js). AppImage fixtures must keep that shape: the
+// materializer's default boundary is the parent of the primary entry's agent
+// folder, i.e. the hooks root itself. `hooksRootRel` fakes a packaged AppImage
+// mount (<root>/.mount_Clawd/hooks) when it is nested.
+function hooksFixture(layout, hooksRootRel = "hooks") {
+  const root = tempDir();
+  const hooksRoot = path.join(root, ...hooksRootRel.split("/"));
+  const paths = {};
+  for (const [relative, content] of Object.entries(layout)) {
+    paths[relative] = write(hooksRoot, relative, content);
+  }
+  return { root, hooksRoot, paths };
+}
+
+function outsideHooks(err) {
+  return err instanceof AppImageHookMaterializerError && err.code === "OUTSIDE_HOOKS";
 }
 
 afterEach(() => {
@@ -49,62 +68,60 @@ describe("shared AppImage hook materializer — scanner", () => {
 });
 
 describe("shared AppImage hook materializer — closure", () => {
-  it("collects multi-entry closures order-independently from the common root", () => {
-    const root = tempDir();
-    const a = write(root, "state.js", 'require("./dep");\n');
-    const b = write(root, "auto-start.js", 'require("./dep");\nrequire("./other");\n');
-    write(root, "dep.js", "module.exports = 1;\n");
-    write(root, "other.js", "module.exports = 2;\n");
+  it("collects multi-entry closures order-independently from the layered hooks root", () => {
+    const { hooksRoot, paths } = hooksFixture({
+      "claude-code/state.js": 'require("../shared/dep");\n',
+      "claude-code/auto-start.js": 'require("../shared/dep");\nrequire("../shared/other");\n',
+      "shared/dep.js": "module.exports = 1;\n",
+      "shared/other.js": "module.exports = 2;\n",
+    });
+    const entry = paths["claude-code/state.js"];
+    const extra = paths["claude-code/auto-start.js"];
 
-    const first = collectRelativeHookClosure([a, b]);
-    const second = collectRelativeHookClosure([b, a]);
-    assert.strictEqual(first.rootDir, root);
+    const first = collectRelativeHookClosure([entry, extra]);
+    const second = collectRelativeHookClosure([extra, entry]);
+    assert.strictEqual(first.rootDir, hooksRoot);
     assert.deepStrictEqual(
       [...first.files.keys()].sort(),
       [...second.files.keys()].sort()
     );
     assert.deepStrictEqual(
-      [...first.files.keys()].map((file) => path.relative(root, file)).sort(),
-      ["auto-start.js", "dep.js", "other.js", "state.js"]
+      [...first.files.keys()].map((file) => path.relative(hooksRoot, file).split(path.sep).join("/")).sort(),
+      ["claude-code/auto-start.js", "claude-code/state.js", "shared/dep.js", "shared/other.js"]
     );
   });
 
   it("rejects a require escaping the hooks root with structured OUTSIDE_HOOKS", () => {
-    const root = tempDir();
-    const entry = write(root, "entry.js", 'require("../outside.js");\n');
+    const { paths } = hooksFixture({
+      "claude-code/entry.js": 'require("../../outside.js");\n',
+    });
     assert.throws(
-      () => collectRelativeHookClosure(entry),
-      (err) => err instanceof AppImageHookMaterializerError && err.code === "OUTSIDE_HOOKS"
+      () => collectRelativeHookClosure(paths["claude-code/entry.js"]),
+      outsideHooks
     );
   });
 
   it("anchors the root to the hooks dir instead of a common ancestor of all entries", () => {
-    const repo = tempDir();
-    const hooksDir = path.join(repo, "hooks");
-    fs.mkdirSync(hooksDir, { recursive: true });
-    const entry = write(hooksDir, "entry.js", "module.exports = 1;\n");
-    const outside = write(repo, "agents/outside.js", "module.exports = 2;\n");
+    const { root, hooksRoot, paths } = hooksFixture({
+      "claude-code/entry.js": "module.exports = 1;\n",
+    });
+    const entry = paths["claude-code/entry.js"];
+    const outside = write(root, "agents/nested/outside.js", "module.exports = 2;\n");
 
-    // Without an explicit root the primary entry's dirname is the boundary, so
-    // an extra entry under agents/ must be rejected (not silently widen to the
-    // repo root).
+    // Without an explicit root the primary entry's agent folder parent is the
+    // boundary, so an extra entry under agents/ must be rejected (not silently
+    // widen to the repo root).
+    assert.throws(() => collectRelativeHookClosure([entry, outside]), outsideHooks);
+    assert.throws(() => collectRelativeHookClosure([outside, entry]), outsideHooks);
     assert.throws(
-      () => collectRelativeHookClosure([entry, outside]),
-      (err) => err instanceof AppImageHookMaterializerError && err.code === "OUTSIDE_HOOKS"
-    );
-    assert.throws(
-      () => collectRelativeHookClosure([outside, entry]),
-      (err) => err instanceof AppImageHookMaterializerError && err.code === "OUTSIDE_HOOKS"
-    );
-    assert.throws(
-      () => collectRelativeHookClosure([entry, outside], { rootDir: hooksDir }),
-      (err) => err instanceof AppImageHookMaterializerError && err.code === "OUTSIDE_HOOKS"
+      () => collectRelativeHookClosure([entry, outside], { rootDir: hooksRoot }),
+      outsideHooks
     );
   });
 
   it("fails closed when realpath verification errors; only ENOENT is tolerated", () => {
-    const root = tempDir();
-    const entry = write(root, "entry.js", "module.exports = 1;\n");
+    const { paths } = hooksFixture({ "claude-code/entry.js": "module.exports = 1;\n" });
+    const entry = paths["claude-code/entry.js"];
     const denied = () => { const err = new Error("denied"); err.code = "EACCES"; throw err; };
     const gone = () => { const err = new Error("gone"); err.code = "ENOENT"; throw err; };
 
@@ -116,28 +133,30 @@ describe("shared AppImage hook materializer — closure", () => {
   });
 
   it("fails closed on a symlink that escapes the hooks root", (t) => {
-    const root = tempDir();
+    const { root, paths } = hooksFixture({
+      "claude-code/entry.js": 'require("./linked");\n',
+    });
     const outside = tempDir();
     const secret = write(outside, "secret.js", "module.exports = 'secret';\n");
-    const link = path.join(root, "linked.js");
+    const link = path.join(root, "hooks", "claude-code", "linked.js");
     try {
       fs.symlinkSync(secret, link);
     } catch {
       t.skip("symlinks unavailable on this platform");
       return;
     }
-    const entry = write(root, "entry.js", 'require("./linked");\n');
     assert.throws(
-      () => collectRelativeHookClosure(entry),
-      (err) => err instanceof AppImageHookMaterializerError && err.code === "OUTSIDE_HOOKS"
+      () => collectRelativeHookClosure(paths["claude-code/entry.js"]),
+      outsideHooks
     );
   });
 
   it("reports an unreadable/missing dependency as structured READ_FAILED", () => {
-    const root = tempDir();
-    const entry = write(root, "entry.js", 'require("./missing");\n');
+    const { paths } = hooksFixture({
+      "claude-code/entry.js": 'require("./missing");\n',
+    });
     assert.throws(
-      () => collectRelativeHookClosure(entry),
+      () => collectRelativeHookClosure(paths["claude-code/entry.js"]),
       (err) => err instanceof AppImageHookMaterializerError && err.code === "READ_FAILED"
     );
   });
@@ -145,24 +164,34 @@ describe("shared AppImage hook materializer — closure", () => {
 
 describe("shared AppImage hook materializer — planning and generation", () => {
   it("plans a deterministic target map keyed by entry and preserves the Codex hash protocol", () => {
-    const root = tempDir();
-    const entry = write(root, ".mount_Clawd/entry.js", 'require("./dep");\n');
-    const extra = write(root, ".mount_Clawd/auto-start.js", 'require("./dep");\n');
-    write(root, ".mount_Clawd/dep.js", "module.exports = true;\n");
+    const { root, paths } = hooksFixture({
+      "codex/entry.js": 'require("../shared/dep");\n',
+      "codex/auto-start.js": 'require("../shared/dep");\n',
+      "shared/dep.js": "module.exports = true;\n",
+    }, ".mount_Clawd/hooks");
+    const hooksRoot = path.join(root, ".mount_Clawd", "hooks");
+    const entry = paths["codex/entry.js"];
+    const extra = paths["codex/auto-start.js"];
     const appImagePath = "/opt/Clawd-on-Desk.AppImage";
     const materializedRoot = path.join(root, "stable-hooks");
 
     const plan = planAppImageHookBundle([entry, extra], { appImagePath, materializedRoot });
-    assert.strictEqual(plan.entryTargets.get(path.resolve(entry)), path.join(plan.generationDir, "entry.js"));
-    assert.strictEqual(plan.entryTargets.get(path.resolve(extra)), path.join(plan.generationDir, "auto-start.js"));
+    assert.strictEqual(
+      plan.entryTargets.get(path.resolve(entry)),
+      path.join(plan.generationDir, "codex", "entry.js")
+    );
+    assert.strictEqual(
+      plan.entryTargets.get(path.resolve(extra)),
+      path.join(plan.generationDir, "codex", "auto-start.js")
+    );
 
     // Independently recompute the pre-refactor hash: canonical appimage path,
-    // sorted relative names and bytes, NUL separators, no schema tag.
+    // sorted hooks-root-relative names and bytes, NUL separators, no schema tag.
     const hasher = crypto.createHash("sha256");
     hasher.update(`${appImagePath}\0`);
-    for (const name of ["auto-start.js", "dep.js", "entry.js"]) {
+    for (const name of ["codex/auto-start.js", "codex/entry.js", "shared/dep.js"]) {
       hasher.update(`${name}\0`);
-      hasher.update(fs.readFileSync(path.join(root, ".mount_Clawd", name)));
+      hasher.update(fs.readFileSync(path.join(hooksRoot, name)));
       hasher.update("\0");
     }
     assert.strictEqual(plan.generation, hasher.digest("hex"));
@@ -173,49 +202,49 @@ describe("shared AppImage hook materializer — planning and generation", () => 
   });
 
   it("materializes byte-complete generations and repairs truncated/wrong content", () => {
-    const root = tempDir();
-    const sourceDir = path.join(root, ".mount_Clawd");
-    const entry = write(sourceDir, "entry.js", 'require("./dep");\n');
-    write(sourceDir, "dep.js", "module.exports = 42;\n");
+    const { root, paths } = hooksFixture({
+      "codex/entry.js": 'require("../shared/dep");\n',
+      "shared/dep.js": "module.exports = 42;\n",
+    }, ".mount_Clawd/hooks");
+    const entry = paths["codex/entry.js"];
     const materializedRoot = path.join(root, "stable-hooks");
     const options = { appImagePath: "/opt/Clawd.AppImage", materializedRoot };
 
     const target = materializeAppImageHookScript(entry, options);
     const plan = planAppImageHookBundle(entry, options);
     assert.ok(isAppImageHookBundleComplete(plan));
-    assert.strictEqual(fs.readFileSync(target, "utf8"), 'require("./dep");\n');
+    assert.strictEqual(fs.readFileSync(target, "utf8"), 'require("../shared/dep");\n');
+    const depTarget = path.join(plan.generationDir, "shared", "dep.js");
 
     // Truncate a dependency: the old existsSync-only check would have trusted it.
-    fs.writeFileSync(path.join(path.dirname(target), "dep.js"), "module.ex");
+    fs.writeFileSync(depTarget, "module.ex");
     assert.strictEqual(isAppImageHookBundleComplete(plan), false);
     materializeAppImageHookBundle(plan);
     assert.strictEqual(isAppImageHookBundleComplete(plan), true);
-    assert.strictEqual(fs.readFileSync(path.join(path.dirname(target), "dep.js"), "utf8"), "module.exports = 42;\n");
+    assert.strictEqual(fs.readFileSync(depTarget, "utf8"), "module.exports = 42;\n");
 
     // Wrong same-named content and marker drift are also repaired.
-    fs.writeFileSync(path.join(path.dirname(target), "dep.js"), "module.exports = 99;\n");
-    fs.writeFileSync(path.join(path.dirname(target), ".clawd-appimage-path"), "/other.AppImage\n");
+    fs.writeFileSync(depTarget, "module.exports = 99;\n");
+    fs.writeFileSync(plan.markerPath, "/other.AppImage\n");
     assert.strictEqual(isAppImageHookBundleComplete(plan), false);
     materializeAppImageHookBundle(plan);
-    assert.strictEqual(fs.readFileSync(path.join(path.dirname(target), ".clawd-appimage-path"), "utf8"), "/opt/Clawd.AppImage\n");
+    assert.strictEqual(fs.readFileSync(plan.markerPath, "utf8"), "/opt/Clawd.AppImage\n");
     assert.ok(isAppImageHookBundleComplete(plan));
   });
 
   it("rejects a relative APPIMAGE path instead of writing a relative generation", () => {
-    const root = tempDir();
-    const entry = write(root, "entry.js", "module.exports = true;\n");
+    const { root, paths } = hooksFixture({ "claude-code/entry.js": "module.exports = true;\n" });
     assert.throws(
-      () => planAppImageHookBundle(entry, { appImagePath: "relative/Clawd.AppImage", materializedRoot: path.join(root, "out") }),
+      () => planAppImageHookBundle(paths["claude-code/entry.js"], { appImagePath: "relative/Clawd.AppImage", materializedRoot: path.join(root, "out") }),
       (err) => err instanceof AppImageHookMaterializerError && err.code === "INVALID_APPIMAGE_PATH"
     );
   });
 
   it("refuses to materialize a synthesized foreign platform without a controlled root", () => {
-    const root = tempDir();
-    const entry = write(root, "entry.js", "module.exports = true;\n");
+    const { paths } = hooksFixture({ "claude-code/entry.js": "module.exports = true;\n" });
     const synthesized = process.platform === "linux" ? "darwin" : "linux";
     assert.throws(
-      () => planAppImageHookBundle(entry, { appImagePath: "/opt/Clawd.AppImage", platform: synthesized }),
+      () => planAppImageHookBundle(paths["claude-code/entry.js"], { appImagePath: "/opt/Clawd.AppImage", platform: synthesized }),
       (err) => err instanceof AppImageHookMaterializerError && err.code === "UNCONTROLLED_ROOT"
     );
   });
@@ -225,26 +254,27 @@ describe("shared AppImage hook materializer — planning and generation", () => 
       t.skip("POSIX mode bits only");
       return;
     }
-    const root = tempDir();
-    const entry = write(root, "entry.js", "module.exports = true;\n");
+    const { root, paths } = hooksFixture({ "claude-code/entry.js": "module.exports = true;\n" });
     const materializedRoot = path.join(root, "stable-hooks");
     fs.mkdirSync(materializedRoot, { recursive: true, mode: 0o755 });
     fs.chmodSync(materializedRoot, 0o755);
 
-    materializeAppImageHookScript(entry, { appImagePath: "/opt/Clawd.AppImage", materializedRoot });
+    materializeAppImageHookScript(paths["claude-code/entry.js"], { appImagePath: "/opt/Clawd.AppImage", materializedRoot });
     assert.strictEqual(fs.statSync(materializedRoot).mode & 0o777, 0o700);
   });
 
   it("is idempotent and does not rewrite an already-complete generation", () => {
-    const root = tempDir();
-    const entry = write(root, "entry.js", 'require("./dep");\n');
-    write(root, "dep.js", "module.exports = 1;\n");
+    const { root, paths } = hooksFixture({
+      "codex/entry.js": 'require("../shared/dep");\n',
+      "shared/dep.js": "module.exports = 1;\n",
+    }, ".mount_Clawd/hooks");
+    const entry = paths["codex/entry.js"];
     const materializedRoot = path.join(root, "stable-hooks");
     const plan = planAppImageHookBundle(entry, { appImagePath: "/opt/Clawd.AppImage", materializedRoot });
 
     const winner = materializeAppImageHookBundle(plan);
     assert.strictEqual(winner.wrote, true);
-    const target = path.join(plan.generationDir, "entry.js");
+    const target = plan.entryTargets.get(path.resolve(entry));
     const bytesAfterWinner = fs.readFileSync(target);
     const mtimeAfterWinner = fs.statSync(target).mtimeMs;
 
@@ -260,9 +290,11 @@ describe("shared AppImage hook materializer — planning and generation", () => 
   });
 
   it("accepts a byte-complete concurrent winner when its staging rename collides", () => {
-    const root = tempDir();
-    const entry = write(root, "entry.js", 'require("./dep");\n');
-    write(root, "dep.js", "module.exports = 1;\n");
+    const { root, paths } = hooksFixture({
+      "codex/entry.js": 'require("../shared/dep");\n',
+      "shared/dep.js": "module.exports = 1;\n",
+    }, ".mount_Clawd/hooks");
+    const entry = paths["codex/entry.js"];
     const materializedRoot = path.join(root, "stable-hooks");
     const plan = planAppImageHookBundle(entry, { appImagePath: "/opt/Clawd.AppImage", materializedRoot });
     assert.strictEqual(fs.existsSync(plan.generationDir), false);
@@ -312,9 +344,11 @@ describe("shared AppImage hook materializer — planning and generation", () => 
       t.skip("POSIX mode bits only");
       return;
     }
-    const root = tempDir();
-    const entry = write(root, "entry.js", 'require("./dep");\n');
-    write(root, "dep.js", "module.exports = 1;\n");
+    const { root, paths } = hooksFixture({
+      "codex/entry.js": 'require("../shared/dep");\n',
+      "shared/dep.js": "module.exports = 1;\n",
+    }, ".mount_Clawd/hooks");
+    const entry = paths["codex/entry.js"];
     const materializedRoot = path.join(root, "stable-hooks");
     fs.mkdirSync(materializedRoot, { recursive: true, mode: 0o755 });
     fs.chmodSync(materializedRoot, 0o755);
@@ -323,7 +357,7 @@ describe("shared AppImage hook materializer — planning and generation", () => 
     const plan = planAppImageHookBundle(entry, { appImagePath: "/opt/Clawd.AppImage", materializedRoot });
     assert.strictEqual(fs.statSync(materializedRoot).mode & 0o777, 0o700);
     assert.strictEqual(fs.statSync(plan.generationDir).mode & 0o777, 0o700);
-    assert.strictEqual(fs.statSync(path.join(plan.generationDir, ".clawd-appimage-path")).mode & 0o777, 0o600);
+    assert.strictEqual(fs.statSync(plan.markerPath).mode & 0o777, 0o600);
     assert.deepStrictEqual(
       fs.readdirSync(materializedRoot).filter((name) => name.includes(".tmp-")),
       []

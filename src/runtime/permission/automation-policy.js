@@ -1,6 +1,6 @@
 "use strict";
 
-const { isOpencodeFamily } = require("../../../hooks/opencode-family");
+const { isOpencodeFamily } = require("../../../hooks/opencode/opencode-family");
 
 const PERMISSION_AUTOMATION_MODE = Object.freeze({
   OFF: "off",

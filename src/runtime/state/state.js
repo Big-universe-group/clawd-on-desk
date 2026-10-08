@@ -39,10 +39,10 @@ const { getAgentIconUrl } = require("./agent-icons");
 const { resolveSessionIdentity } = require("../../core/util/session-key");
 const { normalizeTranscriptPath } = require("../../agents/transcript-path");
 const { createAccountQuotaStore } = require("../../quota/account-store");
-const { normalizeQuotaGroup } = require("../../../hooks/quota-bucket");
-const { ANTIGRAVITY_QUOTA_FIELDS } = require("../../../hooks/antigravity-context-usage");
-const { CLAUDE_QUOTA_FIELDS } = require("../../../hooks/claude-rate-limits");
-const { getClaudeStopDisposition } = require("../../../hooks/claude-stop-disposition");
+const { normalizeQuotaGroup } = require("../../../hooks/shared/quota-bucket");
+const { ANTIGRAVITY_QUOTA_FIELDS } = require("../../../hooks/antigravity-cli/antigravity-context-usage");
+const { CLAUDE_QUOTA_FIELDS } = require("../../../hooks/claude-code/claude-rate-limits");
+const { getClaudeStopDisposition } = require("../../../hooks/claude-code/claude-stop-disposition");
 const { createClaudeToolPhaseLedger } = require("../../agents/claude-code/tool-phase");
 const { getStartupRecoveryProcessNames } = require("../../agents/registry");
 const { hasReusableDefaultIdentity, mapRecapMetrics } = require("../recap/metrics");
@@ -53,7 +53,7 @@ const {
 const {
   readTranscriptTailEntries: readClaudeTranscriptTailEntries,
   extractLastAssistantTextFromEntries: extractLastClaudeAssistantTextFromEntries,
-} = require("../../../hooks/clawd-hook");
+} = require("../../../hooks/claude-code/clawd-hook");
 
 module.exports = function initState(ctx) {
 

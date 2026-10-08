@@ -29,10 +29,10 @@ const {
   resolveManagedRoot,
   unregisterDeepSeekHarness,
   uninstallDeepSeekHarnessBridge,
-} = require("../../../hooks/dsh-install");
-const { __test: dshInstallTest } = require("../../../hooks/dsh-install");
+} = require("../../../hooks/deepseek-harness/dsh-install");
+const { __test: dshInstallTest } = require("../../../hooks/deepseek-harness/dsh-install");
 
-const SOURCE_DIR = path.join(__dirname, "..", "..", "..", "hooks", "dsh-clawd-bridge");
+const SOURCE_DIR = path.join(__dirname, "..", "..", "..", "hooks", "deepseek-harness", "dsh-clawd-bridge");
 
 function writeJson(filePath, value) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });

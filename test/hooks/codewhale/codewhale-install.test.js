@@ -9,7 +9,7 @@ const {
   registerCodewhaleHooks,
   unregisterCodewhaleHooks,
   __test,
-} = require("../../../hooks/codewhale-install");
+} = require("../../../hooks/codewhale/codewhale-install");
 
 const tempDirs = [];
 

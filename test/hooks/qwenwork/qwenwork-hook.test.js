@@ -14,7 +14,7 @@ const {
   isQwenWorkAgentCommandLine,
   resolveHookName,
   shouldResolvePid,
-} = require("../../../hooks/qwenwork-hook");
+} = require("../../../hooks/qwenwork/qwenwork-hook");
 const { createSpawnedHookHarness } = require("../../helpers/spawned-hook");
 
 describe("QwenWork hook runtime (Phase 1 state-only)", () => {
@@ -464,7 +464,7 @@ describe("QwenWork hook debug logging — real script (#843)", () => {
   function runHook(env, payload) {
     if (!harness) harness = createSpawnedHookHarness({ prefix: "clawd-843-debug-home-" });
     return harness.run({
-      script: path.join(__dirname, "..", "..", "..", "hooks", "qwenwork-hook.js"),
+      script: path.join(__dirname, "..", "..", "..", "hooks", "qwenwork", "qwenwork-hook.js"),
       payload,
       env,
       httpContract: "block",

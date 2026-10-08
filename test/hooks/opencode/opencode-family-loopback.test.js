@@ -55,7 +55,7 @@ before(async () => {
       text: async () => "",
     };
   };
-  const modulePath = path.join(__dirname, "..", "..", "..", "hooks", "opencode-family-plugin", "core.mjs");
+  const modulePath = path.join(__dirname, "..", "..", "..", "hooks", "opencode", "opencode-family-plugin", "core.mjs");
   core = await import(pathToFileURL(modulePath).href);
   createOpencodeFamilyPlugin = core.createOpencodeFamilyPlugin;
 });

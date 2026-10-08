@@ -19,9 +19,9 @@ const {
   registerMimocodePlugin,
   unregisterMimocodePlugin,
   DEFAULT_CONFIG_PATH,
-} = require("../../../hooks/mimocode-install");
+} = require("../../../hooks/opencode/mimocode-install");
 
-const INSTALLER_PATH = path.join(__dirname, "..", "..", "..", "hooks", "mimocode-install.js");
+const INSTALLER_PATH = path.join(__dirname, "..", "..", "..", "hooks", "opencode", "mimocode-install.js");
 const PLUGIN_DIR = "/abs/hooks/mimocode-plugin";
 
 function tmpConfig(text) {
@@ -433,7 +433,7 @@ describe("mimocode JSONC installer — merged dual-file semantics", () => {
 
 describe("mimocode installer wrapper surface (plan §5 contract)", () => {
   it("exports the complete legacy surface and family default paths", () => {
-    const mod = require("../../../hooks/mimocode-install");
+    const mod = require("../../../hooks/opencode/mimocode-install");
     for (const key of [
       "DEFAULT_PARENT_DIR",
       "DEFAULT_CONFIG_PATH",
@@ -456,7 +456,7 @@ describe("mimocode installer wrapper surface (plan §5 contract)", () => {
     // emits `${agentId}-not-found`, and integration-sync's mimocode branch
     // must consume exactly "mimocode-not-found". The real skip behavior runs
     // in the CLI polite-skip case below.
-    const familySrc = fs.readFileSync(require.resolve("../../../hooks/opencode-family-install.js"), "utf8");
+    const familySrc = fs.readFileSync(require.resolve("../../../hooks/opencode/opencode-family-install.js"), "utf8");
     assert.match(familySrc, /reason: `\$\{agentId\}-not-found`/);
     const syncSrc = fs.readFileSync(require.resolve("../../../src/agents/integration-sync.js"), "utf8");
     assert.match(syncSrc, /"mimocode-not-found"/);
@@ -516,9 +516,9 @@ describe("mimocode installer CLI entry (node hooks/mimocode-install.js)", () => 
 // ---------------------------------------------------------------------------
 describe("opencode JSONC installer — merged config semantics (#825)", () => {
   // eslint-disable-next-line global-require
-  const { registerOpencodePlugin, unregisterOpencodePlugin } = require("../../../hooks/opencode-install");
+  const { registerOpencodePlugin, unregisterOpencodePlugin } = require("../../../hooks/opencode/opencode-install");
   // eslint-disable-next-line global-require
-  const { getFamilyConfig } = require("../../../hooks/opencode-family");
+  const { getFamilyConfig } = require("../../../hooks/opencode/opencode-family");
   const OC_PLUGIN_DIR = "/abs/hooks/opencode-plugin";
 
   function ocDir() {

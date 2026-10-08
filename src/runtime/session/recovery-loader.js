@@ -1,6 +1,6 @@
 "use strict";
 
-const { loadActiveRecoveryLeases } = require("../../../hooks/session-recovery-lease");
+const { loadActiveRecoveryLeases } = require("../../../hooks/shared/session-recovery-lease");
 
 function restoreSessionsFromRecoveryLeases(state, options = {}) {
   if (!state || typeof state.restoreSessionFromLease !== "function") return [];

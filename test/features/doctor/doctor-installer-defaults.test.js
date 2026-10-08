@@ -6,20 +6,20 @@ const os = require("os");
 describe("installer default path exports", () => {
   it("exports default config locations for hook-based agents", () => {
     const home = os.homedir();
-    const claude = require("../../../hooks/install");
-    const codex = require("../../../hooks/codex-install");
-    const cursor = require("../../../hooks/cursor-install");
-    const gemini = require("../../../hooks/gemini-install");
-    const antigravity = require("../../../hooks/antigravity-install");
-    const codebuddy = require("../../../hooks/codebuddy-install");
-    const workbuddy = require("../../../hooks/workbuddy-install");
-    const grok = require("../../../hooks/grok-install");
-    const kiro = require("../../../hooks/kiro-install");
-    const kimi = require("../../../hooks/kimi-install");
-    const qwen = require("../../../hooks/qwen-code-install");
-    const opencode = require("../../../hooks/opencode-install");
-    const pi = require("../../../hooks/pi-install");
-    const hermes = require("../../../hooks/hermes-install");
+    const claude = require("../../../hooks/claude-code/install");
+    const codex = require("../../../hooks/codex/codex-install");
+    const cursor = require("../../../hooks/cursor-agent/cursor-install");
+    const gemini = require("../../../hooks/gemini-cli/gemini-install");
+    const antigravity = require("../../../hooks/antigravity-cli/antigravity-install");
+    const codebuddy = require("../../../hooks/codebuddy/codebuddy-install");
+    const workbuddy = require("../../../hooks/workbuddy/workbuddy-install");
+    const grok = require("../../../hooks/grok-build/grok-install");
+    const kiro = require("../../../hooks/kiro-cli/kiro-install");
+    const kimi = require("../../../hooks/kimi-cli/kimi-install");
+    const qwen = require("../../../hooks/qwen-code/qwen-code-install");
+    const opencode = require("../../../hooks/opencode/opencode-install");
+    const pi = require("../../../hooks/pi/pi-install");
+    const hermes = require("../../../hooks/hermes/hermes-install");
 
     assert.strictEqual(claude.DEFAULT_PARENT_DIR, path.join(home, ".claude"));
     assert.strictEqual(claude.DEFAULT_CONFIG_PATH, path.join(home, ".claude", "settings.json"));

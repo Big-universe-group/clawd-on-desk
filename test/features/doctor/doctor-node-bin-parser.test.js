@@ -1,12 +1,12 @@
 const { describe, it } = require("node:test");
 const assert = require("node:assert");
-const { formatNodeHookCommand } = require("../../../hooks/json-utils");
-const { withCommandEnv } = require("../../../hooks/codex-install-utils");
+const { formatNodeHookCommand } = require("../../../hooks/shared/json-utils");
+const { withCommandEnv } = require("../../../hooks/codex/codex-install-utils");
 const {
   validateHookCommand,
   validateHookTarget,
 } = require("../../../src/agents/doctor/node-bin-parser");
-const { __test: antigravityInstallTest } = require("../../../hooks/antigravity-install");
+const { __test: antigravityInstallTest } = require("../../../hooks/antigravity-cli/antigravity-install");
 
 function fakeFs(existingPaths) {
   const existing = new Set(existingPaths);

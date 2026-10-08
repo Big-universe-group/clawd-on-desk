@@ -5,7 +5,7 @@ const {
   isCodexCliOriginator,
   isCodexDesktopOriginator,
   isCodexPlaceholderSessionId,
-} = require("../../../hooks/codex-originator");
+} = require("../../../hooks/codex/codex-originator");
 
 const CODEX_THREAD_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const CODEX_PREFIX = "codex:";

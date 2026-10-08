@@ -7,7 +7,7 @@ const {
   extractClaudeStatuslineContextUsage,
   extractClaudeContextUsageFromEntries,
   resolveClaudeContextLimit,
-} = require("../../../hooks/context-usage");
+} = require("../../../hooks/shared/context-usage");
 
 describe("Claude context usage parser", () => {
   it("extracts the latest assistant input usage with cache tokens", () => {

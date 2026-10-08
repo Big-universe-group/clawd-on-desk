@@ -11,8 +11,8 @@ const {
   registerQwenCodeHooks,
   unregisterQwenCodeHooks,
   timeoutForQwenCodeEvent,
-} = require("../../../hooks/qwen-code-install");
-const { decodeWindowsEncodedCommand } = require("../../../hooks/json-utils");
+} = require("../../../hooks/qwen-code/qwen-code-install");
+const { decodeWindowsEncodedCommand } = require("../../../hooks/shared/json-utils");
 
 const tempDirs = [];
 

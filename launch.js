@@ -21,7 +21,7 @@ if (!electronInstall.ok) {
 }
 
 const electron = require("electron");
-const { buildElectronLaunchConfig } = require("./hooks/shared-process");
+const { buildElectronLaunchConfig } = require("./hooks/shared/shared-process");
 
 const forwardedArgs = process.argv.slice(2);
 const launchConfig = buildElectronLaunchConfig(__dirname, { forwardedArgs });

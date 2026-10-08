@@ -10,23 +10,23 @@ const {
   isAgentPermissionsEnabled,
 } = require("../gate");
 const { getAgent } = require("../registry");
-const { commandMatchesMarker, findHookCommands } = require("../../../hooks/json-utils");
-const { GEMINI_HOOK_EVENTS } = require("../../../hooks/gemini-install");
-const { ANTIGRAVITY_HOOK_EVENTS, HOOK_GROUP_ID: ANTIGRAVITY_HOOK_GROUP_ID } = require("../../../hooks/antigravity-install");
-const cursor = require("../../../hooks/cursor-install");
+const { commandMatchesMarker, findHookCommands } = require("../../../hooks/shared/json-utils");
+const { GEMINI_HOOK_EVENTS } = require("../../../hooks/gemini-cli/gemini-install");
+const { ANTIGRAVITY_HOOK_EVENTS, HOOK_GROUP_ID: ANTIGRAVITY_HOOK_GROUP_ID } = require("../../../hooks/antigravity-cli/antigravity-install");
+const cursor = require("../../../hooks/cursor-agent/cursor-install");
 const {
   hasUserPermissionHookInOtherFiles,
   hasUserPermissionHookInSettingsJson,
   isCopilotPermissionRegistrable,
-} = require("../../../hooks/copilot-install");
+} = require("../../../hooks/copilot-cli/copilot-install");
 const {
   findKimiHookCommands,
   listClawdKimiHookEvents,
   normalizePermissionMode: normalizeKimiPermissionMode,
   KIMI_HOOK_EVENTS,
-} = require("../../../hooks/kimi-install");
-const { parseTomlSections: parseCodewhaleTomlSections } = require("../../../hooks/codewhale-install");
-const { findStandaloneBridge, listOtherOmpProfileAgentDirs } = require("../../../hooks/omp-install");
+} = require("../../../hooks/kimi-cli/kimi-install");
+const { parseTomlSections: parseCodewhaleTomlSections } = require("../../../hooks/codewhale/codewhale-install");
+const { findStandaloneBridge, listOtherOmpProfileAgentDirs } = require("../../../hooks/omp/omp-install");
 const { getAgentDescriptors } = require("./descriptors");
 const {
   commandContainsFragment,
@@ -34,14 +34,14 @@ const {
   validateHookTarget,
 } = require("./node-bin-parser");
 const { checkCodexHookTrust, checkCodexHooksFeature } = require("../codex/doctor-features-check");
-const { inspectStableCodexHookCommand } = require("../../../hooks/codex-install-utils");
+const { inspectStableCodexHookCommand } = require("../../../hooks/codex/codex-install-utils");
 const { validateOpencodeEntry } = require("../opencode/doctor-entry-validator");
 const { inspectManagedOpencode } = require("../opencode/doctor-managed-inspector");
 const { validateOpenClawEntry } = require("../openclaw/doctor-entry-validator");
-const { inspectGrokHookFile } = require("../../../hooks/grok-install");
-const { hasIncludeDirective } = require("../../../hooks/openclaw-install");
-const { inspectDshTargetsSync } = require("../../../hooks/dsh-install");
-const minimaxInstall = require("../../../hooks/minimax-install");
+const { inspectGrokHookFile } = require("../../../hooks/grok-build/grok-install");
+const { hasIncludeDirective } = require("../../../hooks/openclaw/openclaw-install");
+const { inspectDshTargetsSync } = require("../../../hooks/deepseek-harness/dsh-install");
+const minimaxInstall = require("../../../hooks/minimax/minimax-install");
 
 const REPAIRABLE_AGENT_STATUSES = new Set([
   "not-connected",

@@ -2,7 +2,7 @@
 
 const { describe, it } = require("node:test");
 const assert = require("node:assert/strict");
-const { getCodexLogEventKey } = require("../../../hooks/codex-log-event");
+const { getCodexLogEventKey } = require("../../../hooks/codex/codex-log-event");
 
 describe("getCodexLogEventKey", () => {
   it("normalizes a ContextCompaction item completion to the existing compaction key", () => {

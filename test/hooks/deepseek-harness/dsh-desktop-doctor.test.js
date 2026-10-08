@@ -15,9 +15,9 @@ const {
   SUPPORTED_DSH_VERSION,
   refreshDshDesktopDiscovery,
   __test: dshInstallTest,
-} = require("../../../hooks/dsh-install");
+} = require("../../../hooks/deepseek-harness/dsh-install");
 
-const DSH_BRIDGE_SOURCE_DIR = path.join(__dirname, "..", "..", "..", "hooks", "dsh-clawd-bridge");
+const DSH_BRIDGE_SOURCE_DIR = path.join(__dirname, "..", "..", "..", "hooks", "deepseek-harness", "dsh-clawd-bridge");
 
 const NO_DESKTOP = Object.freeze({
   status: "not-found",

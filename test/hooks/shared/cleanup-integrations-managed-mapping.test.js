@@ -10,8 +10,8 @@ const os = require("node:os");
 const path = require("node:path");
 const { describe, it, afterEach } = require("node:test");
 
-const { cleanupIntegrations } = require("../../../hooks/cleanup-integrations");
-const { registerOpencodePlugin } = require("../../../hooks/opencode-install");
+const { cleanupIntegrations } = require("../../../hooks/shared/cleanup-integrations");
+const { registerOpencodePlugin } = require("../../../hooks/opencode/opencode-install");
 
 const tempDirs = [];
 function tmp(prefix) {

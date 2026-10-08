@@ -5,8 +5,8 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
-const pidCache = require("../../../hooks/pid-cache");
-const { buildStateBody } = require("../../../hooks/clawd-hook");
+const pidCache = require("../../../hooks/shared/pid-cache");
+const { buildStateBody } = require("../../../hooks/claude-code/clawd-hook");
 const { getAllAgents } = require("../../../src/agents/registry");
 const {
   MAX_LEASE_AGE_MS,
@@ -17,7 +17,7 @@ const {
   updateRecoveryLeaseFromStateBody,
   pruneRecoveryLeaseFiles,
   loadActiveRecoveryLeases,
-} = require("../../../hooks/session-recovery-lease");
+} = require("../../../hooks/shared/session-recovery-lease");
 const { loadSharedProcessWithMock } = require("../../helpers/load-shared-process-with-mock");
 
 describe("Windows recovery identity retention across PID cache hits", () => {

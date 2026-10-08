@@ -1,10 +1,10 @@
 const { describe, it } = require("node:test");
 const assert = require("node:assert");
 
-const { __test } = require("../../../hooks/minimax-hook");
+const { __test } = require("../../../hooks/minimax/minimax-hook");
 const { runSpawnedHook } = require("../../helpers/spawned-hook");
 
-const HOOK_PATH = require("node:path").resolve(__dirname, "..", "..", "..", "hooks", "minimax-hook.js");
+const HOOK_PATH = require("node:path").resolve(__dirname, "..", "..", "..", "hooks", "minimax", "minimax-hook.js");
 
 function runMinimaxHook(payload, options = {}) {
   return runSpawnedHook({

@@ -6,15 +6,15 @@ const path = require("path");
 
 const { getAgentDescriptors } = require("./doctor/descriptors");
 const { normalizePathList } = require("../core/settings/prefs");
-const copilot = require("../../hooks/copilot-install");
-const hermes = require("../../hooks/hermes-install");
-const reasonix = require("../../hooks/reasonix-install");
-const dsh = require("../../hooks/dsh-install");
-const zcode = require("../../hooks/zcode-install");
-const codebuddy = require("../../hooks/codebuddy-install");
-const openclaw = require("../../hooks/openclaw-install");
-const grok = require("../../hooks/grok-install");
-const { commandMatchesMarker } = require("../../hooks/json-utils");
+const copilot = require("../../hooks/copilot-cli/copilot-install");
+const hermes = require("../../hooks/hermes/hermes-install");
+const reasonix = require("../../hooks/reasonix/reasonix-install");
+const dsh = require("../../hooks/deepseek-harness/dsh-install");
+const zcode = require("../../hooks/zcode/zcode-install");
+const codebuddy = require("../../hooks/codebuddy/codebuddy-install");
+const openclaw = require("../../hooks/openclaw/openclaw-install");
+const grok = require("../../hooks/grok-build/grok-install");
+const { commandMatchesMarker } = require("../../hooks/shared/json-utils");
 const { identifyCustomApplication, isLaunchable } = require("./custom-applications");
 
 // Agents whose detector parent dir the DEFAULT startup sync creates on its own,

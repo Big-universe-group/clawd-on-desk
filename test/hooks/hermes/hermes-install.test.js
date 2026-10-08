@@ -24,7 +24,7 @@ const {
   toHermesCliResult,
   unregisterHermesPlugin,
   unregisterHermesPluginRemote,
-} = require("../../../hooks/hermes-install");
+} = require("../../../hooks/hermes/hermes-install");
 
 const tempDirs = [];
 
@@ -626,7 +626,7 @@ describe("Hermes plugin installer", () => {
     fs.mkdirSync(pluginsDir, { recursive: true });
     fs.writeFileSync(path.join(pluginsDir, PLUGIN_ID), "blocks plugin directory creation\n", "utf8");
 
-    const run = spawnProcessSync(process.execPath, [path.join(__dirname, "..", "..", "..", "hooks", "hermes-install.js"), "--json"], {
+    const run = spawnProcessSync(process.execPath, [path.join(__dirname, "..", "..", "..", "hooks", "hermes", "hermes-install.js"), "--json"], {
       encoding: "utf8",
       env: { ...process.env, HERMES_HOME: hermesHome },
       timeout: 10000,
@@ -966,7 +966,7 @@ describe("remote mode", () => {
 
   it("prints one invalid-argument sentinel and exits non-zero for a malformed remote CLI", () => {
     const run = spawnProcessSync(process.execPath, [
-      path.join(__dirname, "..", "..", "..", "hooks", "hermes-install.js"),
+      path.join(__dirname, "..", "..", "..", "hooks", "hermes", "hermes-install.js"),
       "--remote",
       "--source-dir",
       "/tmp/source",

@@ -7,7 +7,7 @@ const {
   resolveAntigravityContextUsage,
   resolveAntigravityModelLabel,
   resolveAntigravityQuota,
-} = require("../../../hooks/antigravity-context-usage");
+} = require("../../../hooks/antigravity-cli/antigravity-context-usage");
 
 describe("Antigravity context usage parser", () => {
   it("builds used/limit/percent from total input+output tokens and used_percentage", () => {

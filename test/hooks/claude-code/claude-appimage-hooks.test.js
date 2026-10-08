@@ -6,7 +6,7 @@ const fs = require("fs");
 const path = require("path");
 const os = require("os");
 
-const install = require("../../../hooks/install");
+const install = require("../../../hooks/claude-code/install");
 const {
   resolveClaudeHookPaths,
   registerHooks,
@@ -24,7 +24,7 @@ const {
 } = require("../../../src/agents/claude-code/hook-health");
 const { createClaudeSettingsWatcher } = require("../../../src/agents/claude-code/settings-watcher");
 const { EventEmitter } = require("node:events");
-const { resolveAppImageExecutable, launchApp, isMaterializedAppImageHooksDir } = require("../../../hooks/auto-start");
+const { resolveAppImageExecutable, launchApp, isMaterializedAppImageHooksDir } = require("../../../hooks/claude-code/auto-start");
 
 const APPIMAGE = "/opt/Clawd-on-Desk.AppImage";
 // Emulated AppImage mount for positive cases: APPDIR must own the Claude source

@@ -13,7 +13,7 @@ const {
   buildElectronLaunchConfig,
   tmuxSocketFromEnv,
   processAlive,
-} = require("../../../hooks/shared-process");
+} = require("../../../hooks/shared/shared-process");
 
 // #681: the Windows resolver refuses to spawn unless it can read a runtime.json
 // naming a LIVE Clawd. Every test below that exercises the WALK (rather than the
@@ -304,7 +304,7 @@ describe("createPidResolver() — default command-line process names", () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "clawd-cmdline-"));
     const probe = `clawd-cmdline-probe-${process.pid}.js`;
     fs.writeFileSync(path.join(dir, probe), [
-      `const sp = require(${JSON.stringify(path.join(__dirname, "..", "..", "..", "hooks", "shared-process.js"))});`,
+      `const sp = require(${JSON.stringify(path.join(__dirname, "..", "..", "..", "hooks", "shared", "shared-process.js"))});`,
       "const { agentPid } = sp.createPidResolver({",
       "  platformConfig: sp.getPlatformConfig(),",
       "  startPid: process.pid,",
@@ -357,15 +357,21 @@ describe("createPidResolver() — default command-line process names", () => {
         && elements.every((element) => element === spread || stringLiteral.test(element));
     };
     const stale = [];
-    for (const file of fs.readdirSync(hooksDir).sort()) {
-      if (!file.endsWith(".js") || file === "shared-process.js" || scopedToNonNodeHost.has(file)) continue;
-      const src = fs.readFileSync(path.join(hooksDir, file), "utf8");
-      for (const { index } of src.matchAll(/\bagentCmdlineNames\b/g)) {
-        const rest = src.slice(index);
-        const set = setLiteral.exec(rest);
-        if (!set || !spreadsDefault(set[1])) stale.push(`${file}: ${rest.split("\n", 1)[0].trim()}`);
+    const walk = (dir) => {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) { walk(full); continue; }
+        if (!entry.name.endsWith(".js") || entry.name === "shared-process.js" || scopedToNonNodeHost.has(entry.name)) continue;
+        const label = path.relative(hooksDir, full);
+        const src = fs.readFileSync(full, "utf8");
+        for (const { index } of src.matchAll(/\bagentCmdlineNames\b/g)) {
+          const rest = src.slice(index);
+          const set = setLiteral.exec(rest);
+          if (!set || !spreadsDefault(set[1])) stale.push(`${label}: ${rest.split("\n", 1)[0].trim()}`);
+        }
       }
-    }
+    };
+    walk(hooksDir);
     assert.deepStrictEqual(stale, []);
   });
 });

@@ -6,7 +6,7 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 
-const { __test } = require("../../../hooks/codex-remote-monitor");
+const { __test } = require("../../../hooks/codex/codex-remote-monitor");
 
 const ROLLOUT_NAME =
   "rollout-2026-03-25T15-10-51-019d23d4-f1a9-7633-b9c7-758327137228.jsonl";

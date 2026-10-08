@@ -6,7 +6,7 @@ const {
   CLAWD_HOOK_PID_HEADER,
   CLAWD_LEGACY_PROCESS_CACHE_HEADER,
   CLAWD_PROCESS_INSTANCE_HEADER,
-} = require("../../../hooks/server-config");
+} = require("../../../hooks/shared/server-config");
 const {
   assessWindowsProcessChainRequest,
   buildShadowComparison,
@@ -21,7 +21,7 @@ const {
 const {
   isCodexCliOriginator,
   isCodexDesktopOriginator,
-} = require("../../../hooks/codex-originator");
+} = require("../../../hooks/codex/codex-originator");
 const {
   truncateDeep,
   preparePermissionDetail,
@@ -35,7 +35,7 @@ const { preparePermissionReminder, NOT_INSPECTED_TAG } = require("../../runtime/
 const { shouldScanIrreversibleCommand } = require("../../runtime/permission/bubble-format");
 const { resolveHookAgentId } = require("../../agents/server-agent-id");
 const { getAgent } = require("../../agents/registry");
-const { isOpencodeFamily, getFamilyConfig } = require("../../../hooks/opencode-family");
+const { isOpencodeFamily, getFamilyConfig } = require("../../../hooks/opencode/opencode-family");
 const {
   normalizeOpencodeFamilyBridgeUrl,
   isValidOpencodeFamilyBridgeToken,

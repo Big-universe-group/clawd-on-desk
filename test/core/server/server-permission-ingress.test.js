@@ -4,11 +4,11 @@ const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const http = require("node:http");
 const net = require("node:net");
-const { postPermissionToPort, postStateToPort } = require("../../../hooks/server-config");
-const { runCodexHook } = require("../../../hooks/codex-hook");
-const { requestQwenPermission } = require("../../../hooks/qwen-code-hook");
-const { requestZcodePermission } = require("../../../hooks/zcode-hook");
-const { parseClawdPermissionResponse } = require("../../../hooks/copilot-hook");
+const { postPermissionToPort, postStateToPort } = require("../../../hooks/shared/server-config");
+const { runCodexHook } = require("../../../hooks/codex/codex-hook");
+const { requestQwenPermission } = require("../../../hooks/qwen-code/qwen-code-hook");
+const { requestZcodePermission } = require("../../../hooks/zcode/zcode-hook");
+const { parseClawdPermissionResponse } = require("../../../hooks/copilot-cli/copilot-hook");
 const { createPermissionIngressHarness, postPermission, waitUntil, dummyPermission } = require("../../helpers/permission-ingress-harness");
 
 async function setup(t) {

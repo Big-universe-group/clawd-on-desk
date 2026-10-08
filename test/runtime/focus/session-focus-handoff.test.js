@@ -12,7 +12,7 @@ const {
   sanitizeFocusError,
   stripElectronLaunchEnv,
 } = require("../../../src/runtime/focus/session-focus-handoff");
-const { discoverDshDesktopSync } = require("../../../hooks/dsh-install");
+const { discoverDshDesktopSync } = require("../../../hooks/deepseek-harness/dsh-install");
 
 const DSH_PLIST = [
   "<?xml version=\"1.0\" encoding=\"UTF-8\"?>",

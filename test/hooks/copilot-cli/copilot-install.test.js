@@ -20,7 +20,7 @@ const {
   hasUserPermissionHookInOtherFiles,
   hasUserPermissionHookInSettingsJson,
   timeoutSecForCopilotEvent,
-} = require("../../../hooks/copilot-install");
+} = require("../../../hooks/copilot-cli/copilot-install");
 
 const MARKER = "copilot-hook.js";
 const tempDirs = [];

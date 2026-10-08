@@ -6,7 +6,7 @@ const {
   LIMITS,
   normalizeCodexUserInputWire,
   parseCodexUserInputRecord,
-} = require("../../../hooks/codex-user-input");
+} = require("../../../hooks/codex/codex-user-input");
 
 describe("Codex request_user_input transcript parsing", () => {
   it("normalizes a request and its matching output record", () => {

@@ -13,11 +13,11 @@ const {
   uninstallDeepSeekHarnessBridge,
   resolveManagedRoot,
   inspectDeepSeekHarnessDiskSync,
-} = require("../../../hooks/dsh-install");
-const { __test: dshInstallTest } = require("../../../hooks/dsh-install");
+} = require("../../../hooks/deepseek-harness/dsh-install");
+const { __test: dshInstallTest } = require("../../../hooks/deepseek-harness/dsh-install");
 const { desktopFound: platformDesktopFound, symlinkDir } = require("../../helpers/dsh-desktop-fixtures");
 
-const SOURCE_DIR = path.join(__dirname, "..", "..", "..", "hooks", "dsh-clawd-bridge");
+const SOURCE_DIR = path.join(__dirname, "..", "..", "..", "hooks", "deepseek-harness", "dsh-clawd-bridge");
 const FAMILY = DSH_VERSION_FAMILIES[0];
 const FAMILY_VERSION = FAMILY.minVersion;
 const FAMILY_RANGE = FAMILY.range;

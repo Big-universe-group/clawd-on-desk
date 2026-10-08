@@ -3,7 +3,7 @@
 const { describe, it, mock } = require("node:test");
 const assert = require("node:assert");
 
-const { __test } = require("../../../hooks/antigravity-statusline");
+const { __test } = require("../../../hooks/antigravity-cli/antigravity-statusline");
 const { normalizeSessionId, buildStatusLineText, buildStateBody, main } = __test;
 
 describe("Antigravity statusline adapter", () => {

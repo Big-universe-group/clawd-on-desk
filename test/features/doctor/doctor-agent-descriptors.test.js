@@ -45,23 +45,23 @@ describe("doctor agent descriptors", () => {
   });
 
   it("uses installer-exported default paths", () => {
-    const claude = require("../../../hooks/install");
-    const codex = require("../../../hooks/codex-install");
-    const copilot = require("../../../hooks/copilot-install");
-    const cursor = require("../../../hooks/cursor-install");
-    const gemini = require("../../../hooks/gemini-install");
-    const antigravity = require("../../../hooks/antigravity-install");
-    const codebuddy = require("../../../hooks/codebuddy-install");
-    const workbuddy = require("../../../hooks/workbuddy-install");
-    const kiro = require("../../../hooks/kiro-install");
-    const kimi = require("../../../hooks/kimi-install");
-    const qwen = require("../../../hooks/qwen-code-install");
-    const codewhale = require("../../../hooks/codewhale-install");
-    const opencode = require("../../../hooks/opencode-install");
-    const pi = require("../../../hooks/pi-install");
-    const openclaw = require("../../../hooks/openclaw-install");
-    const hermes = require("../../../hooks/hermes-install");
-    const qoder = require("../../../hooks/qoder-install");
+    const claude = require("../../../hooks/claude-code/install");
+    const codex = require("../../../hooks/codex/codex-install");
+    const copilot = require("../../../hooks/copilot-cli/copilot-install");
+    const cursor = require("../../../hooks/cursor-agent/cursor-install");
+    const gemini = require("../../../hooks/gemini-cli/gemini-install");
+    const antigravity = require("../../../hooks/antigravity-cli/antigravity-install");
+    const codebuddy = require("../../../hooks/codebuddy/codebuddy-install");
+    const workbuddy = require("../../../hooks/workbuddy/workbuddy-install");
+    const kiro = require("../../../hooks/kiro-cli/kiro-install");
+    const kimi = require("../../../hooks/kimi-cli/kimi-install");
+    const qwen = require("../../../hooks/qwen-code/qwen-code-install");
+    const codewhale = require("../../../hooks/codewhale/codewhale-install");
+    const opencode = require("../../../hooks/opencode/opencode-install");
+    const pi = require("../../../hooks/pi/pi-install");
+    const openclaw = require("../../../hooks/openclaw/openclaw-install");
+    const hermes = require("../../../hooks/hermes/hermes-install");
+    const qoder = require("../../../hooks/qoder/qoder-install");
 
     assert.strictEqual(getAgentDescriptor("claude-code").parentDir, claude.DEFAULT_PARENT_DIR);
     assert.strictEqual(getAgentDescriptor("claude-code").configPath, claude.DEFAULT_CONFIG_PATH);
@@ -93,7 +93,7 @@ describe("doctor agent descriptors", () => {
       [workbuddy.CURRENT_CONFIG_PATH, workbuddy.LEGACY_CONFIG_PATH]
     );
 
-    const grok = require("../../../hooks/grok-install");
+    const grok = require("../../../hooks/grok-build/grok-install");
     assert.strictEqual(getAgentDescriptor("grok-build").parentDir, grok.DEFAULT_PARENT_DIR);
     assert.strictEqual(getAgentDescriptor("grok-build").configPath, grok.DEFAULT_CONFIG_PATH);
     assert.strictEqual(getAgentDescriptor("grok-build").marker, grok.MARKER);
@@ -110,7 +110,7 @@ describe("doctor agent descriptors", () => {
     assert.strictEqual(getAgentDescriptor("qwen-code").marker, qwen.MARKER);
     assert.deepStrictEqual(getAgentDescriptor("qwen-code").hookEvents, qwen.QWEN_CODE_HOOK_EVENTS);
 
-    const zcode = require("../../../hooks/zcode-install");
+    const zcode = require("../../../hooks/zcode/zcode-install");
     assert.strictEqual(getAgentDescriptor("zcode").parentDir, zcode.DEFAULT_PARENT_DIR);
     assert.strictEqual(getAgentDescriptor("zcode").configPath, zcode.DEFAULT_CONFIG_PATH);
     assert.strictEqual(getAgentDescriptor("zcode").hookExecutorShape, "zcode-process");
@@ -145,7 +145,7 @@ describe("doctor agent descriptors", () => {
     assert.strictEqual(getAgentDescriptor("qoder").marker, qoder.MARKER);
     assert.deepStrictEqual(getAgentDescriptor("qoder").hookEvents, qoder.QODER_HOOK_EVENTS);
 
-    const reasonix = require("../../../hooks/reasonix-install");
+    const reasonix = require("../../../hooks/reasonix/reasonix-install");
     assert.strictEqual(getAgentDescriptor("reasonix").parentDir, reasonix.DEFAULT_PARENT_DIR);
     assert.strictEqual(getAgentDescriptor("reasonix").configPath, reasonix.DEFAULT_CONFIG_PATH);
     assert.deepStrictEqual(getAgentDescriptor("reasonix").configTargets, reasonix.DEFAULT_CONFIG_TARGETS);
@@ -153,25 +153,25 @@ describe("doctor agent descriptors", () => {
     assert.strictEqual(getAgentDescriptor("reasonix").marker, reasonix.MARKER);
     assert.deepStrictEqual(getAgentDescriptor("reasonix").hookEvents, reasonix.REASONIX_HOOK_EVENTS);
 
-    const qoderwork = require("../../../hooks/qoderwork-install");
+    const qoderwork = require("../../../hooks/qoderwork/qoderwork-install");
     assert.strictEqual(getAgentDescriptor("qoderwork").parentDir, qoderwork.DEFAULT_PARENT_DIR);
     assert.strictEqual(getAgentDescriptor("qoderwork").configPath, qoderwork.DEFAULT_CONFIG_PATH);
     assert.strictEqual(getAgentDescriptor("qoderwork").marker, qoderwork.MARKER);
     assert.deepStrictEqual(getAgentDescriptor("qoderwork").hookEvents, qoderwork.QODERWORK_HOOK_EVENTS);
 
-    const traecode = require("../../../hooks/traecode-install");
+    const traecode = require("../../../hooks/traecode/traecode-install");
     assert.strictEqual(getAgentDescriptor("traecode").parentDir, traecode.DEFAULT_PARENT_DIR);
     assert.strictEqual(getAgentDescriptor("traecode").configPath, traecode.DEFAULT_CONFIG_PATH);
     assert.strictEqual(getAgentDescriptor("traecode").marker, traecode.MARKER);
     assert.deepStrictEqual(getAgentDescriptor("traecode").hookEvents, traecode.TRAECODE_HOOK_EVENTS);
 
-    const qwenwork = require("../../../hooks/qwenwork-install");
+    const qwenwork = require("../../../hooks/qwenwork/qwenwork-install");
     assert.strictEqual(getAgentDescriptor("qwenwork").parentDir, qwenwork.DEFAULT_PARENT_DIR);
     assert.strictEqual(getAgentDescriptor("qwenwork").configPath, qwenwork.DEFAULT_CONFIG_PATH);
     assert.strictEqual(getAgentDescriptor("qwenwork").marker, qwenwork.MARKER);
     assert.deepStrictEqual(getAgentDescriptor("qwenwork").hookEvents, qwenwork.QWENWORK_HOOK_EVENTS);
 
-    const dsh = require("../../../hooks/dsh-install");
+    const dsh = require("../../../hooks/deepseek-harness/dsh-install");
     assert.strictEqual(getAgentDescriptor("deepseek-harness").parentDir, dsh.resolveDshHome());
     assert.strictEqual(
       getAgentDescriptor("deepseek-harness").configPath,
@@ -179,7 +179,7 @@ describe("doctor agent descriptors", () => {
     );
     assert.strictEqual(getAgentDescriptor("deepseek-harness").configMode, "dsh-plugin");
 
-    const minimax = require("../../../hooks/minimax-install");
+    const minimax = require("../../../hooks/minimax/minimax-install");
     assert.strictEqual(getAgentDescriptor("minimax").parentDir, minimax.resolveMinimaxDataDir());
     assert.strictEqual(getAgentDescriptor("minimax").configPath, minimax.resolvePluginRoot());
     assert.strictEqual(getAgentDescriptor("minimax").marker, minimax.MARKER);
@@ -207,7 +207,7 @@ describe("doctor agent descriptors", () => {
   });
 
   it("checks Antigravity hooks as a global hooks file", () => {
-    const antigravity = require("../../../hooks/antigravity-install");
+    const antigravity = require("../../../hooks/antigravity-cli/antigravity-install");
     const descriptor = getAgentDescriptor("antigravity-cli");
 
     assert.strictEqual(descriptor.eventSource, "hook");
@@ -217,7 +217,7 @@ describe("doctor agent descriptors", () => {
   });
 
   it("checks Copilot CLI hooks with the dedicated copilot-hooks mode", () => {
-    const copilot = require("../../../hooks/copilot-install");
+    const copilot = require("../../../hooks/copilot-cli/copilot-install");
     const descriptor = getAgentDescriptor("copilot-cli");
 
     assert.strictEqual(descriptor.eventSource, "hook");
@@ -228,7 +228,7 @@ describe("doctor agent descriptors", () => {
   });
 
   it("checks CodeWhale hooks with the dedicated TOML mode", () => {
-    const codewhale = require("../../../hooks/codewhale-install");
+    const codewhale = require("../../../hooks/codewhale/codewhale-install");
     const descriptor = getAgentDescriptor("codewhale");
 
     assert.strictEqual(descriptor.eventSource, "hook");
@@ -242,7 +242,7 @@ describe("doctor agent descriptors", () => {
 
   it("CodeWhale descriptor honors CODEWHALE_CONFIG_PATH at module-load time", () => {
     const descriptorsPath = require.resolve("../../../src/agents/doctor/descriptors");
-    const codewhalePath = require.resolve("../../../hooks/codewhale-install");
+    const codewhalePath = require.resolve("../../../hooks/codewhale/codewhale-install");
     const oldCodewhaleConfigPath = process.env.CODEWHALE_CONFIG_PATH;
     const oldDeepseekConfigPath = process.env.DEEPSEEK_CONFIG_PATH;
     process.env.CODEWHALE_CONFIG_PATH = path.join(__dirname, "tmp-codewhale.toml");
@@ -279,7 +279,7 @@ describe("doctor agent descriptors", () => {
     const prevEnv = process.env.COPILOT_HOME;
     process.env.COPILOT_HOME = tempHome;
 
-    const installerPath = require.resolve("../../../hooks/copilot-install");
+    const installerPath = require.resolve("../../../hooks/copilot-cli/copilot-install");
     const descriptorsPath = require.resolve("../../../src/agents/doctor/descriptors");
     const prevInstallerCache = require.cache[installerPath];
     const prevDescriptorsCache = require.cache[descriptorsPath];
@@ -307,7 +307,7 @@ describe("doctor agent descriptors", () => {
   });
 
   it("checks OMP extensions with the dedicated omp-extension mode", () => {
-    const omp = require("../../../hooks/omp-install");
+    const omp = require("../../../hooks/omp/omp-install");
     const descriptor = getAgentDescriptor("omp");
 
     assert.strictEqual(descriptor.eventSource, "extension");
@@ -337,7 +337,7 @@ describe("doctor agent descriptors", () => {
     delete process.env.OMP_PROFILE;
     delete process.env.PI_PROFILE;
 
-    const installerPath = require.resolve("../../../hooks/omp-install");
+    const installerPath = require.resolve("../../../hooks/omp/omp-install");
     const descriptorsPath = require.resolve("../../../src/agents/doctor/descriptors");
     const prevInstallerCache = require.cache[installerPath];
     const prevDescriptorsCache = require.cache[descriptorsPath];
@@ -366,7 +366,7 @@ describe("doctor agent descriptors", () => {
   });
 
   it("checks Qoder hooks as a state-only nested settings file", () => {
-    const qoder = require("../../../hooks/qoder-install");
+    const qoder = require("../../../hooks/qoder/qoder-install");
     const descriptor = getAgentDescriptor("qoder");
 
     assert.strictEqual(descriptor.eventSource, "hook");
@@ -378,7 +378,7 @@ describe("doctor agent descriptors", () => {
   });
 
   it("checks Reasonix hooks as a state-only nested settings file", () => {
-    const reasonix = require("../../../hooks/reasonix-install");
+    const reasonix = require("../../../hooks/reasonix/reasonix-install");
     const descriptor = getAgentDescriptor("reasonix");
 
     assert.strictEqual(descriptor.eventSource, "hook");
@@ -390,7 +390,7 @@ describe("doctor agent descriptors", () => {
   });
 
   it("checks QoderWork hooks as a state-only nested settings file", () => {
-    const qoderwork = require("../../../hooks/qoderwork-install");
+    const qoderwork = require("../../../hooks/qoderwork/qoderwork-install");
     const descriptor = getAgentDescriptor("qoderwork");
 
     assert.strictEqual(descriptor.eventSource, "hook");
@@ -402,7 +402,7 @@ describe("doctor agent descriptors", () => {
   });
 
   it("checks QwenWork hooks as a state-only nested settings file", () => {
-    const qwenwork = require("../../../hooks/qwenwork-install");
+    const qwenwork = require("../../../hooks/qwenwork/qwenwork-install");
     const descriptor = getAgentDescriptor("qwenwork");
 
     assert.strictEqual(descriptor.eventSource, "hook");
@@ -414,7 +414,7 @@ describe("doctor agent descriptors", () => {
   });
 
   it("checks WorkBuddy hooks as a state-only nested settings file", () => {
-    const workbuddy = require("../../../hooks/workbuddy-install");
+    const workbuddy = require("../../../hooks/workbuddy/workbuddy-install");
     const descriptor = getAgentDescriptor("workbuddy");
 
     assert.strictEqual(descriptor.eventSource, "hook");
@@ -430,7 +430,7 @@ describe("doctor agent descriptors", () => {
   });
 
   it("checks Grok Build hooks as a state-only nested settings file", () => {
-    const grok = require("../../../hooks/grok-install");
+    const grok = require("../../../hooks/grok-build/grok-install");
     const descriptor = getAgentDescriptor("grok-build");
 
     assert.strictEqual(descriptor.eventSource, "hook");

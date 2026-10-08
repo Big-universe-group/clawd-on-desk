@@ -17,7 +17,7 @@ const {
   parseWorkspaceYamlName,
   readCopilotSessionTitle,
   resolveCopilotSessionStateDir,
-} = require("../../../hooks/copilot-hook.js");
+} = require("../../../hooks/copilot-cli/copilot-hook.js");
 
 function makeFakeHome(sessionId, contents) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "copilot-hook-test-"));
@@ -397,7 +397,7 @@ const {
   HOOK_TOOL_INPUT_ARRAY_MAX,
   HOOK_TOOL_INPUT_DEPTH_MAX,
   HOOK_PERMISSION_BODY_MAX_BYTES,
-} = require("../../../hooks/copilot-hook.js");
+} = require("../../../hooks/copilot-cli/copilot-hook.js");
 
 const fsTest = require("fs");
 const osTest = require("os");

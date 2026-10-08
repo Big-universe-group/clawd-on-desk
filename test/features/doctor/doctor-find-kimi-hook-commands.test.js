@@ -1,6 +1,6 @@
 const { describe, it } = require("node:test");
 const assert = require("node:assert");
-const { findKimiHookCommands } = require("../../../hooks/kimi-install");
+const { findKimiHookCommands } = require("../../../hooks/kimi-cli/kimi-install");
 
 describe("findKimiHookCommands", () => {
   it("finds a single-quoted command containing the marker", () => {

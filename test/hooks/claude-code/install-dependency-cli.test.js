@@ -6,13 +6,50 @@ const path = require("node:path");
 const { spawnSync } = require("node:child_process");
 
 const HOOKS = path.join(__dirname, "..", "..", "..", "hooks");
-const ALL_FILES = fs.readdirSync(HOOKS).filter((name) => name.endsWith(".js"));
+
+// The hooks tree is layered (hooks/shared/*.js, hooks/<agent-id>/*.js). Every
+// basename stays unique, so a copied payload must keep each file's
+// hooks-root-relative path or the static require graph ("./x", "../shared/y")
+// stops resolving the way it does in the shipped tree.
+function listHookFiles(dir = HOOKS, prefix = "") {
+  const files = [];
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const relative = prefix ? `${prefix}/${entry.name}` : entry.name;
+    if (entry.isDirectory()) files.push(...listHookFiles(path.join(dir, entry.name), relative));
+    else if (entry.name.endsWith(".js")) files.push(relative);
+  }
+  return files;
+}
+
+function hooksRelativePath(name) {
+  const matches = fs.readdirSync(HOOKS, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => `${entry.name}/${name}`)
+    .filter((relative) => fs.existsSync(path.join(HOOKS, relative)));
+  assert.equal(
+    matches.length,
+    1,
+    `expected exactly one hooks/ source for ${name}, found: ${matches.join(", ") || "none"}`
+  );
+  return matches[0];
+}
+
+function hookFileName(relative) {
+  return relative.split("/").pop();
+}
+
+function withoutHookFile(files, name) {
+  return files.filter((relative) => hookFileName(relative) !== name);
+}
+
+// Every shipped hook module, as hooks-root-relative paths.
+const ALL_FILES = listHookFiles();
 // Historical #901 payload, deliberately independent of the corrected guide.
 const HISTORICAL_PAYLOAD_FILES = [
   "shared-process", "clawd-hook", "install",
   "codex-hook", "codex-install", "codex-install-utils", "codex-remote-monitor",
   "codex-session-index", "codex-subagent-fields", "copilot-hook", "copilot-install",
-].map((name) => `${name}.js`);
+].map((name) => hooksRelativePath(`${name}.js`));
 // install.js requires these at module load. A copy missing one of them cannot
 // even reach the dependency preflight (it dies with MODULE_NOT_FOUND), which is
 // a bootstrap failure, not the partial-payload case under test here. They are
@@ -23,8 +60,11 @@ const CURRENT_BOOTSTRAP_FILES = [
   "json-utils.js",
   "appimage-hook-materializer.js",
   "hook-dependency-preflight.js",
-];
+].map((name) => hooksRelativePath(name));
 const OLD_FILES = [...HISTORICAL_PAYLOAD_FILES, ...CURRENT_BOOTSTRAP_FILES];
+const CLAUDE_INSTALL_SCRIPT = "claude-code/install.js";
+const KIMI_INSTALL_SCRIPT = "kimi-cli/kimi-install.js";
+const KIMI_RUNTIME_SCRIPT = "kimi-cli/kimi-hook.js";
 
 function fixture(t, files = ALL_FILES) {
   // Space also exercises source-path handling; this does not execute the
@@ -36,7 +76,11 @@ function fixture(t, files = ALL_FILES) {
   const bin = path.join(home, ".local", "bin");
   fs.mkdirSync(hooks, { recursive: true });
   fs.mkdirSync(bin, { recursive: true });
-  for (const name of files) fs.copyFileSync(path.join(HOOKS, name), path.join(hooks, name));
+  for (const relative of files) {
+    const target = path.join(hooks, relative);
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.copyFileSync(path.join(HOOKS, relative), target);
+  }
   if (process.platform !== "win32") {
     fs.writeFileSync(path.join(bin, "claude"), "#!/bin/sh\nprintf '2.1.235 (Claude Code)\\n'\n", { mode: 0o700 });
   }
@@ -55,7 +99,7 @@ function fixture(t, files = ALL_FILES) {
     home, hooks, settings,
     read: () => JSON.parse(fs.readFileSync(settings, "utf8")),
     run: (args = [], extraEnv = {}) => {
-      const result = spawnSync(process.execPath, [path.join(hooks, "install.js"), ...args], {
+      const result = spawnSync(process.execPath, [path.join(hooks, CLAUDE_INSTALL_SCRIPT), ...args], {
         cwd: home, env: { ...env, ...extraEnv }, encoding: "utf8", timeout: 20000,
       });
       assert.ifError(result.error);
@@ -90,7 +134,11 @@ function kimiFixture(t, files = ALL_FILES) {
   fs.mkdirSync(hooks, { recursive: true });
   fs.mkdirSync(legacyDir, { recursive: true });
   fs.mkdirSync(codeDir, { recursive: true });
-  for (const name of files) fs.copyFileSync(path.join(HOOKS, name), path.join(hooks, name));
+  for (const relative of files) {
+    const target = path.join(hooks, relative);
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.copyFileSync(path.join(HOOKS, relative), target);
+  }
   const legacyConfig = path.join(legacyDir, "config.toml");
   const codeConfig = path.join(codeDir, "config.toml");
   fs.writeFileSync(legacyConfig, 'user_setting = "legacy"\n');
@@ -110,7 +158,7 @@ function kimiFixture(t, files = ALL_FILES) {
     legacyConfig,
     codeConfig,
     run: () => {
-      const result = spawnSync(process.execPath, [path.join(hooks, "kimi-install.js")], {
+      const result = spawnSync(process.execPath, [path.join(hooks, KIMI_INSTALL_SCRIPT)], {
         cwd: home,
         env,
         encoding: "utf8",
@@ -122,7 +170,7 @@ function kimiFixture(t, files = ALL_FILES) {
     },
     loadRuntime: () => spawnSync(
       process.execPath,
-      ["-e", "require(process.argv[1])", path.join(hooks, "kimi-hook.js")],
+      ["-e", "require(process.argv[1])", path.join(hooks, KIMI_RUNTIME_SCRIPT)],
       { cwd: home, env, encoding: "utf8", timeout: 20000 }
     ),
   };
@@ -152,35 +200,35 @@ describe("Claude installer CLI dependency preflight", () => {
       assert.ok(settings.hooks.UserPromptSubmit.some((e) => e.hooks.some((h) => h.command.includes("clawd-hook.js"))));
       if (args.length) {
         assert.ok(settings.statusLine.command.includes("claude-statusline.js"));
-        assert.ok(fs.existsSync(path.join(f.hooks, "claude-statusline.js")));
+        assert.ok(fs.existsSync(path.join(f.hooks, "claude-code", "claude-statusline.js")));
         if (args[0] === "--statusline") assert.doesNotMatch(settings.statusLine.command, /CLAWD_REMOTE=/);
       } else assert.equal(settings.statusLine, undefined);
     });
   }
   it("checks statusline only when requested, before writing any state hooks", (t) => {
     for (const args of [["--remote"], ["--statusline"], []]) {
-      const f = fixture(t, ALL_FILES.filter((n) => n !== "claude-statusline.js"));
+      const f = fixture(t, withoutHookFile(ALL_FILES, "claude-statusline.js"));
       if (args.length) refused(f, args, /claude-statusline\.js/);
       else assert.equal(f.run().status, 0);
     }
   });
   it("rejects a missing transitive dependency", (t) => {
-    const f = fixture(t, ALL_FILES.filter((n) => n !== "pid-cache.js"));
-    refused(f, [], /pid-cache\.js.*required by shared-process\.js/);
+    const f = fixture(t, withoutHookFile(ALL_FILES, "pid-cache.js"));
+    refused(f, [], /pid-cache\.js.*required by shared\/shared-process\.js/);
   });
   it("does not require the opt-in auto-start entry", (t) => {
-    const f = fixture(t, ALL_FILES.filter((n) => n !== "auto-start.js"));
+    const f = fixture(t, withoutHookFile(ALL_FILES, "auto-start.js"));
     assert.equal(f.run(["--remote"]).status, 0);
   });
   it("rejects a directory in place of a script on every platform", (t) => {
-    const f = fixture(t, ALL_FILES.filter((n) => n !== "clawd-hook.js"));
-    fs.mkdirSync(path.join(f.hooks, "clawd-hook.js"));
+    const f = fixture(t, withoutHookFile(ALL_FILES, "clawd-hook.js"));
+    fs.mkdirSync(path.join(f.hooks, "claude-code", "clawd-hook.js"), { recursive: true });
     refused(f, [], /clawd-hook\.js.*NOT_FILE/);
   });
   it("rejects an unreadable dependency when the OS enforces its mode", (t) => {
     if (process.platform === "win32" || (process.getuid && process.getuid() === 0)) return t.skip("POSIX non-root permission check only");
     const f = fixture(t);
-    const target = path.join(f.hooks, "context-usage.js");
+    const target = path.join(f.hooks, "shared", "context-usage.js");
     fs.chmodSync(target, 0);
     try {
       try { fs.readFileSync(target); return t.skip("file remains readable on this filesystem"); } catch (err) { assert.equal(err.code, "EACCES"); }
@@ -193,10 +241,10 @@ describe("Claude installer CLI dependency preflight", () => {
     } finally { fs.chmodSync(target, 0o600); }
   });
   it("fails without writes when the installer's own bootstrap dependency is absent", (t) => {
-    refused(fixture(t, ALL_FILES.filter((n) => n !== "json-utils.js")), [], /MODULE_NOT_FOUND/);
+    refused(fixture(t, withoutHookFile(ALL_FILES, "json-utils.js")), [], /MODULE_NOT_FOUND/);
   });
   it("fails without writes when the shared materializer bootstrap leaf is absent", (t) => {
-    refused(fixture(t, ALL_FILES.filter((n) => n !== "appimage-hook-materializer.js")), [], /MODULE_NOT_FOUND/);
+    refused(fixture(t, withoutHookFile(ALL_FILES, "appimage-hook-materializer.js")), [], /MODULE_NOT_FOUND/);
   });
   for (const key of ["CLAWD_WSL_DISTRO", "WSL_DISTRO_NAME"]) {
     it(`covers the no-flag WSL configuration with ${key}`, (t) => {
@@ -226,12 +274,12 @@ describe("Kimi installer CLI dependency preflight", () => {
 
   for (const missingName of ["kimi-process-names.js", "shared-process.js"]) {
     it(`refuses missing ${missingName} before changing either Kimi home`, (t) => {
-      const f = kimiFixture(t, ALL_FILES.filter((name) => name !== missingName));
+      const f = kimiFixture(t, withoutHookFile(ALL_FILES, missingName));
       const before = snapshot(f.home);
       const result = f.run();
       assert.equal(result.status, 1, result.stdout + result.stderr);
       assert.match(result.stderr, new RegExp(missingName.replace(".", "\\.")));
-      assert.match(result.stderr, /required by kimi-hook\.js/);
+      assert.match(result.stderr, /required by kimi-cli\/kimi-hook\.js/);
       assert.deepEqual(snapshot(f.home), before, "neither Kimi TOML home may change after a failed preflight");
     });
   }

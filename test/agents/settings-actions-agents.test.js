@@ -1155,7 +1155,7 @@ test("every opencode-family member is installable AND auto-repairable (R10 P3)",
   // gates install/uninstall. Dropping a family member from either set turns
   // the Settings/Doctor Repair buttons into "no automatic repair available"
   // with every other test green (GPT-5.5 review mutation).
-  const { OPENCODE_FAMILY } = require("../../hooks/opencode-family");
+  const { OPENCODE_FAMILY } = require("../../hooks/opencode/opencode-family");
   for (const agentId of Object.keys(OPENCODE_FAMILY)) {
     assert.ok(
       agentCommands.INSTALLABLE_AGENT_IDS.has(agentId),

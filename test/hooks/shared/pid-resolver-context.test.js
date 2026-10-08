@@ -13,7 +13,7 @@ const os = require("node:os");
 const path = require("node:path");
 
 const { loadSharedProcessWithMock } = require("../../helpers/load-shared-process-with-mock");
-const pc = require("../../../hooks/pid-cache");
+const pc = require("../../../hooks/shared/pid-cache");
 
 // Isolate the cache directory (#634): startLifecycle triggers a real sweep, and
 // without isolation it would scan the shared os.tmpdir() — deleting other test

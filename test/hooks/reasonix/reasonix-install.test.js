@@ -9,8 +9,8 @@ const {
   registerReasonixHooks,
   unregisterReasonixHooks,
   __test,
-} = require("../../../hooks/reasonix-install");
-const { decodeWindowsEncodedCommand } = require("../../../hooks/json-utils");
+} = require("../../../hooks/reasonix/reasonix-install");
+const { decodeWindowsEncodedCommand } = require("../../../hooks/shared/json-utils");
 
 const tempDirs = [];
 
@@ -97,7 +97,7 @@ describe("Reasonix hook installer", () => {
     assert.deepStrictEqual(__test.resolveReasonixHome(options), "");
     assert.deepStrictEqual(__test.selectReasonixSettingsPath(options), "");
     assert.deepStrictEqual(
-      require("../../../hooks/reasonix-install").resolveReasonixConfigTargets(options),
+      require("../../../hooks/reasonix/reasonix-install").resolveReasonixConfigTargets(options),
       []
     );
 
@@ -124,7 +124,7 @@ describe("Reasonix hook installer", () => {
       const options = { ...base, env: { REASONIX_HOME: configuredHome } };
       assert.strictEqual(__test.resolveReasonixHome(options), "", configuredHome);
       assert.deepStrictEqual(
-        require("../../../hooks/reasonix-install").resolveReasonixConfigTargets(options),
+        require("../../../hooks/reasonix/reasonix-install").resolveReasonixConfigTargets(options),
         [],
         configuredHome,
       );

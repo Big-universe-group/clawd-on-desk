@@ -3,7 +3,7 @@
 const { describe, it } = require("node:test");
 const assert = require("node:assert");
 
-const { normalizeQuotaBucket, normalizeQuotaGroup } = require("../../../hooks/quota-bucket");
+const { normalizeQuotaBucket, normalizeQuotaGroup } = require("../../../hooks/shared/quota-bucket");
 
 describe("normalizeQuotaBucket", () => {
   it("clamps usedPercent and preserves rounded window/reset metadata", () => {

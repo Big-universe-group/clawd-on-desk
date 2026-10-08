@@ -14,7 +14,7 @@ const {
   registerAntigravityStatusline,
   unregisterAntigravityStatusline,
   __test,
-} = require("../../../hooks/antigravity-install");
+} = require("../../../hooks/antigravity-cli/antigravity-install");
 
 const tempDirs = [];
 
@@ -703,7 +703,7 @@ describe("Antigravity hook installer", () => {
     const hooks = readJson(path.join(homeDir, ".gemini", "config", "hooks.json"));
     const decoded = decodeEncodedCommand(hooks[HOOK_GROUP_ID].PreInvocation[0].command);
     assert.ok(decoded.includes(`$psi.FileName = '${nodeBin}'`));
-    assert.ok(decoded.includes(`$psi.Arguments = '${path.resolve(__dirname, "..", "..", "..", "hooks", "antigravity-hook.js").replace(/\\/g, "/")} PreInvocation'`));
+    assert.ok(decoded.includes(`$psi.Arguments = '${path.resolve(__dirname, "..", "..", "..", "hooks", "antigravity-cli", "antigravity-hook.js").replace(/\\/g, "/")} PreInvocation'`));
     assert.ok(decoded.includes("[Console]::Out.WriteLine( '{}' )"));
   });
 

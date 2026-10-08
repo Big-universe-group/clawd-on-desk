@@ -3,7 +3,7 @@ const assert = require("node:assert");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
-const { isCodexMemoryWorkerPayload } = require("../../../hooks/codex-internal-worker");
+const { isCodexMemoryWorkerPayload } = require("../../../hooks/codex/codex-internal-worker");
 
 function withTempDir(prefix, fn) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), prefix));

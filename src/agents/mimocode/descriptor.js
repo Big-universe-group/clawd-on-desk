@@ -6,7 +6,7 @@
 // for every family member, sourced from ./opencode-family so they can't drift
 // (see docs/project/agent-runtime-architecture.md).
 
-const { FAMILY_EVENT_MAP, FAMILY_CAPABILITIES } = require("../../../hooks/opencode-family");
+const { FAMILY_EVENT_MAP, FAMILY_CAPABILITIES } = require("../../../hooks/opencode/opencode-family");
 
 module.exports = {
   id: "mimocode",

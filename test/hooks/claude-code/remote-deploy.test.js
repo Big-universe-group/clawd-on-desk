@@ -3,7 +3,7 @@ const assert = require("node:assert");
 const fs = require("fs");
 const path = require("path");
 const os = require("os");
-const { __test: { findMissingHookDependencies } } = require("../../../hooks/install");
+const { __test: { findMissingHookDependencies } } = require("../../../hooks/claude-code/install");
 
 const SCRIPT_PATH = path.join(__dirname, "..", "..", "..", "scripts", "remote-deploy.sh");
 const HOOKS_DIR = path.join(__dirname, "..", "..", "..", "hooks");
@@ -23,17 +23,24 @@ describe("Remote SSH secure hook manifest", () => {
   it("ships the Hermes installer right after the Copilot installer", () => {
     const deployed = parseDeployedFiles();
     assert.ok(
-      deployed.includes("hermes-install.js"),
-      "hermes-install.js must ship with the Remote SSH hook payload — the deploy runs it under the fence"
+      deployed.includes("hermes/hermes-install.js"),
+      "hermes/hermes-install.js must ship with the Remote SSH hook payload — the deploy runs it under the fence"
     );
     assert.strictEqual(
-      deployed[deployed.indexOf("copilot-install.js") + 1],
-      "hermes-install.js"
+      deployed[deployed.indexOf("copilot-cli/copilot-install.js") + 1],
+      "hermes/hermes-install.js"
     );
     // Plugin assets are not hook scripts: they go to their own exact staging
     // directory, never to ~/.claude/hooks.
-    for (const asset of ["plugin.yaml", "__init__.py", "hermes-plugin/plugin.yaml"]) {
-      assert.ok(!deployed.includes(asset), `${asset} must not be in HOOK_FILES`);
+    assert.ok(
+      !deployed.some((name) => name.startsWith("hermes/hermes-plugin/")),
+      "hermes/hermes-plugin/* assets must not be in HOOK_FILES"
+    );
+    for (const asset of ["plugin.yaml", "__init__.py"]) {
+      assert.ok(
+        !deployed.some((name) => path.posix.basename(name) === asset),
+        `${asset} must not be in HOOK_FILES`
+      );
     }
   });
 
@@ -132,13 +139,23 @@ describe("WSL setup guide hook copy instructions", () => {
     }
   });
 
-  it("copies the whole hooks directory", () => {
+  it("copies the whole layered hooks tree", () => {
     for (const relative of GUIDES) {
       const content = fs.readFileSync(path.join(__dirname, "..", "..", "..", relative), "utf8");
       assert.match(
         content,
-        /^cp (?:"[^"\n]*hooks\/"|[^\s"\n]*hooks\/)\*\.js ~\/\.claude\/hooks\/\s*$/m,
-        `${relative} must tell WSL users to copy every hook file`
+        /^cp -R (?:"[^"\n]*hooks\/\."|[^\s"\n]*hooks\/\.) ~\/\.claude\/hooks\/\s*$/m,
+        `${relative} must tell WSL users to copy the complete layered hooks tree`
+      );
+      assert.match(
+        content,
+        /^node ~\/\.claude\/hooks\/claude-code\/install\.js(?: --statusline)?\s*$/m,
+        `${relative} must invoke the layered Claude installer from the copied tree`
+      );
+      assert.doesNotMatch(
+        content,
+        /^cp [^\n]*hooks\/"?\*\.js/m,
+        `${relative} must not copy a flat top-level file set that no longer exists`
       );
     }
   });
@@ -160,7 +177,7 @@ require(
   });
 
   it("reports each file removed from the Claude manifest closure", (t) => {
-    const entries = ["clawd-hook.js", "claude-statusline.js"];
+    const entries = ["claude-code/clawd-hook.js", "claude-code/claude-statusline.js"];
     const pending = [...entries];
     const closure = new Set();
     while (pending.length) {
@@ -168,20 +185,27 @@ require(
       if (closure.has(name)) continue;
       closure.add(name);
       assert.ok(HOOK_FILES.includes(name), `Claude dependency ${name} must be deployed`);
-      for (const spec of findRelativeRequires(path.join(HOOKS_DIR, name))) {
+      for (const spec of findRelativeRequires(path.join(HOOKS_DIR, ...name.split("/")))) {
+        // Requires are relative to the requiring file, exactly as the CLI
+        // preflight resolves them; the deployed name stays hooks-root-relative.
         const target = path.resolve(HOOKS_DIR, path.dirname(name), path.extname(spec) ? spec : `${spec}.js`);
         pending.push(path.relative(HOOKS_DIR, target).split(path.sep).join("/"));
       }
     }
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "clawd-closure-"));
     t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
-    for (const name of closure) fs.copyFileSync(path.join(HOOKS_DIR, name), path.join(dir, name));
+    for (const name of closure) {
+      const target = path.join(dir, ...name.split("/"));
+      fs.mkdirSync(path.dirname(target), { recursive: true });
+      fs.copyFileSync(path.join(HOOKS_DIR, ...name.split("/")), target);
+    }
     assert.deepStrictEqual(findMissingHookDependencies(entries, { hooksDir: dir }), []);
     for (const name of closure) {
-      fs.unlinkSync(path.join(dir, name));
+      const target = path.join(dir, ...name.split("/"));
+      fs.unlinkSync(target);
       try {
         assert.ok(findMissingHookDependencies(entries, { hooksDir: dir }).some((e) => e.name === name && e.code === "ENOENT"), `preflight missed ${name}`);
-      } finally { fs.copyFileSync(path.join(HOOKS_DIR, name), path.join(dir, name)); }
+      } finally { fs.copyFileSync(path.join(HOOKS_DIR, ...name.split("/")), target); }
     }
   });
 });

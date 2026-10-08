@@ -3,7 +3,7 @@ const assert = require("node:assert");
 const fs = require("fs");
 const path = require("path");
 const os = require("os");
-const { registerOpencodePlugin, resolvePluginDir } = require("../../../hooks/opencode-install");
+const { registerOpencodePlugin, resolvePluginDir } = require("../../../hooks/opencode/opencode-install");
 
 const tempDirs = [];
 
@@ -221,7 +221,7 @@ describe("resolvePluginDir", () => {
 // ── PR-A §9 gates: full wrapper surface, unregister semantics, CLI entry ──
 
 const { execFileSync } = require("child_process");
-const installerModule = require("../../../hooks/opencode-install");
+const installerModule = require("../../../hooks/opencode/opencode-install");
 const { unregisterOpencodePlugin } = installerModule;
 
 describe("opencode installer wrapper surface (plan §5 contract)", () => {
@@ -242,7 +242,7 @@ describe("opencode installer wrapper surface (plan §5 contract)", () => {
     // contract from the other side: a result with skipped:true and no config
     // dir must carry exactly this reason. (Full behavior is covered by the
     // configPath-driven cases above; this pins the reason literal.)
-    const src = require("fs").readFileSync(require.resolve("../../../hooks/opencode-family-install.js"), "utf8");
+    const src = require("fs").readFileSync(require.resolve("../../../hooks/opencode/opencode-family-install.js"), "utf8");
     assert.match(src, /reason: `\$\{agentId\}-not-found`/);
   });
 });
@@ -282,7 +282,7 @@ describe("opencode installer unregister", () => {
 });
 
 describe("opencode installer CLI entry (node hooks/opencode-install.js)", () => {
-  const SCRIPT = path.join(__dirname, "..", "..", "..", "hooks", "opencode-install.js");
+  const SCRIPT = path.join(__dirname, "..", "..", "..", "hooks", "opencode", "opencode-install.js");
 
   function runCli(args, homeDir, envOverrides = {}) {
     return execFileSync(process.execPath, [SCRIPT, ...args], {

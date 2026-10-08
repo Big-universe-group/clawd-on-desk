@@ -8,7 +8,7 @@ const {
   resolveCodexRateLimitReport,
   isFreshCodexQuotaTimestamp,
   CODEX_QUOTA_MAX_AGE_MS,
-} = require("../../../hooks/codex-rate-limits");
+} = require("../../../hooks/codex/codex-rate-limits");
 
 describe("Codex rate limit quota parser", () => {
   it("maps reported short/long windows and preserves their real durations", () => {

@@ -11,11 +11,11 @@ const {
   CURSOR_HOOK_SENTINEL,
   buildCursorHookCommand,
   classifyCursorHookCommand,
-} = require("../../../hooks/cursor-install");
-const { commandMatchesMarker, formatNodeHookCommand } = require("../../../hooks/json-utils");
+} = require("../../../hooks/cursor-agent/cursor-install");
+const { commandMatchesMarker, formatNodeHookCommand } = require("../../../hooks/shared/json-utils");
 
 const MARKER = "cursor-hook.js";
-const CURRENT_SCRIPT = path.resolve(__dirname, "..", "..", "..", "hooks", "cursor-hook.js").replace(/\\/g, "/");
+const CURRENT_SCRIPT = path.resolve(__dirname, "..", "..", "..", "hooks", "cursor-agent", "cursor-hook.js").replace(/\\/g, "/");
 const tempDirs = [];
 
 function makeTempHooksFile(initial = {}) {
@@ -412,7 +412,7 @@ describe("Cursor hook installer", () => {
     const settings = readJson(hooksPath);
     const expected = buildCursorHookCommand(
       "C:\\Program Files\\nodejs\\node.exe",
-      path.resolve(__dirname, "..", "..", "..", "hooks", "cursor-hook.js"),
+      path.resolve(__dirname, "..", "..", "..", "hooks", "cursor-agent", "cursor-hook.js"),
       "win32"
     );
     assert.strictEqual(settings.hooks.stop[0].command, expected);
@@ -508,7 +508,7 @@ describe("Cursor hook installer", () => {
     const appDir = path.join(root, "Clawd on Desk", "中文 hooks");
     fs.mkdirSync(appDir, { recursive: true });
     const script = path.join(appDir, "cursor-hook.js");
-    const helper = path.resolve(__dirname, "..", "..", "..", "hooks", "shared-process.js");
+    const helper = path.resolve(__dirname, "..", "..", "..", "hooks", "shared", "shared-process.js");
     // Test command quoting and pipe integrity independently of the production
     // 400ms deadline: hosted Windows runners can deliver the first byte later.
     // shared-process.test.js separately checks the reader's timeout contract.

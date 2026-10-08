@@ -21,13 +21,13 @@ const {
   pruneHistoryFiles,
   recordSessionHistoryFromStateBody,
   loadSessionHistory,
-} = require("../../../hooks/session-history");
+} = require("../../../hooks/shared/session-history");
 const {
   updateRecoveryLeaseFromStateBody,
   loadActiveRecoveryLeases,
   acquireLeaseLock,
   releaseLeaseLock,
-} = require("../../../hooks/session-recovery-lease");
+} = require("../../../hooks/shared/session-recovery-lease");
 
 describe("durable session history", () => {
   let historyDir;
@@ -165,7 +165,7 @@ describe("durable session history", () => {
         parentPort.postMessage(result);
       `;
       const makeWorker = (pause) => new Worker(workerCode, { eval: true, workerData: {
-        module: require.resolve("../../../hooks/session-history"), signal, pause,
+        module: require.resolve("../../../hooks/shared/session-history"), signal, pause,
         opts: { historyDir, eventAt: T0 + (pause ? 1000 : 2000), env: {} },
         body: body(pause ? { state: "working" } : { event: "SessionEnd", state: "sleeping" }),
       } });

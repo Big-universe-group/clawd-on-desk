@@ -1,6 +1,6 @@
 "use strict";
 
-const { normalizeQuotaBucket } = require("../../../../hooks/quota-bucket");
+const { normalizeQuotaBucket } = require("../../../../hooks/shared/quota-bucket");
 
 const KIMI_QUOTA_FIELDS = ["kimiFiveHour", "kimiWeekly"];
 const FIVE_HOUR_MINUTES = 300;

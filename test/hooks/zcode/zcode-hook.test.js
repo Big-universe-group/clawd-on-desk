@@ -13,7 +13,7 @@ const {
   sanitizeZcodePermissionDecision,
   sanitizeZcodePermissionOutput,
   stdinParseErrorCategory,
-} = require("../../../hooks/zcode-hook");
+} = require("../../../hooks/zcode/zcode-hook");
 
 describe("ZCode hook PID lifecycle", () => {
   it("passes the raw session context to the resolver and reports cached fields", () => {

@@ -3,7 +3,7 @@ const assert = require("node:assert");
 const fs = require("fs");
 const path = require("path");
 const os = require("os");
-const serverConfig = require("../../../hooks/server-config");
+const serverConfig = require("../../../hooks/shared/server-config");
 
 const tempDirs = [];
 

@@ -1,6 +1,6 @@
 const { describe, it } = require("node:test");
 const assert = require("node:assert");
-const { findHookCommands } = require("../../../hooks/json-utils");
+const { findHookCommands } = require("../../../hooks/shared/json-utils");
 
 describe("findHookCommands", () => {
   it("finds flat command hooks containing the marker", () => {

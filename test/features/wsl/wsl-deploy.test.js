@@ -34,24 +34,24 @@ const HOOKS_DIR = path.join(__dirname, "..", "..", "..", "hooks");
 
 describe("wsl-deploy", () => {
   describe("getAgentInstallScriptName", () => {
-    it("maps claude-code to install.js", () => {
-      assert.strictEqual(getAgentInstallScriptName("claude-code"), "install.js");
+    it("maps claude-code to claude-code/install.js", () => {
+      assert.strictEqual(getAgentInstallScriptName("claude-code"), "claude-code/install.js");
     });
 
-    it("maps codex to codex-install.js", () => {
-      assert.strictEqual(getAgentInstallScriptName("codex"), "codex-install.js");
+    it("maps codex to codex/codex-install.js", () => {
+      assert.strictEqual(getAgentInstallScriptName("codex"), "codex/codex-install.js");
     });
 
-    it("maps copilot-cli to copilot-install.js", () => {
-      assert.strictEqual(getAgentInstallScriptName("copilot-cli"), "copilot-install.js");
+    it("maps copilot-cli to copilot-cli/copilot-install.js", () => {
+      assert.strictEqual(getAgentInstallScriptName("copilot-cli"), "copilot-cli/copilot-install.js");
     });
 
-    it("maps gemini-cli to gemini-install.js", () => {
-      assert.strictEqual(getAgentInstallScriptName("gemini-cli"), "gemini-install.js");
+    it("maps gemini-cli to gemini-cli/gemini-install.js", () => {
+      assert.strictEqual(getAgentInstallScriptName("gemini-cli"), "gemini-cli/gemini-install.js");
     });
 
-    it("maps cursor-agent to cursor-install.js", () => {
-      assert.strictEqual(getAgentInstallScriptName("cursor-agent"), "cursor-install.js");
+    it("maps cursor-agent to cursor-agent/cursor-install.js", () => {
+      assert.strictEqual(getAgentInstallScriptName("cursor-agent"), "cursor-agent/cursor-install.js");
     });
 
     it("returns null for unsupported agents", () => {
@@ -61,7 +61,7 @@ describe("wsl-deploy", () => {
 
     it("supports Hermes without enabling other unvalidated asset-backed agents", () => {
       assert.strictEqual(getAgentInstallScriptName("pi"), null);
-      assert.strictEqual(getAgentInstallScriptName("hermes"), "hermes-install.js");
+      assert.strictEqual(getAgentInstallScriptName("hermes"), "hermes/hermes-install.js");
       assert.strictEqual(getAgentInstallScriptName("opencode"), null);
       assert.strictEqual(getAgentInstallScriptName("openclaw"), null);
     });
@@ -88,7 +88,7 @@ describe("wsl-deploy", () => {
       assert.strictEqual(getAgentUninstallCommand("qwenwork"), null);
       // QoderWork (the integration this one was modeled on) stays supported —
       // this is a QwenWork-specific platform boundary, not a category rule.
-      assert.strictEqual(getAgentInstallScriptName("qoderwork"), "qoderwork-install.js");
+      assert.strictEqual(getAgentInstallScriptName("qoderwork"), "qoderwork/qoderwork-install.js");
     });
   });
 
@@ -106,14 +106,14 @@ describe("wsl-deploy", () => {
   describe("getAgentUninstallCommand", () => {
     const { getAgentUninstallCommand } = require("../../../src/features/wsl/deploy");
 
-    it("uses uninstall.js for claude-code (install.js has no --uninstall flag)", () => {
-      assert.strictEqual(getAgentUninstallCommand("claude-code"), "uninstall.js");
+    it("uses claude-code/uninstall.js for claude-code (install.js has no --uninstall flag)", () => {
+      assert.strictEqual(getAgentUninstallCommand("claude-code"), "claude-code/uninstall.js");
     });
 
-    it("uses <install-script> --uninstall for other agents", () => {
-      assert.strictEqual(getAgentUninstallCommand("codex"), "codex-install.js --uninstall");
-      assert.strictEqual(getAgentUninstallCommand("kimi-cli"), "kimi-install.js --uninstall");
-      assert.strictEqual(getAgentUninstallCommand("hermes"), "hermes-install.js --uninstall");
+    it("uses <layered install-script> --uninstall for other agents", () => {
+      assert.strictEqual(getAgentUninstallCommand("codex"), "codex/codex-install.js --uninstall");
+      assert.strictEqual(getAgentUninstallCommand("kimi-cli"), "kimi-cli/kimi-install.js --uninstall");
+      assert.strictEqual(getAgentUninstallCommand("hermes"), "hermes/hermes-install.js --uninstall");
     });
 
     it("returns null for unsupported agents", () => {
@@ -179,12 +179,16 @@ describe("wsl-deploy", () => {
       const dir = path.join(root, "hooks");
       fs.mkdirSync(dir);
       const entries = collectAgentWslFiles(HOOKS_DIR, "kimi-cli");
-      for (const entry of entries) fs.writeFileSync(path.join(dir, entry.relativePath), entry.content);
+      for (const entry of entries) {
+        const target = path.join(dir, ...entry.relativePath.split("/"));
+        fs.mkdirSync(path.dirname(target), { recursive: true });
+        fs.writeFileSync(target, entry.content);
+      }
 
       assert.strictEqual(fs.existsSync(path.join(root, "agents")), false);
       const result = spawnSync(
         process.execPath,
-        ["-e", "require(process.argv[1])", path.join(dir, "kimi-hook.js")],
+        ["-e", "require(process.argv[1])", path.join(dir, "kimi-cli", "kimi-hook.js")],
         { cwd: dir, encoding: "utf8", timeout: 20000 }
       );
       assert.ifError(result.error);
@@ -200,9 +204,9 @@ describe("wsl-deploy", () => {
     });
 
     it("matches the installer managed-file manifest", () => {
-      const { MANAGED_PLUGIN_FILES } = require("../../../hooks/hermes-install");
+      const { MANAGED_PLUGIN_FILES } = require("../../../hooks/hermes/hermes-install");
       const pluginFiles = HERMES_WSL_FILES
-        .filter((name) => name.startsWith("hermes-plugin/"))
+        .filter((name) => name.startsWith("hermes/hermes-plugin/"))
         .map((name) => path.posix.basename(name));
       assert.deepStrictEqual(pluginFiles.sort(), [...MANAGED_PLUGIN_FILES].sort());
     });
@@ -360,7 +364,10 @@ describe("wsl-deploy", () => {
     it("fails missing assets before any WSL mutation", async () => {
       const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "clawd-wsl-hermes-missing-"));
       try {
-        fs.writeFileSync(path.join(tempDir, "hermes-install.js"), "", "utf8");
+        // One asset present at its layered path; every sibling asset is missing.
+        const installer = path.join(tempDir, "hermes", "hermes-install.js");
+        fs.mkdirSync(path.dirname(installer), { recursive: true });
+        fs.writeFileSync(installer, "", "utf8");
         let mutated = false;
         const result = await deployToWsl("Ubuntu", {
           agentId: "hermes",

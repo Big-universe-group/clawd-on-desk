@@ -3,7 +3,7 @@
 const {
   normalizeClaudePhaseId: normalizeIdentity,
   normalizeClaudeBatchToolUseIds,
-} = require("../../../hooks/claude-tool-batch");
+} = require("../../../hooks/claude-code/claude-tool-batch");
 
 const MAX_SESSIONS = 200;
 const MAX_TOOLS = 256;

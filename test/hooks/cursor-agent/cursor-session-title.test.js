@@ -13,7 +13,7 @@ const {
   composerHeadersDbPath,
   readComposerSessionTitle,
   resolveSessionTitle,
-} = require("../../../hooks/cursor-session-title");
+} = require("../../../hooks/cursor-agent/cursor-session-title");
 const { createSpawnedHookHarness } = require("../../helpers/spawned-hook");
 
 let DatabaseSync;
@@ -126,7 +126,7 @@ describe("Cursor title normalization and prompt fallback", () => {
         if (process.emitWarning !== before) process.exit(2);
         process.emitWarning("unrelated experimental feature", "ExperimentalWarning");
       `,
-      path.resolve(__dirname, "..", "..", "..", "hooks", "cursor-session-title.js"), dbPath,
+      path.resolve(__dirname, "..", "..", "..", "hooks", "cursor-agent", "cursor-session-title.js"), dbPath,
     ], { encoding: "utf8", env: { ...process.env, NODE_NO_WARNINGS: "", NODE_OPTIONS: "" } });
     assert.equal(result.status, 0, result.stderr);
     assert.doesNotMatch(result.stderr, /SQLite is an experimental feature/);
@@ -220,7 +220,7 @@ describe("Cursor hook title delivery", () => {
       makeDb(setup, dbPath);
     }
     const result = harness.run({
-      script: path.resolve(__dirname, "..", "..", "..", "hooks", "cursor-hook.js"), payload,
+      script: path.resolve(__dirname, "..", "..", "..", "hooks", "cursor-agent", "cursor-hook.js"), payload,
       httpContract: "expect-attempt", env: {
         CLAWD_POST_RECORDER_SUCCEED: "1",
         ...(process.execArgv.includes("--experimental-sqlite") ? { NODE_OPTIONS: "--experimental-sqlite" } : {}),

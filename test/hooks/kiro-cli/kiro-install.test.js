@@ -3,7 +3,7 @@ const assert = require("node:assert");
 const fs = require("fs");
 const path = require("path");
 const os = require("os");
-const { registerKiroHooks, KIRO_HOOK_EVENTS } = require("../../../hooks/kiro-install");
+const { registerKiroHooks, KIRO_HOOK_EVENTS } = require("../../../hooks/kiro-cli/kiro-install");
 
 const tempDirs = [];
 
@@ -198,7 +198,7 @@ describe("Kiro hook installer", () => {
     assert.strictEqual(result.updated, 2);
     assert.strictEqual(clawdAgent.hooks.stop.length, 1);
     assert.ok(clawdAgent.hooks.stop[0].command.includes("/usr/local/bin/node"));
-    assert.ok(clawdAgent.hooks.stop[0].command.includes("hooks/kiro-hook.js"));
+    assert.ok(clawdAgent.hooks.stop[0].command.includes("hooks/kiro-cli/kiro-hook.js"));
     assert.ok(!clawdAgent.hooks.stop[0].command.includes("/old/path/"));
   });
 
@@ -254,7 +254,7 @@ describe("Kiro hook installer", () => {
     assert.strictEqual(clawdAgent.includeMcpJson, true);
     assert.strictEqual(clawdAgent.model, null);
     assert.ok(result.updated >= 1);
-    assert.ok(clawdAgent.hooks.stop[0].command.includes("hooks/kiro-hook.js"));
+    assert.ok(clawdAgent.hooks.stop[0].command.includes("hooks/kiro-cli/kiro-hook.js"));
   });
 
   it("EXCLUDED_KEYS filtering: model/includeMcpJson absent, description always Clawd's", {
@@ -297,7 +297,7 @@ fi
 `, "utf8");
     fs.chmodSync(fakeBin, 0o755);
 
-    const { __test } = require("../../../hooks/kiro-install");
+    const { __test } = require("../../../hooks/kiro-cli/kiro-install");
     const syncResult = __test.syncClawdAgentFromBuiltin(clawdPath, {
       homeDir: path.dirname(agentsDir),
       kiroCliCandidates: [fakeBin],
@@ -328,7 +328,7 @@ fi
     const { agentsDir } = makeTempKiroHome();
     const clawdPath = path.join(agentsDir, "clawd.json");
 
-    const { __test } = require("../../../hooks/kiro-install");
+    const { __test } = require("../../../hooks/kiro-cli/kiro-install");
     const syncResult = __test.syncClawdAgentFromBuiltin(clawdPath, {
       homeDir: path.dirname(agentsDir),
       kiroCliCandidates: ["/nonexistent/kiro-cli"],
@@ -347,7 +347,7 @@ fi
   });
 
   it("formatHookCommand wraps Windows commands with PowerShell call operator", () => {
-    const { __test } = require("../../../hooks/kiro-install");
+    const { __test } = require("../../../hooks/kiro-cli/kiro-install");
     const { formatHookCommand } = __test;
 
     // mac/linux: bare quoted strings work in /bin/sh -c
@@ -368,7 +368,7 @@ fi
   });
 
   it("getKiroCliCandidates returns Windows install paths on win32", () => {
-    const { __test } = require("../../../hooks/kiro-install");
+    const { __test } = require("../../../hooks/kiro-cli/kiro-install");
     const { getKiroCliCandidates } = __test;
 
     const winCandidates = getKiroCliCandidates(
@@ -453,7 +453,7 @@ exit 1
 `, "utf8");
     fs.chmodSync(fakeBin, 0o755);
 
-    const { __test } = require("../../../hooks/kiro-install");
+    const { __test } = require("../../../hooks/kiro-cli/kiro-install");
     const result = __test.generateClawdTemplateFromBuiltin({
       homeDir: path.dirname(agentsDir),
       kiroCliCandidates: [fakeBin],
@@ -479,7 +479,7 @@ exit 1
     };
     fs.writeFileSync(clawdPath, JSON.stringify(preExisting, null, 2), "utf8");
 
-    const { __test } = require("../../../hooks/kiro-install");
+    const { __test } = require("../../../hooks/kiro-cli/kiro-install");
     const syncResult = __test.syncClawdAgentFromBuiltin(clawdPath, {
       homeDir: path.dirname(agentsDir),
       kiroCliCandidates: ["/nonexistent/kiro-cli"],

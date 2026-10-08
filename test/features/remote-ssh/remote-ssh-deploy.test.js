@@ -26,6 +26,10 @@ const uninstallRemoteIntegrations = __test.legacyUninstallRemoteIntegrations;
 const { clearRemoteNodeCache } = require("../../../src/features/remote-ssh/node");
 
 const REPO_ROOT = path.join(__dirname, "..", "..", "..");
+// The legacy deploy copies one scp invocation per layered subfolder; the test
+// mirrors the production derivation so call indexes stay readable.
+const HOOK_SUBDIRS = [...new Set(HOOK_FILES.map((name) => path.posix.dirname(name)))];
+const INSTALL_CALL_OFFSET = 2 + HOOK_SUBDIRS.length;
 
 afterEach(() => {
   clearRemoteNodeCache();
@@ -1007,8 +1011,8 @@ test("Hermes phase stages exactly two assets, installs under the fence, and remo
   // scp carries exactly the two plugin assets into the exact stage directory.
   const assetScp = recorder.calls.find((call, index) => call.command === "scp" && labels[index] === "hermes-scp");
   assert.deepEqual(assetScp.args.slice(-3), [
-    path.join(REPO_ROOT, "hooks", "hermes-plugin", "plugin.yaml"),
-    path.join(REPO_ROOT, "hooks", "hermes-plugin", "__init__.py"),
+    path.join(REPO_ROOT, "hooks", "hermes", "hermes-plugin", "plugin.yaml"),
+    path.join(REPO_ROOT, "hooks", "hermes", "hermes-plugin", "__init__.py"),
     `${fixture.profile.host}:${hermesStage}/`,
   ]);
 
@@ -2173,7 +2177,7 @@ test("monitor verification requires a live PID with the exact layout script path
     runtimeKey: "account-default",
     remoteHome: temp,
   });
-  const scriptPath = path.join(layout.claudeHooksDir, "codex-remote-monitor.js");
+  const scriptPath = path.join(layout.claudeHooksDir, "codex", "codex-remote-monitor.js");
   const fakeBin = path.join(temp, "test-bin");
   const fakePs = path.join(fakeBin, "ps");
   fs.mkdirSync(path.dirname(scriptPath), { recursive: true });
@@ -2747,10 +2751,11 @@ test("deploy: reuses resolved absolute Node path for all remote installers", asy
     remoteForwardPort: 23333,
   };
   const nodeBin = "/home/me/.nvm/versions/node/v22.1.0/bin/node";
+  const scpHandlers = HOOK_SUBDIRS.map(() => ({ code: 0 }));
   const { spawn, calls } = makeRecordingSpawn([
     { code: 0 }, // mkdir
     { code: 0, stdout: nodeProbeStdout(nodeBin, "v22.1.0", "shell:/bin/bash") },
-    { code: 0 }, // scp
+    ...scpHandlers, // scp, one invocation per layered subfolder
     { code: 0 }, // install-claude
     { code: 0 }, // install-codex
     { code: 0 }, // install-copilot
@@ -2759,11 +2764,11 @@ test("deploy: reuses resolved absolute Node path for all remote installers", asy
   const result = await deploy({ profile, runtime, deps: { spawn, hooksDir, detectRemoteShell: stubPosixShellProbe } });
   assert.equal(result.ok, true);
 
-  const installCommands = calls.slice(3, 6).map((c) => c.args[c.args.length - 1]);
+  const installCommands = calls.slice(-3).map((c) => c.args[c.args.length - 1]);
   assert.deepEqual(installCommands, [
-    `'${nodeBin}' "$HOME/.claude/hooks/install.js" '--remote'`,
-    `'${nodeBin}' "$HOME/.claude/hooks/codex-install.js" '--remote'`,
-    `'${nodeBin}' "$HOME/.claude/hooks/copilot-install.js" '--remote'`,
+    `'${nodeBin}' "$HOME/.claude/hooks/claude-code/install.js" '--remote'`,
+    `'${nodeBin}' "$HOME/.claude/hooks/codex/codex-install.js" '--remote'`,
+    `'${nodeBin}' "$HOME/.claude/hooks/copilot-cli/copilot-install.js" '--remote'`,
   ]);
   for (const command of installCommands) {
     assert.equal(command.includes(" node "), false);
@@ -2786,7 +2791,7 @@ test("deploy: verifies stale persisted Node metadata before using it", async () 
     { code: 0 }, // mkdir
     { code: 127, stderr: "/stale/node: not found" }, // cached node verification
     { code: 0, stdout: nodeProbeStdout(nodeBin, "v22.1.0", "shell:/bin/bash") }, // full probe
-    { code: 0 }, // scp
+    ...HOOK_SUBDIRS.map(() => ({ code: 0 })), // scp, one invocation per layered subfolder
     { code: 0 }, // install-claude
     { code: 0 }, // install-codex
     { code: 0 }, // install-copilot
@@ -2796,7 +2801,8 @@ test("deploy: verifies stale persisted Node metadata before using it", async () 
   assert.equal(result.ok, true);
   assert.equal(result.remoteNode.nodeBin, nodeBin);
   assert.ok(calls[1].args[calls[1].args.length - 1].includes("/stale/node"));
-  assert.ok(calls[4].args[calls[4].args.length - 1].startsWith(`'${nodeBin}'`));
+  const installCommands = calls.slice(-3).map((c) => c.args[c.args.length - 1]);
+  assert.ok(installCommands.every((cmd) => cmd.startsWith(`'${nodeBin}'`)), installCommands.join("\n"));
 });
 
 test("deploy: with hostPrefix triggers host-prefix step via ssh stdin", async () => {
@@ -2811,7 +2817,7 @@ test("deploy: with hostPrefix triggers host-prefix step via ssh stdin", async ()
   const { spawn, calls } = makeRecordingSpawn([
     { code: 0 }, // mkdir
     { code: 0, stdout: nodeProbeStdout("/usr/bin/node", "v20.0.0") },
-    { code: 0 }, // scp
+    ...HOOK_SUBDIRS.map(() => ({ code: 0 })), // scp, one invocation per layered subfolder
     (child) => {
       // host-prefix step: capture stdin
       queueMicrotask(() => {
@@ -2828,8 +2834,8 @@ test("deploy: with hostPrefix triggers host-prefix step via ssh stdin", async ()
   const result = await deploy({ profile, runtime, deps: { spawn, hooksDir, detectRemoteShell: stubPosixShellProbe } });
   assert.equal(result.ok, true);
   assert.equal(capturedStdin, "raspberry");
-  // The 4th call (index 3) must be the host-prefix ssh: cat > ~/.claude/hooks/clawd-host-prefix
-  const hpCall = calls[3];
+  // The host-prefix ssh follows the mkdir/check-node/scp calls.
+  const hpCall = calls[INSTALL_CALL_OFFSET];
   assert.equal(hpCall.command, "ssh");
   const remoteCmd = hpCall.args[hpCall.args.length - 1];
   assert.equal(remoteCmd, "cat > ~/.claude/hooks/clawd-host-prefix");
@@ -2890,7 +2896,9 @@ test("deploy: aborts when local hook file is missing", async () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "remote-ssh-deploy-"));
   try {
     // Write only one file — the rest are missing.
-    fs.writeFileSync(path.join(tmpDir, HOOK_FILES[0]), "// stub");
+    const onlyFile = path.join(tmpDir, ...HOOK_FILES[0].split("/"));
+    fs.mkdirSync(path.dirname(onlyFile), { recursive: true });
+    fs.writeFileSync(onlyFile, "// stub");
     const profile = { id: "p1", host: "pi", remoteForwardPort: 23333 };
     const { spawn } = makeRecordingSpawn([]);
     const runtime = makeRuntimeStub();
@@ -2935,9 +2943,9 @@ test("deploy: install-claude failure is non-fatal (best-effort)", async () => {
   const hooksDir = path.join(REPO_ROOT, "hooks");
   const profile = { id: "p1", host: "pi", remoteForwardPort: 23333 };
   const { spawn } = makeRecordingSpawn([
-    { code: 0 },
+    { code: 0 }, // mkdir
     { code: 0, stdout: nodeProbeStdout("/usr/bin/node", "v20") },
-    { code: 0 },
+    ...HOOK_SUBDIRS.map(() => ({ code: 0 })), // scp, one invocation per layered subfolder
     { code: 1, stderr: "install.js failed" }, // install-claude
     { code: 0 }, // install-codex
     { code: 0 }, // install-copilot
@@ -2971,7 +2979,7 @@ test("startCodexMonitor pre-cleans then launches new monitor", async () => {
   assert.match(cleanCmd, /;\s*true\s*$/, "must terminate with `; true` so exit code is 0 even on missing pid");
   // Second call: launch with port + writes new PID file
   const startCmd = calls[1].args[calls[1].args.length - 1];
-  assert.match(startCmd, /nohup '\/usr\/bin\/node' "\$HOME\/\.claude\/hooks\/codex-remote-monitor\.js" '--port' '23335'/);
+  assert.match(startCmd, /nohup '\/usr\/bin\/node' "\$HOME\/\.claude\/hooks\/codex\/codex-remote-monitor\.js" '--port' '23335'/);
   assert.match(startCmd, /echo \$! > ~\/\.clawd-codex-monitor\.pid/);
 });
 

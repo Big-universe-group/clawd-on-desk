@@ -23,7 +23,28 @@ const path = require("path");
 
 const HOOKS_DIR = path.join(__dirname, "..", "..", "..", "hooks");
 const PROBE = path.join(__dirname, "..", "..", "helpers", "hook-offline-probe.js");
-const pc = require("../../../hooks/pid-cache");
+const pc = require("../../../hooks/shared/pid-cache");
+
+// The flat hooks/ directory is now a layered tree (hooks/<agent-id>/...), but
+// every basename is unchanged and unique — it is the ownership marker. This
+// index keeps the assertions below naming adapters by basename, as before.
+const HOOK_PATHS = (() => {
+  const index = new Map();
+  const walk = (dir) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else index.set(entry.name, full);
+    }
+  };
+  walk(HOOKS_DIR);
+  return index;
+})();
+const hookPath = (name) => {
+  const found = HOOK_PATHS.get(name);
+  assert.ok(found, `hook ${name} not found under ${HOOKS_DIR}`);
+  return found;
+};
 
 // Full public metadata shape the resolver returns — adapters destructure all of
 // these, so the capture stub must provide every field.
@@ -54,7 +75,7 @@ describe("#634 ctx contract — buildStateBody seams", () => {
   after(() => { if (hadRemote !== undefined) process.env.CLAWD_REMOTE = hadRemote; });
 
   it("kimi: lifecycle map + prefixed-default is not cacheable", () => {
-    const mod = require("../../../hooks/kimi-hook.js");
+    const mod = require("../../../hooks/kimi-cli/kimi-hook.js");
     for (const [event, lifecycle] of [
       ["SessionStart", "start"], ["UserPromptSubmit", "prompt"],
       ["SessionEnd", "end"], ["PreToolUse", "event"], ["Stop", "event"],
@@ -75,7 +96,7 @@ describe("#634 ctx contract — buildStateBody seams", () => {
   });
 
   it("codex: state + permission bodies share the guard; Stop is not end", () => {
-    const mod = require("../../../hooks/codex-hook.js");
+    const mod = require("../../../hooks/codex/codex-hook.js");
     for (const [event, lifecycle] of [
       ["SessionStart", "start"], ["UserPromptSubmit", "prompt"], ["Stop", "event"], ["PreToolUse", "event"],
     ]) {
@@ -93,7 +114,7 @@ describe("#634 ctx contract — buildStateBody seams", () => {
   });
 
   it("copilot: camelCase lifecycle map; permission body uses the event lifecycle", () => {
-    const mod = require("../../../hooks/copilot-hook.js");
+    const mod = require("../../../hooks/copilot-cli/copilot-hook.js");
     for (const [event, lifecycle] of [
       ["sessionStart", "start"], ["userPromptSubmitted", "prompt"],
       ["sessionEnd", "end"], ["preToolUse", "event"], ["agentStop", "event"],
@@ -110,7 +131,7 @@ describe("#634 ctx contract — buildStateBody seams", () => {
   });
 
   it("qwen-code: state + permission bodies; raw-id guard beats the prefixed fallback", () => {
-    const mod = require("../../../hooks/qwen-code-hook.js");
+    const mod = require("../../../hooks/qwen-code/qwen-code-hook.js");
     for (const [event, lifecycle] of [
       ["SessionStart", "start"], ["UserPromptSubmit", "prompt"], ["SessionEnd", "end"], ["PreToolUse", "event"],
     ]) {
@@ -141,7 +162,7 @@ describe("#634 ctx contract — buildStateBody seams", () => {
 
 describe("#634 ctx contract — sendHookEvent seams", () => {
   it("gemini: BeforeAgent is the prompt equivalent; gemini:default not cacheable", async () => {
-    const mod = require("../../../hooks/gemini-hook.js");
+    const mod = require("../../../hooks/gemini-cli/gemini-hook.js");
     const send = mod.sendHookEvent || mod.__test.sendHookEvent;
     for (const [event, lifecycle] of [
       ["SessionStart", "start"], ["BeforeAgent", "prompt"], ["SessionEnd", "end"], ["BeforeTool", "event"],
@@ -167,7 +188,7 @@ describe("#634 ctx contract — sendHookEvent seams", () => {
     ["qwenwork-hook.js", "qwenwork"], // #843
   ]) {
     it(`${ns}: SessionStart/UserPromptSubmit/SessionEnd map; default ids not cacheable`, async () => {
-      const mod = require(`../../../hooks/${file}`);
+      const mod = require(hookPath(file));
       for (const [event, lifecycle] of [
         ["SessionStart", "start"], ["UserPromptSubmit", "prompt"], ["SessionEnd", "end"],
         ["PreToolUse", "event"], ["Stop", "event"],
@@ -197,7 +218,7 @@ describe("#634 ctx contract — sendHookEvent seams", () => {
   // rather than inventing a cwd fallback that would key a different cache file
   // from the one the session's earlier events wrote.
   it("qwenwork: a cwd-less SessionEnd degrades instead of guessing a cache key", async () => {
-    const mod = require("../../../hooks/qwenwork-hook.js");
+    const mod = require("../../../hooks/qwenwork/qwenwork-hook.js");
 
     const cap = capture();
     await mod.sendHookEvent({ hook_event_name: "SessionEnd", session_id: "qw-end" }, "", { env: {}, resolvePid: cap, postState: stubPost });
@@ -215,7 +236,7 @@ describe("#634 ctx contract — sendHookEvent seams", () => {
   });
 
   it("qwenwork: permission events are state-only and never resolve a pid at all", async () => {
-    const mod = require("../../../hooks/qwenwork-hook.js");
+    const mod = require("../../../hooks/qwenwork/qwenwork-hook.js");
     for (const event of ["PermissionRequest", "PermissionDenied"]) {
       const cap = capture();
       const result = await mod.sendHookEvent(
@@ -230,7 +251,7 @@ describe("#634 ctx contract — sendHookEvent seams", () => {
   });
 
   it("antigravity: every event uses the event lifecycle; only an explicit conversation id is cacheable", async () => {
-    const mod = require("../../../hooks/antigravity-hook.js");
+    const mod = require("../../../hooks/antigravity-cli/antigravity-hook.js");
     const send = mod.sendHookEvent || (mod.__test && mod.__test.sendHookEvent);
     assert.strictEqual(typeof send, "function", "sendHookEvent seam");
     const deps = (cap) => ({ env: {}, resolvePid: cap, postState: stubPost, postPermission: stubPost });
@@ -275,7 +296,7 @@ describe("#634 ctx contract — sendHookEvent seams", () => {
   });
 
   it("antigravity: cache key stays stable while toolCall.args.Cwd varies within one conversation", async () => {
-    const mod = require("../../../hooks/antigravity-hook.js");
+    const mod = require("../../../hooks/antigravity-cli/antigravity-hook.js");
     const send = mod.sendHookEvent || (mod.__test && mod.__test.sendHookEvent);
     const deps = (cap) => ({ env: {}, resolvePid: cap, postState: stubPost, postPermission: stubPost });
 
@@ -352,7 +373,7 @@ describe("#634 subprocess — cache hits spawn nothing; kiro degrades gracefully
       CLAWD_PROBE_OUT: probeOut,
     };
     delete env.CLAWD_REMOTE;
-    const result = spawnSync(process.execPath, ["--require", PROBE, path.join(HOOKS_DIR, name)], {
+    const result = spawnSync(process.execPath, ["--require", PROBE, hookPath(name)], {
       input: `${JSON.stringify(payload)}\n`,
       encoding: "utf8", windowsHide: true, timeout: 20000, env,
     });
@@ -522,21 +543,28 @@ describe("#634 consumer contract — ctx or explicit exemption", () => {
   ]);
 
   it("every createPidResolver consumer passes a cache context or is exempted", () => {
-    const consumers = fs.readdirSync(HOOKS_DIR)
-      .filter((f) => f.endsWith("-hook.js"))
-      .filter((f) => fs.readFileSync(path.join(HOOKS_DIR, f), "utf8").includes("createPidResolver("));
+    const consumers = [];
+    const walk = (dir) => {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) { walk(full); continue; }
+        if (!entry.name.endsWith("-hook.js")) continue;
+        if (fs.readFileSync(full, "utf8").includes("createPidResolver(")) consumers.push([entry.name, full]);
+      }
+    };
+    walk(HOOKS_DIR);
     assert.ok(consumers.length >= 14, "sanity: the resolver consumers are all visible to this scan");
-    const bare = consumers.filter((f) => {
-      if (EXEMPT.has(f)) return false;
-      return !fs.readFileSync(path.join(HOOKS_DIR, f), "utf8").includes('namespace: "');
-    });
+    const bare = consumers.filter(([name, full]) => {
+      if (EXEMPT.has(name)) return false;
+      return !fs.readFileSync(full, "utf8").includes('namespace: "');
+    }).map(([name]) => name);
     assert.deepStrictEqual(bare, [],
       "these adapters call createPidResolver but never build a cache context — migrate them or add an explicit exemption with a reason");
   });
 
   it("exemptions stay honest — an exempted file must still be a consumer", () => {
     for (const f of EXEMPT) {
-      const p = path.join(HOOKS_DIR, f);
+      const p = hookPath(f);
       assert.ok(fs.existsSync(p), `${f} exempted but missing`);
       assert.ok(fs.readFileSync(p, "utf8").includes("createPidResolver("), `${f} exempted but no longer a consumer — drop the exemption`);
     }

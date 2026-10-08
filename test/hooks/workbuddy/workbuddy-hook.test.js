@@ -13,8 +13,8 @@ const {
   isWorkBuddyMainProcessCommand,
   getWorkBuddyPlatformConfig,
   getWorkBuddyPidResolverOptions,
-} = require("../../../hooks/workbuddy-hook");
-const { normalizePosixProcessName } = require("../../../hooks/shared-process");
+} = require("../../../hooks/workbuddy/workbuddy-hook");
+const { normalizePosixProcessName } = require("../../../hooks/shared/shared-process");
 
 describe("WorkBuddy hook runtime", () => {
   it("maps lifecycle events to idle / thinking / sleeping", () => {
@@ -247,7 +247,7 @@ describe("issue #655: WorkBuddy Windows agent_pid", () => {
 // every turn; without preserve_state that late idle SessionStart would flip a
 // running turn back to idle.
 describe("issue #655: WorkBuddy SessionStart preserve_state", () => {
-  const HOOK = path.resolve(__dirname, "..", "..", "..", "hooks", "workbuddy-hook.js");
+  const HOOK = path.resolve(__dirname, "..", "..", "..", "hooks", "workbuddy", "workbuddy-hook.js");
   let hookHarness;
 
   before(() => {
@@ -355,7 +355,7 @@ describe("WorkBuddy hook session title (#648)", () => {
 // a subprocess and asserts the three things that matter: exit code, exact
 // stdout bytes, and the number of outbound HTTP attempts.
 describe("WorkBuddy hook session_id filter (#618 / #648) — real subprocess", () => {
-  const HOOK = path.resolve(__dirname, "..", "..", "..", "hooks", "workbuddy-hook.js");
+  const HOOK = path.resolve(__dirname, "..", "..", "..", "hooks", "workbuddy", "workbuddy-hook.js");
   let hookHarness;
 
   before(() => {

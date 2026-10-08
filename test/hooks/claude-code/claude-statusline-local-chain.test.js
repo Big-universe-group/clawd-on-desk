@@ -7,11 +7,11 @@ const os = require("node:os");
 const path = require("node:path");
 const { spawnSync } = require("node:child_process");
 const { EventEmitter } = require("node:events");
-const { registerClaudeStatusline, unregisterClaudeStatusline } = require("../../../hooks/install");
+const { registerClaudeStatusline, unregisterClaudeStatusline } = require("../../../hooks/claude-code/install");
 const {
   LOCAL_CHAIN_FLAG, LOCAL_CHAIN_FILE, statuslineFingerprint, readLocalChainRecord, resolveLocalChainShell,
-} = require("../../../hooks/claude-statusline-local-chain");
-const { __test: adapter } = require("../../../hooks/claude-statusline");
+} = require("../../../hooks/claude-code/claude-statusline-local-chain");
+const { __test: adapter } = require("../../../hooks/claude-code/claude-statusline");
 const dirs = [];
 const original = { type: "command", command: "printf 'original %s\\n' 'a & b'", padding: 3, refreshInterval: 7, hideVimModeIndicator: true };
 
@@ -287,7 +287,7 @@ it(`real local ${shellMode} child retains JSON, cwd, environment and stdout whil
   registerClaudeStatusline({ ...f.opts, chainExisting: true });
   const record = readLocalChainRecord(f.localChainSidecarPath);
   const payload = { session_id: "fixture-only", custom: "中文 ' & $ `", rate_limits: { seven_day: { used_percentage: 12 } } };
-  const harness = `require(${JSON.stringify(require.resolve("../../../hooks/claude-statusline"))}).__test.main({argv:${JSON.stringify([LOCAL_CHAIN_FLAG, record.id])},localChainSidecarPath:${JSON.stringify(f.localChainSidecarPath)},${shellMode === "powershell" ? 'shellExists:(p)=>p.endsWith("powershell.exe"),' : ""}postState:(_b,_o,done)=>done(false)});`;
+  const harness = `require(${JSON.stringify(require.resolve("../../../hooks/claude-code/claude-statusline"))}).__test.main({argv:${JSON.stringify([LOCAL_CHAIN_FLAG, record.id])},localChainSidecarPath:${JSON.stringify(f.localChainSidecarPath)},${shellMode === "powershell" ? 'shellExists:(p)=>p.endsWith("powershell.exe"),' : ""}postState:(_b,_o,done)=>done(false)});`;
   const env = { ...process.env, CHAIN_TEST_MARKER: "kept" };
   if (shellMode === "powershell") {
     for (const key of Object.keys(env)) if (key.toUpperCase() === "CLAUDE_CODE_GIT_BASH_PATH") delete env[key];
@@ -310,7 +310,7 @@ it(`real local ${shellMode} timeout removes only its own child tree`, { skip: sh
   const script = path.join(f.dir, "hung.cjs");
   fs.writeFileSync(script, 'const child=require("child_process").spawn(process.execPath,["-e","setTimeout(()=>{},30000)"],{stdio:"ignore"});console.log(JSON.stringify({parent:process.pid,child:child.pid}));setTimeout(()=>{},30000);');
   const command = `node ${JSON.stringify(script.replace(/\\/g, "/"))}`;
-  const harness = `require(${JSON.stringify(require.resolve("../../../hooks/claude-statusline"))}).__test.runChainedStatusLine(${JSON.stringify(command)},"{}",{localChain:true,chainCapMs:1500,${shellMode === "powershell" ? 'shellExists:(p)=>p.endsWith("powershell.exe"),' : ""}}).then(r=>console.log(r));`;
+  const harness = `require(${JSON.stringify(require.resolve("../../../hooks/claude-code/claude-statusline"))}).__test.runChainedStatusLine(${JSON.stringify(command)},"{}",{localChain:true,chainCapMs:1500,${shellMode === "powershell" ? 'shellExists:(p)=>p.endsWith("powershell.exe"),' : ""}}).then(r=>console.log(r));`;
   const env = { ...process.env };
   if (shellMode === "powershell") {
     for (const key of Object.keys(env)) if (key.toUpperCase() === "CLAUDE_CODE_GIT_BASH_PATH") delete env[key];

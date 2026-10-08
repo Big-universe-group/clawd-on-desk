@@ -3,7 +3,7 @@
 const { describe, it } = require("node:test");
 const assert = require("node:assert");
 
-const { resolveClaudeRateLimitQuota, resolveClaudeModelLabel } = require("../../../hooks/claude-rate-limits");
+const { resolveClaudeRateLimitQuota, resolveClaudeModelLabel } = require("../../../hooks/claude-code/claude-rate-limits");
 
 describe("Claude Code rate limit quota parser", () => {
   it("maps five_hour and seven_day into claudeFiveHour/claudeWeekly, converting resets_at to epoch-ms", () => {

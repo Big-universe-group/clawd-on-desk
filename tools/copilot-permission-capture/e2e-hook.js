@@ -19,7 +19,7 @@ const http = require("http");
 const path = require("path");
 const { spawn } = require("child_process");
 
-const HOOK_SCRIPT = path.resolve(__dirname, "..", "..", "hooks", "copilot-hook.js");
+const HOOK_SCRIPT = path.resolve(__dirname, "..", "..", "hooks", "copilot-cli", "copilot-hook.js");
 const PORT = 23333;
 
 const SAMPLE_PAYLOAD = {

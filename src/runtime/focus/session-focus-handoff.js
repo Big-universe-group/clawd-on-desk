@@ -2,7 +2,7 @@
 
 const path = require("node:path");
 const { spawn } = require("node:child_process");
-const { discoverDshDesktopSync } = require("../../../hooks/dsh-install");
+const { discoverDshDesktopSync } = require("../../../hooks/deepseek-harness/dsh-install");
 
 const DSH_DESKTOP_EXE_NAME = "DeepSeek Harness.exe";
 // A GUI launch cannot be proven, but the promise must not hang: a child that

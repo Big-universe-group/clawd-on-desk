@@ -22,7 +22,7 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 
-const pc = require("../../../hooks/pid-cache");
+const pc = require("../../../hooks/shared/pid-cache");
 const { loadSharedProcessWithMock } = require("../../helpers/load-shared-process-with-mock");
 
 // A string that could only have come from the raw command line.

@@ -10,7 +10,7 @@ const {
   buildCodexStateHookCommand,
   registerCodexHooks,
   unregisterCodexHooks,
-} = require("../../../hooks/codex-install");
+} = require("../../../hooks/codex/codex-install");
 const {
   CODEX_WSL_INTEROP_ARG,
   CODEX_WINDOWS_STABLE_ARG,
@@ -23,8 +23,8 @@ const {
   removeStableCodexHookLauncher,
   stableCodexHookPaths,
   windowsPathToWslPath,
-} = require("../../../hooks/codex-install-utils");
-const { CODEX_DEBUG_HOOK_EVENTS, registerCodexDebugHooks } = require("../../../hooks/codex-debug-install");
+} = require("../../../hooks/codex/codex-install-utils");
+const { CODEX_DEBUG_HOOK_EVENTS, registerCodexDebugHooks } = require("../../../hooks/codex/codex-debug-install");
 
 const MARKER = "codex-hook.js";
 const DEBUG_MARKER = "codex-debug-hook.js";
@@ -96,7 +96,7 @@ describe("Codex official hook installer", () => {
 
   it("cleans the stable launcher beside an explicit hooksPath", () => {
     const codexDir = makeTempCodexDir({});
-    const target = path.resolve(__dirname, "..", "..", "..", "hooks", "codex-hook.js");
+    const target = path.resolve(__dirname, "..", "..", "..", "hooks", "codex", "codex-hook.js");
     const stable = materializeStableCodexHookLauncher(target, {
       codexDir,
       nodeBin: process.execPath,
@@ -132,47 +132,61 @@ describe("Codex official hook installer", () => {
   it("materializes AppImage hook closure outside the transient FUSE mount", () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "clawd-appimage-hook-"));
     tempDirs.push(tmpDir);
-    const sourceDir = path.join(tmpDir, ".mount_Clawd", "hooks");
+    // The packaged AppImage tree is layered: <mount>/hooks/codex/<entry>.js
+    // plus <mount>/hooks/shared/<helper>.js. The materializer's default hooks
+    // root is the parent of the primary entry's agent folder.
+    const hooksRoot = path.join(tmpDir, ".mount_Clawd", "hooks");
+    const entryDir = path.join(hooksRoot, "codex");
+    const sharedDir = path.join(hooksRoot, "shared");
     const materializedRoot = path.join(tmpDir, "stable-hooks");
-    fs.mkdirSync(sourceDir, { recursive: true });
-    fs.writeFileSync(path.join(sourceDir, "entry.js"), 'require("./dep");\n', "utf8");
-    fs.writeFileSync(path.join(sourceDir, "dep.js"), 'require("node:path");\n', "utf8");
-    fs.writeFileSync(path.join(sourceDir, "runtime-helper.js"), 'require("./runtime-dep");\n', "utf8");
-    fs.writeFileSync(path.join(sourceDir, "runtime-dep.js"), 'module.exports = true;\n', "utf8");
+    fs.mkdirSync(entryDir, { recursive: true });
+    fs.mkdirSync(sharedDir, { recursive: true });
+    fs.writeFileSync(path.join(entryDir, "entry.js"), 'require("../shared/dep");\n', "utf8");
+    fs.writeFileSync(path.join(sharedDir, "dep.js"), 'require("node:path");\n', "utf8");
+    fs.writeFileSync(path.join(entryDir, "runtime-helper.js"), 'require("../shared/runtime-dep");\n', "utf8");
+    fs.writeFileSync(path.join(sharedDir, "runtime-dep.js"), 'module.exports = true;\n', "utf8");
 
-    const target = materializeAppImageHookScript(path.join(sourceDir, "entry.js"), {
+    const target = materializeAppImageHookScript(path.join(entryDir, "entry.js"), {
       appImagePath: "/opt/Clawd-on-Desk.AppImage",
       materializedRoot,
-      extraEntryPaths: [path.join(sourceDir, "runtime-helper.js")],
+      extraEntryPaths: [path.join(entryDir, "runtime-helper.js")],
     });
 
     assert.ok(target.startsWith(`${materializedRoot}${path.sep}`));
     assert.ok(!target.includes(".mount_Clawd"));
-    assert.strictEqual(fs.readFileSync(target, "utf8"), 'require("./dep");\n');
-    assert.strictEqual(fs.readFileSync(path.join(path.dirname(target), "dep.js"), "utf8"), 'require("node:path");\n');
+    const generationDir = path.dirname(path.dirname(target));
     assert.strictEqual(
-      fs.readFileSync(path.join(path.dirname(target), "runtime-helper.js"), "utf8"),
-      'require("./runtime-dep");\n'
+      path.relative(generationDir, target).split(path.sep).join("/"),
+      "codex/entry.js"
+    );
+    assert.strictEqual(fs.readFileSync(target, "utf8"), 'require("../shared/dep");\n');
+    assert.strictEqual(
+      fs.readFileSync(path.join(generationDir, "shared", "dep.js"), "utf8"),
+      'require("node:path");\n'
     );
     assert.strictEqual(
-      fs.readFileSync(path.join(path.dirname(target), "runtime-dep.js"), "utf8"),
+      fs.readFileSync(path.join(path.dirname(target), "runtime-helper.js"), "utf8"),
+      'require("../shared/runtime-dep");\n'
+    );
+    assert.strictEqual(
+      fs.readFileSync(path.join(generationDir, "shared", "runtime-dep.js"), "utf8"),
       "module.exports = true;\n"
     );
     assert.strictEqual(
-      fs.readFileSync(path.join(path.dirname(target), ".clawd-appimage-path"), "utf8"),
+      fs.readFileSync(path.join(generationDir, ".clawd-appimage-path"), "utf8"),
       "/opt/Clawd-on-Desk.AppImage\n"
     );
-    assert.strictEqual(materializeAppImageHookScript(path.join(sourceDir, "entry.js"), {
+    assert.strictEqual(materializeAppImageHookScript(path.join(entryDir, "entry.js"), {
       appImagePath: "/opt/Clawd-on-Desk.AppImage",
       materializedRoot,
-      extraEntryPaths: [path.join(sourceDir, "runtime-helper.js")],
+      extraEntryPaths: [path.join(entryDir, "runtime-helper.js")],
     }), target);
 
     fs.rmSync(path.join(path.dirname(target), "runtime-helper.js"));
-    assert.strictEqual(materializeAppImageHookScript(path.join(sourceDir, "entry.js"), {
+    assert.strictEqual(materializeAppImageHookScript(path.join(entryDir, "entry.js"), {
       appImagePath: "/opt/Clawd-on-Desk.AppImage",
       materializedRoot,
-      extraEntryPaths: [path.join(sourceDir, "runtime-helper.js")],
+      extraEntryPaths: [path.join(entryDir, "runtime-helper.js")],
     }), target);
     assert.ok(fs.existsSync(path.join(path.dirname(target), "runtime-helper.js")));
   });
@@ -199,11 +213,18 @@ describe("Codex official hook installer", () => {
     assert.ok(stableHook.includes(materializedRoot));
     assert.ok(fs.existsSync(result.stableLauncher.launcherPath));
     assert.ok(fs.existsSync(stableHook));
-    const stableAutoStart = path.join(path.dirname(stableHook), "auto-start.js");
+    // The generation keeps the layered tree: <gen>/codex/codex-hook.js plus
+    // <gen>/claude-code/auto-start.js, with the marker at <gen> itself.
+    const generationDir = path.dirname(path.dirname(stableHook));
+    assert.strictEqual(
+      path.relative(generationDir, stableHook).split(path.sep).join("/"),
+      "codex/codex-hook.js"
+    );
+    const stableAutoStart = path.join(generationDir, "claude-code", "auto-start.js");
     assert.ok(fs.existsSync(stableAutoStart));
     assert.doesNotThrow(() => require(stableAutoStart));
     assert.strictEqual(
-      fs.readFileSync(path.join(path.dirname(stableHook), ".clawd-appimage-path"), "utf8"),
+      fs.readFileSync(path.join(generationDir, ".clawd-appimage-path"), "utf8"),
       "/opt/Clawd-on-Desk.AppImage\n"
     );
   });
@@ -349,8 +370,8 @@ describe("Codex official hook installer", () => {
 
   it("keeps Windows and WSL launcher ownership separate in a shared CODEX_HOME", () => {
     const codexDir = makeTempCodexDir({});
-    const windowsTargetA = path.resolve(__dirname, "..", "..", "..", "hooks", "codex-hook.js");
-    const windowsTargetB = path.resolve(__dirname, "..", "..", "..", "hooks", "codex-debug-hook.js");
+    const windowsTargetA = path.resolve(__dirname, "..", "..", "..", "hooks", "codex", "codex-hook.js");
+    const windowsTargetB = path.resolve(__dirname, "..", "..", "..", "hooks", "codex", "codex-debug-hook.js");
     const posixTarget = path.join(path.dirname(codexDir), "wsl-source", "codex-hook.js");
     fs.mkdirSync(path.dirname(posixTarget), { recursive: true });
     fs.writeFileSync(posixTarget, "process.stdout.write('{}');\n", "utf8");
@@ -400,7 +421,7 @@ describe("Codex official hook installer", () => {
 
   it("preserves a WSL wrapper and reports invalid when its manifest metadata drifts", () => {
     const codexDir = makeTempCodexDir({});
-    const windowsTarget = path.resolve(__dirname, "..", "..", "..", "hooks", "codex-hook.js");
+    const windowsTarget = path.resolve(__dirname, "..", "..", "..", "hooks", "codex", "codex-hook.js");
     const posixTarget = path.join(path.dirname(codexDir), "wsl-source", "codex-hook.js");
     fs.mkdirSync(path.dirname(posixTarget), { recursive: true });
     fs.writeFileSync(posixTarget, "process.stdout.write('{}');\n", "utf8");
@@ -412,7 +433,7 @@ describe("Codex official hook installer", () => {
     const posixSource = fs.readFileSync(wsl.posixLauncherPath, "utf8");
     const manifest = readJson(wsl.posixManifestPath);
     manifest.mode = "garbage";
-    manifest.target = path.resolve(__dirname, "..", "..", "..", "hooks", "codex-debug-hook.js");
+    manifest.target = path.resolve(__dirname, "..", "..", "..", "hooks", "codex", "codex-debug-hook.js");
     fs.writeFileSync(wsl.posixManifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
     const posixCommand = buildStableCodexHookCommand(wsl.posixLauncherPath, "linux");
 
@@ -542,7 +563,7 @@ describe("Codex official hook installer", () => {
     const command = settings.hooks.SessionStart[0].hooks[0].command;
     assert.strictEqual(
       command,
-      "CLAWD_REMOTE='1' CLAWD_SSH_REMOTE='1' \"/usr/local/bin/node\" \"" + path.resolve(__dirname, "..", "..", "..", "hooks", "codex-hook.js").replace(/\\/g, "/") + "\""
+      "CLAWD_REMOTE='1' CLAWD_SSH_REMOTE='1' \"/usr/local/bin/node\" \"" + path.resolve(__dirname, "..", "..", "..", "hooks", "codex", "codex-hook.js").replace(/\\/g, "/") + "\""
     );
   });
 
@@ -576,7 +597,7 @@ describe("Codex official hook installer", () => {
     assert.strictEqual(result.added, CODEX_OFFICIAL_HOOK_EVENTS.length);
     const settings = readJson(path.join(codexDir, "hooks.json"));
     const hook = settings.hooks.SessionStart[0].hooks[0];
-    const hookScript = path.resolve(__dirname, "..", "..", "..", "hooks", "codex-hook.js").replace(/\\/g, "/");
+    const hookScript = path.resolve(__dirname, "..", "..", "..", "hooks", "codex", "codex-hook.js").replace(/\\/g, "/");
     // PowerShell env prefix lives on commandWindows (what Windows codex runs).
     assert.strictEqual(
       hook.commandWindows,
@@ -689,10 +710,10 @@ describe("Codex official hook installer", () => {
 // POSIX, so Windows installs must write both fields: PowerShell syntax in
 // commandWindows, a WSL-interop (Windows node.exe) form in command.
 describe("Codex hooks on a Windows host write dual command fields (#544)", () => {
-  const HOOK_SCRIPT = path.resolve(__dirname, "..", "..", "..", "hooks", "codex-hook.js").replace(/\\/g, "/");
+  const HOOK_SCRIPT = path.resolve(__dirname, "..", "..", "..", "hooks", "codex", "codex-hook.js").replace(/\\/g, "/");
   const {
     buildCodexHookPosixInteropCommand,
-  } = require("../../../hooks/codex-install-utils");
+  } = require("../../../hooks/codex/codex-install-utils");
 
   it("translates Windows absolute paths to WSL /mnt form", () => {
     assert.strictEqual(

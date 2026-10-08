@@ -10,22 +10,22 @@ const {
   findOpencodePluginEntry,
 } = require("../../../src/agents/doctor/integrations");
 const { getAgentDescriptor } = require("../../../src/agents/doctor/descriptors");
-const { GEMINI_HOOK_EVENTS } = require("../../../hooks/gemini-install");
-const { ANTIGRAVITY_HOOK_EVENTS, __test: antigravityInstallTest } = require("../../../hooks/antigravity-install");
-const { QWEN_CODE_HOOK_EVENTS, buildQwenCodeHookCommand } = require("../../../hooks/qwen-code-install");
-const { HOOK_ENTRIES: CODEWHALE_HOOK_ENTRIES } = require("../../../hooks/codewhale-install");
-const { QODER_HOOK_EVENTS, buildQoderHookCommand } = require("../../../hooks/qoder-install");
-const { KIMI_HOOK_EVENTS } = require("../../../hooks/kimi-install");
+const { GEMINI_HOOK_EVENTS } = require("../../../hooks/gemini-cli/gemini-install");
+const { ANTIGRAVITY_HOOK_EVENTS, __test: antigravityInstallTest } = require("../../../hooks/antigravity-cli/antigravity-install");
+const { QWEN_CODE_HOOK_EVENTS, buildQwenCodeHookCommand } = require("../../../hooks/qwen-code/qwen-code-install");
+const { HOOK_ENTRIES: CODEWHALE_HOOK_ENTRIES } = require("../../../hooks/codewhale/codewhale-install");
+const { QODER_HOOK_EVENTS, buildQoderHookCommand } = require("../../../hooks/qoder/qoder-install");
+const { KIMI_HOOK_EVENTS } = require("../../../hooks/kimi-cli/kimi-install");
 const {
   buildCursorHookCommand,
   resolveCursorHookScript,
-} = require("../../../hooks/cursor-install");
+} = require("../../../hooks/cursor-agent/cursor-install");
 const {
   CODEX_WINDOWS_STABLE_ARG,
   buildCodexHookCommand,
   buildStableCodexHookCommand,
   materializeStableCodexHookLauncher,
-} = require("../../../hooks/codex-install-utils");
+} = require("../../../hooks/codex/codex-install-utils");
 const {
   computeCodexHookTrustedHash,
   findCodexHookTrustPositions,
@@ -36,8 +36,8 @@ const {
   buildZcodeHookCommand,
   buildZcodeProcessHook,
   timeoutMsForZcodeEvent,
-} = require("../../../hooks/zcode-install");
-const { TRAECODE_HOOK_EVENTS } = require("../../../hooks/traecode-install");
+} = require("../../../hooks/zcode/zcode-install");
+const { TRAECODE_HOOK_EVENTS } = require("../../../hooks/traecode/traecode-install");
 const {
   BRIDGE_PACKAGE_NAME,
   BRIDGE_PROTOCOL_VERSION,
@@ -45,9 +45,9 @@ const {
   SUPPORTED_DSH_RANGE,
   SUPPORTED_DSH_VERSION,
   __test: dshInstallTest,
-} = require("../../../hooks/dsh-install");
+} = require("../../../hooks/deepseek-harness/dsh-install");
 
-const DSH_BRIDGE_SOURCE_DIR = path.join(__dirname, "..", "..", "..", "hooks", "dsh-clawd-bridge");
+const DSH_BRIDGE_SOURCE_DIR = path.join(__dirname, "..", "..", "..", "hooks", "deepseek-harness", "dsh-clawd-bridge");
 const NO_DSH_DESKTOP = Object.freeze({
   status: "not-found",
   appRoot: null,
@@ -1593,7 +1593,7 @@ describe("checkAgentIntegrations", () => {
   });
 
   it("detects legacy Windows EncodedCommand Qoder hooks even though the marker is base64-wrapped", () => {
-    const { buildWindowsEncodedNodeHookCommand } = require("../../../hooks/json-utils");
+    const { buildWindowsEncodedNodeHookCommand } = require("../../../hooks/shared/json-utils");
     const descriptor = qoderDescriptor();
     const nodeBin = "C:\\Program Files\\nodejs\\node.exe";
     const scriptPath = "D:/app/hooks/qoder-hook.js";
@@ -2829,7 +2829,7 @@ describe("checkAgentIntegrations", () => {
     // eslint-disable-next-line global-require
     const { AGENT_DESCRIPTORS } = require("../../../src/agents/doctor/descriptors");
     // eslint-disable-next-line global-require
-    const { OPENCODE_FAMILY } = require("../../../hooks/opencode-family");
+    const { OPENCODE_FAMILY } = require("../../../hooks/opencode/opencode-family");
     for (const [agentId, cfg] of Object.entries(OPENCODE_FAMILY)) {
       const descriptor = AGENT_DESCRIPTORS.find((d) => d.agentId === agentId);
       assert.ok(descriptor, `family member ${agentId} must have a doctor descriptor`);
@@ -3324,8 +3324,8 @@ describe("kimi legacy permission-mode supplement", () => {
   });
 
   describe("minimax-plugin config mode", () => {
-    const minimaxInstall = require("../../../hooks/minimax-install");
-    const { resolveNodeBin } = require("../../../hooks/server-config");
+    const minimaxInstall = require("../../../hooks/minimax/minimax-install");
+    const { resolveNodeBin } = require("../../../hooks/shared/server-config");
     const PLUGIN_DIR_NAME = minimaxInstall.PLUGIN_DIR_NAME;
 
     function minimaxDescriptor(root) {

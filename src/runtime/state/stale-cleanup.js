@@ -3,7 +3,7 @@
 const {
   isCodexCliOriginator,
   isCodexDesktopOriginator,
-} = require("../../../hooks/codex-originator");
+} = require("../../../hooks/codex/codex-originator");
 const { deriveCodexHomeFromTranscriptPath } = require("../../agents/codex/thread-id");
 const { isWslSourced } = require("../../core/server/remote-process-metadata");
 

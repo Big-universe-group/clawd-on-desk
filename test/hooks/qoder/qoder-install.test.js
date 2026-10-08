@@ -8,8 +8,8 @@ const {
   QODER_HOOK_EVENTS,
   registerQoderHooks,
   unregisterQoderHooks,
-} = require("../../../hooks/qoder-install");
-const { decodeWindowsEncodedCommand } = require("../../../hooks/json-utils");
+} = require("../../../hooks/qoder/qoder-install");
+const { decodeWindowsEncodedCommand } = require("../../../hooks/shared/json-utils");
 
 const tempDirs = [];
 
@@ -122,7 +122,7 @@ describe("Qoder hook installer", () => {
   });
 
   it("migrates a legacy Windows -EncodedCommand entry to the portable form", () => {
-    const { buildWindowsEncodedNodeHookCommand } = require("../../../hooks/json-utils");
+    const { buildWindowsEncodedNodeHookCommand } = require("../../../hooks/shared/json-utils");
     const legacy = buildWindowsEncodedNodeHookCommand(
       "C:\\Program Files\\nodejs\\node.exe",
       "D:/app/hooks/qoder-hook.js",
@@ -211,7 +211,7 @@ describe("Qoder hook installer", () => {
   });
 
   it("uninstall removes only clawd entries (incl. legacy Windows-encoded) and keeps third-party", () => {
-    const { buildWindowsEncodedNodeHookCommand } = require("../../../hooks/json-utils");
+    const { buildWindowsEncodedNodeHookCommand } = require("../../../hooks/shared/json-utils");
     const settingsPath = makeTempSettingsFile({});
     registerQoderHooks({ silent: true, settingsPath, nodeBin: "/usr/local/bin/node", platform: "win32" });
 

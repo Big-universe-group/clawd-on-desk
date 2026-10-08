@@ -89,7 +89,7 @@ function createIntegrationSyncRuntime(options = {}) {
     ? options.preheatDshDesktopDiscovery
     : async () => {
       if (platform !== "win32") return;
-      const { refreshDshDesktopDiscovery } = require("../../hooks/dsh-install.js");
+      const { refreshDshDesktopDiscovery } = require("../../hooks/deepseek-harness/dsh-install.js");
       await refreshDshDesktopDiscovery({});
     };
 
@@ -119,7 +119,7 @@ function createIntegrationSyncRuntime(options = {}) {
         registerHooks,
         registerClaudeStatusline,
         unregisterClaudeStatusline,
-      } = require("../../hooks/install.js");
+      } = require("../../hooks/claude-code/install.js");
       // This branch is a best-effort fallback used only when no server-owned
       // syncClawdHooksImpl is wired (production always wires the operation
       // queue). It does NOT go through preflightClaudeRuntime, so it does not
@@ -168,7 +168,7 @@ function createIntegrationSyncRuntime(options = {}) {
   function syncGeminiHooks() {
     try {
       if (typeof ctx.syncGeminiHooksImpl === "function") return ctx.syncGeminiHooksImpl();
-      const { registerGeminiHooks } = require("../../hooks/gemini-install.js");
+      const { registerGeminiHooks } = require("../../hooks/gemini-cli/gemini-install.js");
       const result = registerGeminiHooks({ silent: true });
       if (hasPositiveCount(result.added) || hasPositiveCount(result.updated)) {
         console.log(`Clawd: synced Gemini hooks (added ${result.added}, updated ${result.updated})`);
@@ -183,7 +183,7 @@ function createIntegrationSyncRuntime(options = {}) {
   function syncAntigravityHooks() {
     try {
       if (typeof ctx.syncAntigravityHooksImpl === "function") return ctx.syncAntigravityHooksImpl();
-      const { registerAntigravityHooks, registerAntigravityStatusline } = require("../../hooks/antigravity-install.js");
+      const { registerAntigravityHooks, registerAntigravityStatusline } = require("../../hooks/antigravity-cli/antigravity-install.js");
       const result = registerAntigravityHooks({ silent: true });
       if (hasPositiveCount(result.added) || hasPositiveCount(result.updated)) {
         console.log(`Clawd: synced Antigravity hooks (added ${result.added}, updated ${result.updated})`);
@@ -214,7 +214,7 @@ function createIntegrationSyncRuntime(options = {}) {
         : { mode: "local" };
       const syncOptions = { ...options, permissionTarget };
       if (typeof ctx.syncCodeBuddyHooksImpl === "function") return ctx.syncCodeBuddyHooksImpl(syncOptions);
-      const { registerCodeBuddyHooks } = require("../../hooks/codebuddy-install.js");
+      const { registerCodeBuddyHooks } = require("../../hooks/codebuddy/codebuddy-install.js");
       const result = registerCodeBuddyHooks({ silent: true, permissionTarget });
       if (hasPositiveCount(result.added) || hasPositiveCount(result.updated)) {
         console.log(`Clawd: synced CodeBuddy hooks (added ${result.added}, updated ${result.updated})`);
@@ -229,7 +229,7 @@ function createIntegrationSyncRuntime(options = {}) {
   function syncWorkBuddyHooks() {
     try {
       if (typeof ctx.syncWorkBuddyHooksImpl === "function") return ctx.syncWorkBuddyHooksImpl();
-      const { registerWorkBuddyHooks } = require("../../hooks/workbuddy-install.js");
+      const { registerWorkBuddyHooks } = require("../../hooks/workbuddy/workbuddy-install.js");
       const result = registerWorkBuddyHooks({ silent: true });
       if (hasPositiveCount(result.added) || hasPositiveCount(result.updated)) {
         console.log(`Clawd: synced WorkBuddy hooks (added ${result.added}, updated ${result.updated})`);
@@ -245,7 +245,7 @@ function createIntegrationSyncRuntime(options = {}) {
   function syncGrokBuildHooks() {
     try {
       if (typeof ctx.syncGrokBuildHooksImpl === "function") return ctx.syncGrokBuildHooksImpl();
-      const { registerGrokHooks } = require("../../hooks/grok-install.js");
+      const { registerGrokHooks } = require("../../hooks/grok-build/grok-install.js");
       const result = registerGrokHooks({ silent: true });
       if (result && result.status === "skipped") {
         return { status: "skipped", reason: "grok-not-installed" };
@@ -263,7 +263,7 @@ function createIntegrationSyncRuntime(options = {}) {
   function syncTraeCodeHooks() {
     try {
       if (typeof ctx.syncTraeCodeHooksImpl === "function") return ctx.syncTraeCodeHooksImpl();
-      const { registerTraeCodeHooks } = require("../../hooks/traecode-install.js");
+      const { registerTraeCodeHooks } = require("../../hooks/traecode/traecode-install.js");
       const result = registerTraeCodeHooks({ silent: true });
       if (hasPositiveCount(result.added) || hasPositiveCount(result.updated)) {
         console.log(`Clawd: synced TraeCode hooks (added ${result.added}, updated ${result.updated})`);
@@ -278,7 +278,7 @@ function createIntegrationSyncRuntime(options = {}) {
   function syncMinimaxHooks() {
     try {
       if (typeof ctx.syncMinimaxHooksImpl === "function") return ctx.syncMinimaxHooksImpl();
-      const { installMinimaxPlugin } = require("../../hooks/minimax-install.js");
+      const { installMinimaxPlugin } = require("../../hooks/minimax/minimax-install.js");
       const result = installMinimaxPlugin({ silent: true });
       if (hasPositiveCount(result.added) || hasPositiveCount(result.updated)) {
         console.log(`Clawd: synced MiniMax Code plugin (added ${result.added}, updated ${result.updated})`);
@@ -293,7 +293,7 @@ function createIntegrationSyncRuntime(options = {}) {
   function syncKiroHooks() {
     try {
       if (typeof ctx.syncKiroHooksImpl === "function") return ctx.syncKiroHooksImpl();
-      const { registerKiroHooks } = require("../../hooks/kiro-install.js");
+      const { registerKiroHooks } = require("../../hooks/kiro-cli/kiro-install.js");
       const result = registerKiroHooks({ silent: true });
       if (hasPositiveCount(result.added) || hasPositiveCount(result.updated)) {
         console.log(`Clawd: synced Kiro hooks (added ${result.added}, updated ${result.updated})`);
@@ -308,7 +308,7 @@ function createIntegrationSyncRuntime(options = {}) {
   function syncKimiHooks() {
     try {
       if (typeof ctx.syncKimiHooksImpl === "function") return ctx.syncKimiHooksImpl();
-      const { registerKimiHooks } = require("../../hooks/kimi-install.js");
+      const { registerKimiHooks } = require("../../hooks/kimi-cli/kimi-install.js");
       const result = registerKimiHooks({ silent: true });
       if (hasPositiveCount(result.added) || hasPositiveCount(result.updated)) {
         console.log(`Clawd: synced Kimi hooks (added ${result.added}, updated ${result.updated})`);
@@ -323,7 +323,7 @@ function createIntegrationSyncRuntime(options = {}) {
   function syncQwenHooks() {
     try {
       if (typeof ctx.syncQwenHooksImpl === "function") return ctx.syncQwenHooksImpl();
-      const { registerQwenCodeHooks } = require("../../hooks/qwen-code-install.js");
+      const { registerQwenCodeHooks } = require("../../hooks/qwen-code/qwen-code-install.js");
       const result = registerQwenCodeHooks({ silent: true });
       if (hasPositiveCount(result.added) || hasPositiveCount(result.updated)) {
         console.log(`Clawd: synced Qwen hooks (added ${result.added}, updated ${result.updated})`);
@@ -338,7 +338,7 @@ function createIntegrationSyncRuntime(options = {}) {
   function syncZcodeHooks() {
     try {
       if (typeof ctx.syncZcodeHooksImpl === "function") return ctx.syncZcodeHooksImpl();
-      const { registerZcodeHooks } = require("../../hooks/zcode-install.js");
+      const { registerZcodeHooks } = require("../../hooks/zcode/zcode-install.js");
       const result = registerZcodeHooks({ silent: true });
       if (hasPositiveCount(result.added) || hasPositiveCount(result.updated)) {
         console.log(`Clawd: synced ZCode hooks (added ${result.added}, updated ${result.updated})`);
@@ -353,7 +353,7 @@ function createIntegrationSyncRuntime(options = {}) {
   function syncCodexHooks() {
     try {
       if (typeof ctx.syncCodexHooksImpl === "function") return ctx.syncCodexHooksImpl();
-      const { registerCodexHooks } = require("../../hooks/codex-install.js");
+      const { registerCodexHooks } = require("../../hooks/codex/codex-install.js");
       const result = registerCodexHooks({ silent: true });
       if (hasPositiveCount(result.added) || hasPositiveCount(result.updated)) {
         console.log(`Clawd: synced Codex hooks (added ${result.added}, updated ${result.updated})`);
@@ -371,7 +371,7 @@ function createIntegrationSyncRuntime(options = {}) {
   function repairCodexHooks(options = {}) {
     try {
       if (typeof ctx.repairCodexHooksImpl === "function") return ctx.repairCodexHooksImpl(options);
-      const { registerCodexHooks } = require("../../hooks/codex-install.js");
+      const { registerCodexHooks } = require("../../hooks/codex/codex-install.js");
       const { added, updated, configChanged, warnings } = registerCodexHooks({
         silent: true,
         forceCodexHooksFeature: options && options.forceCodexHooksFeature === true,
@@ -407,7 +407,7 @@ function createIntegrationSyncRuntime(options = {}) {
     try {
       const result = typeof ctx.syncCursorHooksImpl === "function"
         ? ctx.syncCursorHooksImpl()
-        : require("../../hooks/cursor-install.js").registerCursorHooks({ silent: true });
+        : require("../../hooks/cursor-agent/cursor-install.js").registerCursorHooks({ silent: true });
       if (hasPositiveCount(result.added) || hasPositiveCount(result.updated)) {
         console.log(`Clawd: synced Cursor hooks (added ${result.added}, updated ${result.updated})`);
       }
@@ -421,7 +421,7 @@ function createIntegrationSyncRuntime(options = {}) {
   function syncCopilotHooks() {
     try {
       if (typeof ctx.syncCopilotHooksImpl === "function") return ctx.syncCopilotHooksImpl();
-      const { registerCopilotHooks } = require("../../hooks/copilot-install.js");
+      const { registerCopilotHooks } = require("../../hooks/copilot-cli/copilot-install.js");
       const result = registerCopilotHooks({ silent: true });
       if (hasPositiveCount(result.added) || hasPositiveCount(result.updated)) {
         console.log(`Clawd: synced Copilot hooks (added ${result.added}, updated ${result.updated})`);
@@ -443,7 +443,7 @@ function createIntegrationSyncRuntime(options = {}) {
       if (typeof ctx.syncDeepSeekHarnessPluginImpl === "function") {
         return await ctx.syncDeepSeekHarnessPluginImpl(normalizedOptions);
       }
-      const { syncDeepSeekHarnessIntegration } = require("../../hooks/dsh-install.js");
+      const { syncDeepSeekHarnessIntegration } = require("../../hooks/deepseek-harness/dsh-install.js");
       return await syncDeepSeekHarnessIntegration(normalizedOptions);
     } catch (err) {
       console.warn("Clawd: failed to sync DeepSeek Harness plugin:", err.message);
@@ -462,7 +462,7 @@ function createIntegrationSyncRuntime(options = {}) {
       // homes and startup-vs-interactive lock semantics are lost here.
       const normalizedOptions = { ...options, silent: true };
       if (typeof ctx.syncOpencodePluginImpl === "function") return ctx.syncOpencodePluginImpl(normalizedOptions);
-      const { registerOpencodePlugin } = require("../../hooks/opencode-install.js");
+      const { registerOpencodePlugin } = require("../../hooks/opencode/opencode-install.js");
       const result = registerOpencodePlugin(normalizedOptions);
       if (result.added || result.created) {
         console.log(`Clawd: synced opencode plugin (added=${result.added}, created=${result.created})`);
@@ -487,7 +487,7 @@ function createIntegrationSyncRuntime(options = {}) {
     try {
       const normalizedOptions = { ...options, silent: true };
       if (typeof ctx.syncMimocodePluginImpl === "function") return ctx.syncMimocodePluginImpl(normalizedOptions);
-      const { registerMimocodePlugin } = require("../../hooks/mimocode-install.js");
+      const { registerMimocodePlugin } = require("../../hooks/opencode/mimocode-install.js");
       const result = registerMimocodePlugin(normalizedOptions);
       if (result.added || result.created) {
         console.log(`Clawd: synced mimocode plugin (added=${result.added}, created=${result.created})`);
@@ -505,7 +505,7 @@ function createIntegrationSyncRuntime(options = {}) {
   function syncPiExtension() {
     try {
       if (typeof ctx.syncPiExtensionImpl === "function") return ctx.syncPiExtensionImpl();
-      const { registerPiExtension } = require("../../hooks/pi-install.js");
+      const { registerPiExtension } = require("../../hooks/pi/pi-install.js");
       const result = registerPiExtension({ silent: true });
       if (result.installed && result.updated) {
         console.log("Clawd: synced Pi extension");
@@ -520,7 +520,7 @@ function createIntegrationSyncRuntime(options = {}) {
   function syncOmpExtension() {
     try {
       if (typeof ctx.syncOmpExtensionImpl === "function") return ctx.syncOmpExtensionImpl();
-      const { registerOmpExtension } = require("../../hooks/omp-install.js");
+      const { registerOmpExtension } = require("../../hooks/omp/omp-install.js");
       const result = registerOmpExtension({ silent: true });
       if (result.installed && result.updated) {
         console.log("Clawd: synced OMP extension");
@@ -544,7 +544,7 @@ function createIntegrationSyncRuntime(options = {}) {
   function syncOpenClawPlugin() {
     try {
       if (typeof ctx.syncOpenClawPluginImpl === "function") return ctx.syncOpenClawPluginImpl();
-      const { registerOpenClawPlugin } = require("../../hooks/openclaw-install.js");
+      const { registerOpenClawPlugin } = require("../../hooks/openclaw/openclaw-install.js");
       const result = registerOpenClawPlugin({ silent: true });
       if (result.installed && result.updated) {
         console.log("Clawd: synced OpenClaw plugin");
@@ -559,7 +559,7 @@ function createIntegrationSyncRuntime(options = {}) {
   function repairOpenClawPlugin() {
     try {
       if (typeof ctx.repairOpenClawPluginImpl === "function") return ctx.repairOpenClawPluginImpl();
-      const { registerOpenClawPlugin } = require("../../hooks/openclaw-install.js");
+      const { registerOpenClawPlugin } = require("../../hooks/openclaw/openclaw-install.js");
       const result = registerOpenClawPlugin({ silent: true, useCliFallback: true });
       if (result.status === "error" || result.installed === false) {
         return {
@@ -577,7 +577,7 @@ function createIntegrationSyncRuntime(options = {}) {
   function syncHermesPlugin() {
     try {
       if (typeof ctx.syncHermesPluginImpl === "function") return ctx.syncHermesPluginImpl();
-      const { isHermesInstalled, registerHermesPlugin } = require("../../hooks/hermes-install.js");
+      const { isHermesInstalled, registerHermesPlugin } = require("../../hooks/hermes/hermes-install.js");
       const installed = typeof ctx.isHermesInstalledImpl === "function"
         ? ctx.isHermesInstalledImpl()
         : isHermesInstalled();
@@ -606,7 +606,7 @@ function createIntegrationSyncRuntime(options = {}) {
   function syncQoderHooks() {
     try {
       if (typeof ctx.syncQoderHooksImpl === "function") return ctx.syncQoderHooksImpl();
-      const { registerQoderHooks } = require("../../hooks/qoder-install.js");
+      const { registerQoderHooks } = require("../../hooks/qoder/qoder-install.js");
       const result = registerQoderHooks({ silent: true });
       if (hasPositiveCount(result.added) || hasPositiveCount(result.updated)) {
         console.log(`Clawd: synced Qoder hooks (added ${result.added}, updated ${result.updated})`);
@@ -621,7 +621,7 @@ function createIntegrationSyncRuntime(options = {}) {
   function syncCodewhaleHooks() {
     try {
       if (typeof ctx.syncCodewhaleHooksImpl === "function") return ctx.syncCodewhaleHooksImpl();
-      const { registerCodewhaleHooks } = require("../../hooks/codewhale-install.js");
+      const { registerCodewhaleHooks } = require("../../hooks/codewhale/codewhale-install.js");
       const result = registerCodewhaleHooks({ silent: true });
       if (hasPositiveCount(result.added) || hasPositiveCount(result.updated)) {
         console.log(`Clawd: synced CodeWhale hooks (added ${result.added}, updated ${result.updated})`);
@@ -636,7 +636,7 @@ function createIntegrationSyncRuntime(options = {}) {
   function syncReasonixHooks() {
     try {
       if (typeof ctx.syncReasonixHooksImpl === "function") return ctx.syncReasonixHooksImpl();
-      const { registerReasonixHooks } = require("../../hooks/reasonix-install.js");
+      const { registerReasonixHooks } = require("../../hooks/reasonix/reasonix-install.js");
       const result = registerReasonixHooks({ silent: true });
       if (hasPositiveCount(result.added) || hasPositiveCount(result.updated)) {
         console.log(`Clawd: synced Reasonix hooks (added ${result.added}, updated ${result.updated})`);
@@ -651,7 +651,7 @@ function createIntegrationSyncRuntime(options = {}) {
   function syncQoderWorkHooks() {
     try {
       if (typeof ctx.syncQoderWorkHooksImpl === "function") return ctx.syncQoderWorkHooksImpl();
-      const { registerQoderWorkHooks } = require("../../hooks/qoderwork-install.js");
+      const { registerQoderWorkHooks } = require("../../hooks/qoderwork/qoderwork-install.js");
       const result = registerQoderWorkHooks({ silent: true });
       if (hasPositiveCount(result.added) || hasPositiveCount(result.updated)) {
         console.log(`Clawd: synced QoderWork hooks (added ${result.added}, updated ${result.updated})`);
@@ -666,7 +666,7 @@ function createIntegrationSyncRuntime(options = {}) {
   function syncQwenWorkHooks() {
     try {
       if (typeof ctx.syncQwenWorkHooksImpl === "function") return ctx.syncQwenWorkHooksImpl();
-      const { registerQwenWorkHooks } = require("../../hooks/qwenwork-install.js");
+      const { registerQwenWorkHooks } = require("../../hooks/qwenwork/qwenwork-install.js");
       const result = registerQwenWorkHooks({ silent: true });
       if (hasPositiveCount(result.added) || hasPositiveCount(result.updated)) {
         console.log(`Clawd: synced QwenWork hooks (added ${result.added}, updated ${result.updated})`);
@@ -794,7 +794,7 @@ function createIntegrationSyncRuntime(options = {}) {
       const {
         AGENT_CLEANERS,
         buildCleanupOptionsForHome,
-      } = require("../../hooks/cleanup-integrations.js");
+      } = require("../../hooks/shared/cleanup-integrations.js");
       const uninstall = AGENT_CLEANERS && AGENT_CLEANERS[agentId];
       if (typeof uninstall !== "function") return false;
       if (agentId === "claude-code") stopClaudeSettingsWatcher();

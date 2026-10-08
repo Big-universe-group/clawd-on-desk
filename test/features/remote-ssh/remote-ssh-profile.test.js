@@ -65,7 +65,7 @@ test("historical SSH transport hints are strict and local-only data", () => {
 // with server-config's historical range so migration/downgrade diagnostics
 // stay deterministic.
 test("REMOTE_FORWARD_PORTS stays equal to hooks/server-config SERVER_PORTS", () => {
-  const { SERVER_PORTS } = require("../../../hooks/server-config");
+  const { SERVER_PORTS } = require("../../../hooks/shared/server-config");
   assert.deepEqual(REMOTE_FORWARD_PORTS, SERVER_PORTS);
 });
 

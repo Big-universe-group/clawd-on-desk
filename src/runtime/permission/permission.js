@@ -20,8 +20,8 @@ const { timingSafeEqual } = require("crypto");
 const {
   CLAWD_SERVER_HEADER,
   CLAWD_SERVER_ID,
-} = require("../../../hooks/server-config");
-const { isOpencodeFamilyEntry, getFamilyConfig } = require("../../../hooks/opencode-family");
+} = require("../../../hooks/shared/server-config");
+const { isOpencodeFamilyEntry, getFamilyConfig } = require("../../../hooks/opencode/opencode-family");
 const { isPassiveNotifyEntry } = require("./passive-notify-entry");
 const { reminderHolds } = require("./reminder");
 const {

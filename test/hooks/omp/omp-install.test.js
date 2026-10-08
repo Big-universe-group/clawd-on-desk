@@ -6,8 +6,8 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 
-const ompInstall = require("../../../hooks/omp-install");
-const piInstall = require("../../../hooks/pi-install");
+const ompInstall = require("../../../hooks/omp/omp-install");
+const piInstall = require("../../../hooks/pi/pi-install");
 
 describe("omp-install", () => {
   let parentDir;

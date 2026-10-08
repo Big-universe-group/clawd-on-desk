@@ -15,8 +15,8 @@ const {
   ROUTING_NONCE_HEADER,
   writeRuntimeConfig,
   resolveNodeBinAsync,
-} = require("../../../hooks/server-config");
-const { processAlive } = require("../../../hooks/shared-process");
+} = require("../../../hooks/shared/server-config");
+const { processAlive } = require("../../../hooks/shared/shared-process");
 const {
   B1A_AGENT_IDS,
   createServerWindowsProcessMetadataResolver,
@@ -30,7 +30,7 @@ const {
   resolveClaudeHookPaths,
   CLAUDE_CORE_HOOK_EVENTS,
   resolveClaudeSettingsPath,
-} = require("../../../hooks/install");
+} = require("../../../hooks/claude-code/install");
 const { inspectClaudeHookHealth, isExplicitRepairVerified } = require("../../agents/claude-code/hook-health");
 const {
   entriesContainCommandMarker,
@@ -470,7 +470,7 @@ function registerClaudeHooksTask(meta) {
       registerClaudeStatusline,
       unregisterClaudeStatusline,
       preflightClaudeRuntime,
-    } = require("../../../hooks/install.js");
+    } = require("../../../hooks/claude-code/install.js");
 
     // Atomicity: when this register source will also take the statusline, the
     // statusline runtime (its own closure in direct mode, the full generation
@@ -576,7 +576,7 @@ function registerClaudeHooksTask(meta) {
 
 function unregisterClaudeHooksTask(meta) {
   return async () => {
-    const { unregisterHooksAsync, unregisterClaudeStatusline } = require("../../../hooks/install.js");
+    const { unregisterHooksAsync, unregisterClaudeStatusline } = require("../../../hooks/claude-code/install.js");
     const removesStatusline = CLAUDE_STATUSLINE_UNREGISTER_SOURCES.has(meta.source);
     const previousSuppression = claudeStatuslineIngressSuppressed;
     if (removesStatusline) claudeStatuslineIngressSuppressed = true;
@@ -621,7 +621,7 @@ function setClaudeQuotaCollectionEnabled(callOptions = {}) {
     const {
       registerClaudeStatusline,
       unregisterClaudeStatusline,
-    } = require("../../../hooks/install.js");
+    } = require("../../../hooks/claude-code/install.js");
     if (!enabled) {
       const previousSuppression = claudeStatuslineIngressSuppressed;
       claudeStatuslineIngressSuppressed = true;
@@ -692,7 +692,7 @@ function setClaudeAutoStart(callOptions = {}) {
       // existing synchronous call — it still runs inside this queue task, so
       // it's serialized against other Claude mutations without being made
       // async itself.
-      const { unregisterAutoStart } = require("../../../hooks/install.js");
+      const { unregisterAutoStart } = require("../../../hooks/claude-code/install.js");
       unregisterAutoStart({ ...claudeMutationControls() });
       return { status: "ok", enabled };
     }
@@ -718,7 +718,7 @@ function setClaudeAutoStart(callOptions = {}) {
     // must not block the Electron main thread with the synchronous Claude
     // version probe registerHooks() performs — use the async installer, like
     // every other register path.
-    const { registerHooksAsync } = require("../../../hooks/install.js");
+    const { registerHooksAsync } = require("../../../hooks/claude-code/install.js");
     await registerHooksAsync({ silent: true, autoStart: true, port: getHookServerPort(), ...claudeMutationControls() });
 
     const verifyReport = buildClaudeHookReportForVerify({ requireAutoStart: true });

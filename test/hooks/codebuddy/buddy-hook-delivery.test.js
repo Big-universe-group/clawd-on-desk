@@ -20,12 +20,12 @@ const TARGETS = [
   {
     name: "CodeBuddy",
     agentId: "codebuddy",
-    script: path.resolve(__dirname, "..", "..", "..", "hooks", "codebuddy-hook.js"),
+    script: path.resolve(__dirname, "..", "..", "..", "hooks", "codebuddy", "codebuddy-hook.js"),
   },
   {
     name: "WorkBuddy",
     agentId: "workbuddy",
-    script: path.resolve(__dirname, "..", "..", "..", "hooks", "workbuddy-hook.js"),
+    script: path.resolve(__dirname, "..", "..", "..", "hooks", "workbuddy", "workbuddy-hook.js"),
   },
 ];
 

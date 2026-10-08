@@ -6,7 +6,7 @@ const fs = require("fs");
 const path = require("path");
 const os = require("os");
 
-const grok = require("../../../hooks/grok-install");
+const grok = require("../../../hooks/grok-build/grok-install");
 const {
   registerGrokHooks,
   unregisterGrokHooks,
@@ -24,8 +24,8 @@ const { detectAgentInstallation } = require("../../../src/agents/installation-de
 const { getAgentDescriptor } = require("../../../src/agents/doctor/descriptors");
 const { checkAgent } = require("../../../src/agents/doctor/integrations");
 const { installAgentIntegration } = require("../../../src/agents/settings-actions");
-const { buildCleanupOptionsForHome, cleanupIntegrations } = require("../../../hooks/cleanup-integrations");
-const { DEFAULT_BACKUP_KEEP } = require("../../../hooks/json-utils");
+const { buildCleanupOptionsForHome, cleanupIntegrations } = require("../../../hooks/shared/cleanup-integrations");
+const { DEFAULT_BACKUP_KEEP } = require("../../../hooks/shared/json-utils");
 
 const NODE_BIN = process.platform === "win32" ? "C:/nodejs/node.exe" : "/usr/local/bin/node";
 // Platform-valid, genuinely distinct Node paths. The Windows portable writer

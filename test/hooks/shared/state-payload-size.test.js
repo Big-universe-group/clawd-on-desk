@@ -7,7 +7,7 @@ const {
   DEFAULT_TARGET_BYTES,
   truncateToUtf8Bytes,
   fitStateBodyToByteBudget,
-} = require("../../../hooks/state-payload-size");
+} = require("../../../hooks/shared/state-payload-size");
 
 describe("state-payload-size truncateToUtf8Bytes", () => {
   it("returns the string unchanged when already within budget", () => {

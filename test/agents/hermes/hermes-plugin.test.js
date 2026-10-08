@@ -4,11 +4,11 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 const { describe, it } = require("node:test");
-const { NESTED_TERMINAL_ENV } = require("../../../hooks/shared-process");
-const { readRemoteIdentity } = require("../../../hooks/server-config");
+const { NESTED_TERMINAL_ENV } = require("../../../hooks/shared/shared-process");
+const { readRemoteIdentity } = require("../../../hooks/shared/server-config");
 const { buildRemoteIdentityDocument } = require("../../../src/features/remote-ssh/identity");
 
-const pluginDir = path.join(__dirname, "..", "..", "..", "hooks", "hermes-plugin");
+const pluginDir = path.join(__dirname, "..", "..", "..", "hooks", "hermes", "hermes-plugin");
 
 function readPluginSource() {
   return fs.readFileSync(path.join(pluginDir, "__init__.py"), "utf8");
@@ -109,7 +109,7 @@ import os
 import sys
 
 sys.dont_write_bytecode = True
-spec = importlib.util.spec_from_file_location("hermes_plugin", r"hooks/hermes-plugin/__init__.py")
+spec = importlib.util.spec_from_file_location("hermes_plugin", r"hooks/hermes/hermes-plugin/__init__.py")
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 
@@ -165,7 +165,7 @@ import json
 import sys
 
 sys.dont_write_bytecode = True
-spec = importlib.util.spec_from_file_location("hermes_plugin", r"hooks/hermes-plugin/__init__.py")
+spec = importlib.util.spec_from_file_location("hermes_plugin", r"hooks/hermes/hermes-plugin/__init__.py")
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 
@@ -192,7 +192,7 @@ import json
 import sys
 
 sys.dont_write_bytecode = True
-spec = importlib.util.spec_from_file_location("hermes_plugin", r"hooks/hermes-plugin/__init__.py")
+spec = importlib.util.spec_from_file_location("hermes_plugin", r"hooks/hermes/hermes-plugin/__init__.py")
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 
@@ -246,7 +246,7 @@ import json
 import sys
 
 sys.dont_write_bytecode = True
-spec = importlib.util.spec_from_file_location("hermes_plugin", r"hooks/hermes-plugin/__init__.py")
+spec = importlib.util.spec_from_file_location("hermes_plugin", r"hooks/hermes/hermes-plugin/__init__.py")
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 
@@ -287,7 +287,7 @@ import sys
 import types
 
 sys.dont_write_bytecode = True
-spec = importlib.util.spec_from_file_location("hermes_plugin", r"hooks/hermes-plugin/__init__.py")
+spec = importlib.util.spec_from_file_location("hermes_plugin", r"hooks/hermes/hermes-plugin/__init__.py")
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 
@@ -328,7 +328,7 @@ import os
 import sys
 
 sys.dont_write_bytecode = True
-spec = importlib.util.spec_from_file_location("hermes_plugin", r"hooks/hermes-plugin/__init__.py")
+spec = importlib.util.spec_from_file_location("hermes_plugin", r"hooks/hermes/hermes-plugin/__init__.py")
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 
@@ -359,7 +359,7 @@ import json
 import sys
 
 sys.dont_write_bytecode = True
-spec = importlib.util.spec_from_file_location("hermes_plugin", r"hooks/hermes-plugin/__init__.py")
+spec = importlib.util.spec_from_file_location("hermes_plugin", r"hooks/hermes/hermes-plugin/__init__.py")
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 
@@ -424,7 +424,7 @@ import json
 import sys
 
 sys.dont_write_bytecode = True
-spec = importlib.util.spec_from_file_location("hermes_plugin", r"hooks/hermes-plugin/__init__.py")
+spec = importlib.util.spec_from_file_location("hermes_plugin", r"hooks/hermes/hermes-plugin/__init__.py")
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 
@@ -496,7 +496,7 @@ import sys
 import types
 
 sys.dont_write_bytecode = True
-spec = importlib.util.spec_from_file_location("hermes_plugin", r"hooks/hermes-plugin/__init__.py")
+spec = importlib.util.spec_from_file_location("hermes_plugin", r"hooks/hermes/hermes-plugin/__init__.py")
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 
@@ -541,7 +541,7 @@ import sys
 import types
 
 sys.dont_write_bytecode = True
-spec = importlib.util.spec_from_file_location("hermes_plugin", r"hooks/hermes-plugin/__init__.py")
+spec = importlib.util.spec_from_file_location("hermes_plugin", r"hooks/hermes/hermes-plugin/__init__.py")
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 
@@ -594,7 +594,7 @@ import json
 import sys
 
 sys.dont_write_bytecode = True
-spec = importlib.util.spec_from_file_location("hermes_plugin", r"hooks/hermes-plugin/__init__.py")
+spec = importlib.util.spec_from_file_location("hermes_plugin", r"hooks/hermes/hermes-plugin/__init__.py")
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 
@@ -667,7 +667,7 @@ import json
 import sys
 
 sys.dont_write_bytecode = True
-spec = importlib.util.spec_from_file_location("hermes_plugin", r"hooks/hermes-plugin/__init__.py")
+spec = importlib.util.spec_from_file_location("hermes_plugin", r"hooks/hermes/hermes-plugin/__init__.py")
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 mod._PERMISSION_TOOLS = {"terminal"}
@@ -713,7 +713,7 @@ import json
 import sys
 
 sys.dont_write_bytecode = True
-spec = importlib.util.spec_from_file_location("hermes_plugin", r"hooks/hermes-plugin/__init__.py")
+spec = importlib.util.spec_from_file_location("hermes_plugin", r"hooks/hermes/hermes-plugin/__init__.py")
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 
@@ -780,7 +780,7 @@ for key in ("NO_PROXY", "no_proxy"):
 for key in ("HTTP_PROXY", "http_proxy", "HTTPS_PROXY", "https_proxy", "ALL_PROXY", "all_proxy"):
     os.environ[key] = "http://127.0.0.1:1"
 
-spec = importlib.util.spec_from_file_location("hermes_plugin", r"hooks/hermes-plugin/__init__.py")
+spec = importlib.util.spec_from_file_location("hermes_plugin", r"hooks/hermes/hermes-plugin/__init__.py")
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 
@@ -824,7 +824,7 @@ import json
 import sys
 
 sys.dont_write_bytecode = True
-spec = importlib.util.spec_from_file_location("hermes_plugin", r"hooks/hermes-plugin/__init__.py")
+spec = importlib.util.spec_from_file_location("hermes_plugin", r"hooks/hermes/hermes-plugin/__init__.py")
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 
@@ -892,7 +892,7 @@ import sys
 import time
 
 sys.dont_write_bytecode = True
-spec = importlib.util.spec_from_file_location("hermes_plugin", r"hooks/hermes-plugin/__init__.py")
+spec = importlib.util.spec_from_file_location("hermes_plugin", r"hooks/hermes/hermes-plugin/__init__.py")
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 
@@ -923,7 +923,7 @@ import json
 import sys
 
 sys.dont_write_bytecode = True
-spec = importlib.util.spec_from_file_location("hermes_plugin", r"hooks/hermes-plugin/__init__.py")
+spec = importlib.util.spec_from_file_location("hermes_plugin", r"hooks/hermes/hermes-plugin/__init__.py")
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 
@@ -947,7 +947,7 @@ import sys
 import time
 
 sys.dont_write_bytecode = True
-spec = importlib.util.spec_from_file_location("hermes_plugin", r"hooks/hermes-plugin/__init__.py")
+spec = importlib.util.spec_from_file_location("hermes_plugin", r"hooks/hermes/hermes-plugin/__init__.py")
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 
@@ -1571,7 +1571,7 @@ import sys
 
 sys.dont_write_bytecode = True
 sys.path.insert(0, os.environ["HERMES_CONSTANTS_FIXTURE"])
-spec = importlib.util.spec_from_file_location("hermes_plugin", r"hooks/hermes-plugin/__init__.py")
+spec = importlib.util.spec_from_file_location("hermes_plugin", r"hooks/hermes/hermes-plugin/__init__.py")
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 print(json.dumps({"preferred": mod._hermes_home() == Path("/tmp/x")}, sort_keys=True))
@@ -1588,7 +1588,7 @@ from pathlib import Path
 import sys
 
 sys.dont_write_bytecode = True
-spec = importlib.util.spec_from_file_location("hermes_plugin", r"hooks/hermes-plugin/__init__.py")
+spec = importlib.util.spec_from_file_location("hermes_plugin", r"hooks/hermes/hermes-plugin/__init__.py")
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 print(json.dumps({"fallback": mod._hermes_home() == Path(os.environ["HERMES_HOME"])}, sort_keys=True))

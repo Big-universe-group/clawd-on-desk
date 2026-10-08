@@ -8,12 +8,12 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 
-const { launchedByGrok } = require("../../../hooks/clawd-hook");
-const { CLAWD_SERVER_HEADER, CLAWD_SERVER_ID, SERVER_PORTS } = require("../../../hooks/server-config");
+const { launchedByGrok } = require("../../../hooks/claude-code/clawd-hook");
+const { CLAWD_SERVER_HEADER, CLAWD_SERVER_ID, SERVER_PORTS } = require("../../../hooks/shared/server-config");
 
-const CLAWD_HOOK = path.join(__dirname, "..", "..", "..", "hooks", "clawd-hook.js");
-const CURSOR_HOOK = path.join(__dirname, "..", "..", "..", "hooks", "cursor-hook.js");
-const GROK_HOOK = path.join(__dirname, "..", "..", "..", "hooks", "grok-hook.js");
+const CLAWD_HOOK = path.join(__dirname, "..", "..", "..", "hooks", "claude-code", "clawd-hook.js");
+const CURSOR_HOOK = path.join(__dirname, "..", "..", "..", "hooks", "cursor-agent", "cursor-hook.js");
+const GROK_HOOK = path.join(__dirname, "..", "..", "..", "hooks", "grok-build", "grok-hook.js");
 
 function makeHome(prefix) {
   return fs.mkdtempSync(path.join(os.tmpdir(), prefix));

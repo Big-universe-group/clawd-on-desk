@@ -20,9 +20,9 @@ const {
   runCodexHook,
   sanitizeCodexPermissionOutput,
   startClawdAndWait,
-} = require("../../../hooks/codex-hook");
-const { readCodexThreadName } = require("../../../hooks/codex-session-index");
-const { CODEX_WINDOWS_STABLE_ARG, CODEX_WSL_INTEROP_ARG } = require("../../../hooks/server-config");
+} = require("../../../hooks/codex/codex-hook");
+const { readCodexThreadName } = require("../../../hooks/codex/codex-session-index");
+const { CODEX_WINDOWS_STABLE_ARG, CODEX_WSL_INTEROP_ARG } = require("../../../hooks/shared/server-config");
 
 const mockResolve = () => ({
   stablePid: 123,
@@ -65,7 +65,7 @@ describe("Codex official hook", () => {
     const codexHome = fs.mkdtempSync(path.join(os.tmpdir(), "codex-hook-sidecar-"));
     const stableDir = path.join(codexHome, "clawd-hooks");
     const sidecarPath = path.join(stableDir, "codex-hook.js.windows.run");
-    const hookPath = path.resolve(__dirname, "..", "..", "..", "hooks", "codex-hook.js");
+    const hookPath = path.resolve(__dirname, "..", "..", "..", "hooks", "codex", "codex-hook.js");
     const encode = (value) => Buffer.from(String(value), "utf8").toString("base64");
     fs.mkdirSync(stableDir, { recursive: true });
     try {
@@ -661,7 +661,7 @@ describe("Codex official hook", () => {
   });
 
   it("writes no stdout and exits 0 when stop_hook_active=true", () => {
-    const scriptPath = path.resolve(__dirname, "..", "..", "..", "hooks", "codex-hook.js");
+    const scriptPath = path.resolve(__dirname, "..", "..", "..", "hooks", "codex", "codex-hook.js");
     const result = runSpawnedHook({
       script: scriptPath,
       payload: {
@@ -1198,7 +1198,7 @@ describe("Codex official hook", () => {
       });
 
       assert.strictEqual(spawnCall.command, process.execPath);
-      assert.deepStrictEqual(spawnCall.args, [path.join(__dirname, "..", "..", "..", "hooks", "auto-start.js")]);
+      assert.deepStrictEqual(spawnCall.args, [path.join(__dirname, "..", "..", "..", "hooks", "claude-code", "auto-start.js")]);
       assert.deepStrictEqual(spawnCall.options, { stdio: "ignore", windowsHide: true });
       assert.strictEqual(child.listenerCount("error"), 1);
       assert.strictEqual(child.listenerCount("exit"), 1);

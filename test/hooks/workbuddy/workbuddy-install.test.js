@@ -10,7 +10,7 @@ const {
   resolveWorkBuddySettingsPath,
   workBuddySettingsCandidates,
   __test,
-} = require("../../../hooks/workbuddy-install");
+} = require("../../../hooks/workbuddy/workbuddy-install");
 
 const MARKER = "workbuddy-hook.js";
 const tempDirs = [];

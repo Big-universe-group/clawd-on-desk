@@ -10,7 +10,7 @@ const {
   resolveCodexOfficialHookState,
 } = require("../../../src/agents/codex/server-official-turns");
 const { makeSessionKey } = require("../../../src/core/util/session-key");
-const { getClaudeHookScriptPath, getClaudeAutoStartScriptPath } = require("../../../hooks/install");
+const { getClaudeHookScriptPath, getClaudeAutoStartScriptPath } = require("../../../hooks/claude-code/install");
 
 const EXPECTED_HOOK_SCRIPT_PATH = getClaudeHookScriptPath();
 const EXPECTED_AUTO_START_SCRIPT_PATH = getClaudeAutoStartScriptPath();
@@ -651,7 +651,7 @@ describe("server Claude hook management", () => {
 });
 
 function withPatchedInstallModule(patches, run) {
-  const installModule = require("../../../hooks/install.js");
+  const installModule = require("../../../hooks/claude-code/install.js");
   const originals = {};
   for (const key of Object.keys(patches)) {
     originals[key] = installModule[key];

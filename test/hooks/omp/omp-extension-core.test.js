@@ -3,9 +3,9 @@
 const { describe, it } = require("node:test");
 const assert = require("node:assert");
 
-const core = require("../../../hooks/omp-extension-core");
-const piCore = require("../../../hooks/pi-extension-core");
-const { NESTED_TERMINAL_ENV } = require("../../../hooks/shared-process");
+const core = require("../../../hooks/omp/omp-extension-core");
+const piCore = require("../../../hooks/pi/pi-extension-core");
+const { NESTED_TERMINAL_ENV } = require("../../../hooks/shared/shared-process");
 
 function makeCtx(overrides = {}) {
   return {

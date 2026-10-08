@@ -7,7 +7,7 @@ const { EventEmitter } = require("node:events");
 const initPermission = require("../../../src/runtime/permission/permission");
 const { handlePermissionPost } = require("../../../src/core/server/route-permission");
 
-const { CLAWD_SERVER_HEADER, CLAWD_SERVER_ID } = require("../../../hooks/server-config");
+const { CLAWD_SERVER_HEADER, CLAWD_SERVER_ID } = require("../../../hooks/shared/server-config");
 
 function makeReq(body) {
   const req = new EventEmitter();

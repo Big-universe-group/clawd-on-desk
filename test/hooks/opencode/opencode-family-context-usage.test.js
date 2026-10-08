@@ -56,7 +56,7 @@ after(async () => {
 });
 
 async function loadCore() {
-  const modulePath = path.join(__dirname, "..", "..", "..", "hooks", "opencode-family-plugin", "core.mjs");
+  const modulePath = path.join(__dirname, "..", "..", "..", "hooks", "opencode", "opencode-family-plugin", "core.mjs");
   return import(pathToFileURL(modulePath).href);
 }
 

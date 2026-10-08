@@ -13,8 +13,8 @@ const {
   registerZcodeHooks,
   unregisterZcodeHooks,
   timeoutMsForZcodeEvent,
-} = require("../../../hooks/zcode-install");
-const { decodeWindowsEncodedCommand } = require("../../../hooks/json-utils");
+} = require("../../../hooks/zcode/zcode-install");
+const { decodeWindowsEncodedCommand } = require("../../../hooks/shared/json-utils");
 
 const tempDirs = [];
 

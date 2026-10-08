@@ -15,10 +15,10 @@ const { spawn, spawnSync } = require("node:child_process");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
-const pidCache = require("../../../hooks/pid-cache");
-const { __test: reasonixInstallTest } = require("../../../hooks/reasonix-install");
+const pidCache = require("../../../hooks/shared/pid-cache");
+const { __test: reasonixInstallTest } = require("../../../hooks/reasonix/reasonix-install");
 
-const HOOK_PATH = path.resolve(__dirname, "..", "..", "..", "hooks", "reasonix-hook.js");
+const HOOK_PATH = path.resolve(__dirname, "..", "..", "..", "hooks", "reasonix", "reasonix-hook.js");
 const RECORDER_PATH = path.resolve(__dirname, "..", "..", "helpers", "hook-http-recorder.js");
 const SNAPSHOT_FAKE_PATH = path.resolve(__dirname, "..", "..", "helpers", "reasonix-hook-snapshot-fake.js");
 const PLATFORM_PROBE_PATH = path.resolve(__dirname, "..", "..", "helpers", "reasonix-hook-platform-probe.js");

@@ -1,7 +1,7 @@
 "use strict";
 
-const { normalizeQuotaGroup } = require("../../../hooks/quota-bucket");
-const { CODEX_QUOTA_FIELDS } = require("../../../hooks/codex-rate-limits");
+const { normalizeQuotaGroup } = require("../../../hooks/shared/quota-bucket");
+const { CODEX_QUOTA_FIELDS } = require("../../../hooks/codex/codex-rate-limits");
 
 function isCodexMonitorMetadataOnlyEvent(event, extra) {
   if (event === "session_index:title") return true;

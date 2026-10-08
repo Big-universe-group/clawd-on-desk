@@ -20,7 +20,7 @@ const {
   readHookDebugMaxBytes,
   appendHookDebug,
   DEFAULT_HOOK_DEBUG_MAX_BYTES,
-} = require("../../../hooks/kimi-hook");
+} = require("../../../hooks/kimi-cli/kimi-hook");
 
 describe("Kimi hook script", () => {
   it("maps PreToolUse for permission tools to notification when payload marks approval", () => {
@@ -861,7 +861,7 @@ describe("Kimi Code native events (#563)", () => {
 
 describe("Kimi gate-ledger markers", () => {
   const resolve = () => ({ stablePid: 1, agentPid: null, detectedEditor: null, pidChain: [] });
-  const { readToolCallId, isGatedPostEvent, PERMISSION_GATE_ID_MAX_CHARS } = require("../../../hooks/kimi-hook");
+  const { readToolCallId, isGatedPostEvent, PERMISSION_GATE_ID_MAX_CHARS } = require("../../../hooks/kimi-cli/kimi-hook");
 
   const withSuspectMode = (fn) => {
     const oldSuspect = process.env.CLAWD_KIMI_PERMISSION_SUSPECT;
@@ -1017,7 +1017,7 @@ describe("Kimi gate-ledger markers", () => {
 });
 
 describe("Kimi hook argv permission-mode flag", () => {
-  const { parseHookArgv, setArgvPermissionMode } = require("../../../hooks/kimi-hook");
+  const { parseHookArgv, setArgvPermissionMode } = require("../../../hooks/kimi-cli/kimi-hook");
 
   const cleanEnv = (fn) => {
     const oldMode = process.env.CLAWD_KIMI_PERMISSION_MODE;
@@ -1141,10 +1141,10 @@ describe("Kimi hook agent process detection", () => {
     KIMI_PROCESS_NAMES,
     KIMI_STARTUP_RECOVERY_PROCESS_NAMES,
     isKimiAgentCommandLine,
-  } = require("../../../hooks/kimi-process-names");
-  const { buildResolverOptions } = require("../../../hooks/kimi-hook");
+  } = require("../../../hooks/kimi-cli/kimi-process-names");
+  const { buildResolverOptions } = require("../../../hooks/kimi-cli/kimi-hook");
   const { runSpawnedHook } = require("../../helpers/spawned-hook");
-  const HOOK_PATH = path.resolve(__dirname, "..", "..", "..", "hooks", "kimi-hook.js");
+  const HOOK_PATH = path.resolve(__dirname, "..", "..", "..", "hooks", "kimi-cli", "kimi-hook.js");
 
   // Kimi Code sets process.title = "kimi-code", and libuv cuts the title to the
   // length of the original argv: on the 0.42.0 macOS build `kimi` was listed as

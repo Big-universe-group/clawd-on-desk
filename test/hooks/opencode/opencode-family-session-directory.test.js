@@ -75,7 +75,7 @@ before(async () => {
     },
   };
 
-  const modulePath = path.join(__dirname, "..", "..", "..", "hooks", "opencode-family-plugin", "core.mjs");
+  const modulePath = path.join(__dirname, "..", "..", "..", "hooks", "opencode", "opencode-family-plugin", "core.mjs");
   ({ createOpencodeFamilyPlugin } = await import(pathToFileURL(modulePath).href));
 });
 
