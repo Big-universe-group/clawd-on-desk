@@ -80,6 +80,7 @@
       generalSwitches: new Map(),
       bubblePolicyControls: new Map(),
       sessionCleanupControls: new Map(),
+      completionForeverSwitches: new Map(),
       agentSwitches: new Map(),
       agentPermissionModes: new Map(),
       agentIntegrationActions: new Map(),
@@ -1484,6 +1485,7 @@
     state.mountedControls.generalSwitches.clear();
     state.mountedControls.bubblePolicyControls.clear();
     state.mountedControls.sessionCleanupControls.clear();
+    state.mountedControls.completionForeverSwitches.clear();
     state.mountedControls.agentSwitches.clear();
     state.mountedControls.agentPermissionModes.clear();
     state.mountedControls.agentIntegrationActions.clear();

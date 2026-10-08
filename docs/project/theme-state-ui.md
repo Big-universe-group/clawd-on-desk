@@ -247,6 +247,7 @@ Mini 状态映射：
 - 停止入口分平台：Windows / Linux 的托盘仍用 `click`（`main.js` 的 `armTrayAlertDismiss()`）；macOS 26+ 会把已 attach 的托盘菜单交给 AppKit 自己弹出，点击不再进入 Electron 的 status item view，所以 Tray 的 `click` / `mouse-down` / `mouse-up` 全部不再触发（不是接线问题），改由 `menu.js` 在每次重建托盘菜单时订阅该 Menu 的 `menu-will-show` 调 `dismissCompletionAlerts()`（该订阅在所有平台都挂，不会触发的地方由 `click` 兜底）
 - 在 Settings 关闭 `flashTaskbarOnComplete` 会立即结束正在进行的闪烁（`main.js` 订阅该键调 `stopTrayFlash()` 恢复普通图标）；闪烁本身没有逐帧复查开关，不能只依赖下次 `flashTaskbar()` 的入口检查，否则 `flashDurationMs = 0` 的闪烁会一直持续
 - 托盘完成闪烁的 `flashEffect`：`default` 在普通图标与完成标记之间切换；`rainbow` 由 `tray-flash-icon.js` 的 `buildTrayRainbowFrames()` 从普通托盘图标生成 6 帧色相图（macOS Template 按剪影整体填色、Windows/Linux 只改饱和像素色相），按 `flashIntervalMs` 轮换；生成失败回退到 `default`
+- 「提示音无限循环播放」「系统托盘无限闪烁」两个开关不是独立 pref，而是 `soundRepeatDurationMs` / `flashDurationMs` 的视图（`settings-tab-general.js` 的 `buildCompletionForeverRow()`）：开关状态 = 时长是否为 0；打开写时长 0，时长从任何入口改成非 0（数字框、其他窗口）都会经 `syncCompletionForeverSwitch()` 自动关掉；关闭时恢复打开前的时长（本次设置窗口会话内记住，否则回到 prefs 默认 30000 / 5000）。主进程逻辑不变，仍是 0 = 直到手动停止
 
 ### Eye Tracking
 

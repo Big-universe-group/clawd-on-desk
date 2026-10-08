@@ -80,6 +80,16 @@
     "flashIntervalMs",
     "flashDurationMs",
   ]);
+  // "Loop forever" switches are a view of the duration field, not stored prefs:
+  // main.js already treats duration 0 as "until dismissed", so the switch reads
+  // `duration === 0` and writes the duration. Turning it off restores the value
+  // the duration had before it was switched on, else the prefs.js default.
+  const COMPLETION_FOREVER_DEFAULT_MS = {
+    soundRepeatDurationMs: 30_000,
+    flashDurationMs: 5_000,
+  };
+  const completionForeverTransient = new Map();
+  const completionForeverLastFiniteMs = new Map();
   const SESSION_CLEANUP_DEFAULTS = {
     sessionStaleMs: 600_000,
     workingStaleMs: 300_000,
@@ -1680,6 +1690,11 @@
           min: 1000,
           max: 60000,
         }).row,
+        buildCompletionForeverRow({
+          durationKey: "soundRepeatDurationMs",
+          labelKey: "rowSoundRepeatForever",
+          descKey: "rowSoundRepeatForeverDesc",
+        }),
         helpers.buildNumberInputRow({
           key: "soundRepeatDurationMs",
           labelKey: "rowSoundRepeatDuration",
@@ -1722,6 +1737,11 @@
           min: 200,
           max: 2000,
         }).row,
+        buildCompletionForeverRow({
+          durationKey: "flashDurationMs",
+          labelKey: "rowFlashForever",
+          descKey: "rowFlashForeverDesc",
+        }),
         helpers.buildNumberInputRow({
           key: "flashDurationMs",
           labelKey: "rowFlashDuration",
@@ -1738,6 +1758,68 @@
         }).row,
       ])],
     });
+  }
+
+  function readCompletionForever(durationKey) {
+    return !!(state.snapshot && state.snapshot[durationKey] === 0);
+  }
+
+  function buildCompletionForeverRow({ durationKey, labelKey, descKey }) {
+    const row = document.createElement("div");
+    row.className = "row";
+    row.innerHTML =
+      `<div class="row-text">` +
+        `<span class="row-label"></span>` +
+        `<span class="row-desc"></span>` +
+      `</div>` +
+      `<div class="row-control"></div>`;
+    const label = row.querySelector(".row-label");
+    label.id = `settings-forever-${durationKey}-label`;
+    label.textContent = t(labelKey);
+    const desc = row.querySelector(".row-desc");
+    desc.id = `settings-forever-${durationKey}-description`;
+    desc.textContent = t(descKey);
+    const override = completionForeverTransient.get(durationKey);
+    const control = helpers.buildSwitch({
+      checked: override ? override.visualOn : readCompletionForever(durationKey),
+      pending: override ? override.pending : false,
+      ariaLabelledBy: label.id,
+      ariaDescribedBy: desc.id,
+    });
+    row.querySelector(".row-control").appendChild(control.element);
+    helpers.attachOptimisticSwitch(control, {
+      getCommittedVisual: () => readCompletionForever(durationKey),
+      getTransientState: () => completionForeverTransient.get(durationKey) || null,
+      setTransientState: (value) => completionForeverTransient.set(durationKey, value),
+      clearTransientState: (seq) => {
+        const current = completionForeverTransient.get(durationKey);
+        if (!current || (seq !== undefined && current.seq !== seq)) return;
+        completionForeverTransient.delete(durationKey);
+      },
+      invoke: () => {
+        const current = state.snapshot && state.snapshot[durationKey];
+        if (current !== 0) {
+          if (Number.isInteger(current) && current > 0) {
+            completionForeverLastFiniteMs.set(durationKey, current);
+          }
+          return window.settingsAPI.update(durationKey, 0);
+        }
+        const restore = completionForeverLastFiniteMs.get(durationKey)
+          || COMPLETION_FOREVER_DEFAULT_MS[durationKey];
+        return window.settingsAPI.update(durationKey, restore);
+      },
+    });
+    state.mountedControls.completionForeverSwitches.set(durationKey, { control, row });
+    return row;
+  }
+
+  // A duration write (from this row, the number input, or another window)
+  // re-derives the switch: 0 turns it on, any other value turns it off.
+  function syncCompletionForeverSwitch(durationKey) {
+    const meta = state.mountedControls.completionForeverSwitches.get(durationKey);
+    if (!meta || !document.body.contains(meta.row)) return;
+    completionForeverTransient.delete(durationKey);
+    meta.control.setState({ checked: readCompletionForever(durationKey), pending: false });
   }
 
   function buildFlashEffectRow() {
@@ -3034,6 +3116,7 @@
       }
       if (COMPLETION_ALERT_NUMBER_KEYS.has(key)) {
         state.mountedControls.sessionCleanupControls.get(key).syncFromSnapshot();
+        syncCompletionForeverSwitch(key);
         continue;
       }
       if (key === "roamConstrainAxis") continue;

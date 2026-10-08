@@ -12543,6 +12543,64 @@ describe("settings renderer browser environment", () => {
     assert.strictEqual(summary.element.children[0].textContent, "off · 100%");
   });
 
+  it("links the loop-forever switches to their duration fields in both directions", async () => {
+    const updateCalls = [];
+    const initialSnapshot = makeGeneralSnapshot({
+      soundRepeatDurationMs: 45000,
+      flashDurationMs: 5000,
+    });
+    const harness = loadGeneralTabForTest({
+      snapshot: initialSnapshot,
+      settingsAPI: {
+        update: (key, value) => {
+          updateCalls.push({ key, value });
+          return Promise.resolve({ status: "ok" });
+        },
+      },
+    });
+    harness.renderContent();
+    const foreverSwitches = harness.core.state.mountedControls.completionForeverSwitches;
+    const soundForever = foreverSwitches.get("soundRepeatDurationMs").control.element;
+    const flashForever = foreverSwitches.get("flashDurationMs").control.element;
+    const click = (el) => el.eventListeners.click[0]({ stopPropagation: () => {}, preventDefault: () => {} });
+    const settle = async () => { await Promise.resolve(); await Promise.resolve(); };
+    assert.strictEqual(soundForever.classList.contains("on"), false);
+    assert.strictEqual(flashForever.classList.contains("on"), false);
+
+    // Switching on writes duration 0.
+    click(soundForever);
+    await settle();
+    assert.deepStrictEqual(updateCalls, [{ key: "soundRepeatDurationMs", value: 0 }]);
+    let snapshot = { ...initialSnapshot, soundRepeatDurationMs: 0 };
+    harness.core.ops.applyChanges({ changes: { soundRepeatDurationMs: 0 }, snapshot });
+    assert.strictEqual(soundForever.classList.contains("on"), true);
+
+    // A non-zero duration (e.g. typed into the number field) turns it off.
+    snapshot = { ...snapshot, soundRepeatDurationMs: 12000 };
+    harness.core.ops.applyChanges({ changes: { soundRepeatDurationMs: 12000 }, snapshot });
+    assert.strictEqual(soundForever.classList.contains("on"), false);
+
+    // Switching off again restores the duration it had before it was turned on.
+    click(soundForever);
+    await settle();
+    snapshot = { ...snapshot, soundRepeatDurationMs: 0 };
+    harness.core.ops.applyChanges({ changes: { soundRepeatDurationMs: 0 }, snapshot });
+    click(soundForever);
+    await settle();
+    assert.deepStrictEqual(updateCalls.slice(1), [
+      { key: "soundRepeatDurationMs", value: 0 },
+      { key: "soundRepeatDurationMs", value: 12000 },
+    ]);
+
+    // Duration 0 from anywhere (number field, another window) shows the tray switch as on.
+    snapshot = { ...snapshot, flashDurationMs: 0 };
+    harness.core.ops.applyChanges({ changes: { flashDurationMs: 0 }, snapshot });
+    assert.strictEqual(flashForever.classList.contains("on"), true);
+    click(flashForever);
+    await settle();
+    assert.deepStrictEqual(updateCalls.at(-1), { key: "flashDurationMs", value: 5000 });
+  });
+
   it("keeps the sound child switch and summary in sync while the update is pending", async () => {
     const updateCalls = [];
     let resolveUpdate = null;
