@@ -41,7 +41,7 @@ Windows 的 hit window 在原生 activation controller 可用时按前台全屏�
 Clawd 是主题化桌宠：动画资源、计时、hitbox、眼球追踪参数都来自主题配置。
 
 - 内置主题目录：`themes/clawd/`、`themes/calico/`、`themes/cloudling/`；`themes/template/` 是脚手架模板
-- 官方可下载主题：Clawd 主仓库**不**打包 Hash Sage、Whale-chan 等官方主题的素材；设置页从固定远端 catalog（`https://raw.githubusercontent.com/rullerzhou-afk/clawd-themes/main/catalog-v1.json`）读取主题信息、受限到 `<theme-id>-art.pages.dev/progress/` 的动画展示页，以及一个不超过 1 MiB 的版本化预览图。卡片显示“查看动画”与安装操作，不显示许可摘要或许可链接；完整许可仍保留在 catalog、仓库与主题包中。预览图与主题包都由 Electron main 下载到本地并校验固定 bytes/SHA-256 后才以 `file:` URL 交给 renderer；renderer 不直接加载远程图片。完整主题安装到 `<userData>/themes/<id>/`，并以 **external theme**（`isBuiltin=false`）加载，`trustedRuntime` 不生效。主题包下载/解压只在用户显式点击后发生，首版不做一键更新、backup/rollback 或断点续传。下载用 Electron main `net.request`（继承系统代理/证书，但**不能**像 Codex Pet 那样 pin DNS 结果），因此以「初始 URL 精确 repo/path + 每跳精确 CDN host allowlist + HTTPS/TLS + 无凭据 + 固定 bytes/SHA-256 + manual redirect/no-store/no-referrer」收窄请求面；catalog 无权扩展 host allowlist，未支持 host 返回稳定 `DOWNLOAD_HOST_UNSUPPORTED`。主仓库另附带一份目录快照 `src/official-theme-catalog-snapshot.json`（打包进安装包）。回落规则：网络拉取失败时，列表先用上一次成功加载的目录（内存 LKG 或磁盘缓存），都没有才用快照；第一次拉取有结果之前（`uninitialized`）不用快照；快照**不作安装依据**，安装只认经校验的网络/磁盘目录，保证卡片显示的版本和实际安装的版本同源。快照**不含任何主题素材或预览图**，要过 `parseCatalogText` 校验，参与版本不能回退的比较，只读不写盘，界面仍按 `offline` 显示并提供重试
+- 官方可下载主题：Clawd 主仓库**不**打包 Hash Sage、Whale-chan 等官方主题的素材；设置页从固定远端 catalog（`https://raw.githubusercontent.com/rullerzhou-afk/clawd-themes/main/catalog-v1.json`）读取主题信息、受限到 `<theme-id>-art.pages.dev/progress/` 的动画展示页，以及一个不超过 1 MiB 的版本化预览图。卡片显示“查看动画”与安装操作，不显示许可摘要或许可链接；完整许可仍保留在 catalog、仓库与主题包中。预览图与主题包都由 Electron main 下载到本地并校验固定 bytes/SHA-256 后才以 `file:` URL 交给 renderer；renderer 不直接加载远程图片。完整主题安装到 `<userData>/themes/<id>/`，并以 **external theme**（`isBuiltin=false`）加载，`trustedRuntime` 不生效。主题包下载/解压只在用户显式点击后发生，首版不做一键更新、backup/rollback 或断点续传。下载用 Electron main `net.request`（继承系统代理/证书，但**不能**像 Codex Pet 那样 pin DNS 结果），因此以「初始 URL 精确 repo/path + 每跳精确 CDN host allowlist + HTTPS/TLS + 无凭据 + 固定 bytes/SHA-256 + manual redirect/no-store/no-referrer」收窄请求面；catalog 无权扩展 host allowlist，未支持 host 返回稳定 `DOWNLOAD_HOST_UNSUPPORTED`。主仓库另附带一份目录快照 `src/features/themes/official/catalog-snapshot.json`（打包进安装包）。回落规则：网络拉取失败时，列表先用上一次成功加载的目录（内存 LKG 或磁盘缓存），都没有才用快照；第一次拉取有结果之前（`uninitialized`）不用快照；快照**不作安装依据**，安装只认经校验的网络/磁盘目录，保证卡片显示的版本和实际安装的版本同源。快照**不含任何主题素材或预览图**，要过 `parseCatalogText` 校验，参与版本不能回退的比较，只读不写盘，界面仍按 `offline` 显示并提供重试
 - 官方主题的 manager 专属目录：下载 `.part` 位于 `<userData>/theme-downloads/official/`，解压 staging 位于 `<userData>/theme-staging/official/`，均不在 `themes/` 下；manager 写入的 `.clawd-official-theme.json` marker 在 staging 内、最终同卷 `rename` 之前写入并复验。启动清理只遍历这两个专属目录的直接子级、只处理严格合法且超过 24 小时的孤儿
 - 主题目录的点号直接子目录（staging/backup/lock 等）永远不是主题：`theme-loader._scanThemesDir`、`theme-metadata.scanMetadata` 与 `_readThemeJson` 的按 id 直接读取用同一个「非点号直接子目录」判定，因此点目录既不会被扫描、也不会被选择或直接读取
 - 主题 mutation 的统一 domain lock：`setThemeSelection`、通用 `removeTheme`、内部 `officialTheme.commitInstall` / `officialTheme.uninstall` 共用 `lockKey = "theme"`；destructive fs 操作前在锁内复检 active/target/lstat/marker。`activateTheme` 在 fade sequencer 完成前就返回，因此卸载 active 主题必须等待 `waitForThemeReloadSettled()`；sequencer 在 runtime 切换后同步抛错时走无淡入淡出 fallback 并返回成功
@@ -53,7 +53,7 @@ Clawd 是主题化桌宠：动画资源、计时、hitbox、眼球追踪参数�
 - 若 `sleepSequence.mode` 为 `full`（默认），需提供 `yawning / dozing / collapsing / waking`；`direct` 可直接进入 `sleeping`
 - 若 `miniMode.supported` 为 true，需提供 8 个基础 mini 状态；`mini-working`、`mini-peek-hold`、`mini-sleep-peek` 是可选增强，缺失时优雅降级
 - 能力缺失时走 `VISUAL_FALLBACK_STATES` 回退链
-- 默认配置集中在 `theme-loader.js` 顶部的 `DEFAULT_*` 常量；loader 保持 stateless，`src/theme-runtime.js` 是唯一 active-theme owner，主题 reload/sync/cache 不得另设模块级真相
+- 默认配置集中在 `theme-loader.js` 顶部的 `DEFAULT_*` 常量；loader 保持 stateless，`src/features/themes/runtime.js` 是唯一 active-theme owner，主题 reload/sync/cache 不得另设模块级真相
 - 变体是白名单 deep-merge；数组和特定字段会整体替换
 - Animation override 是用户 per-slot 覆盖，和作者定义的 variants 正交
 - 配饰是两个独立的主题级槽：`petAccessory` 对应 head，`petMouthAccessory` 对应 mouth。renderer 中两者都是 pet media 的外部兄弟层，固定顺序为 `pet media → head → mouth`，因此 pet tint 不会染到配饰，mouth 也能稳定画在手或 head 配饰之上
@@ -63,7 +63,7 @@ Clawd 是主题化桌宠：动画资源、计时、hitbox、眼球追踪参数�
 - 用户主题 SVG 会经过白名单消毒，阻断脚本、事件属性、外部资源、`javascript:` 和路径穿越；内置 SVG 不走运行时 sanitizer，必须由仓库测试做静态安全审计
 - `rendering.objectChannelFiles` 可按 SVG basename 把需要 `contentDocument` 控制、且经逐素材 Electron 验证的少量精灵切到 document-backed `<object>` 通道；普通 CSS / SMIL 动画仍优先使用 `<img>`。这些文件同时进入 required-assets 集合并使主题采用较高功耗档。外部主题仍先走 SVG sanitizer（含动态 SMIL 属性值），该字段不授予脚本能力
 - `trustedRuntime.scriptedSvgFiles` 只对 loader 判定为内置的主题生效；外部主题声明该字段会被忽略
-- 支持 SVG / GIF / APNG / WebP / PNG / JPG；动画周期由 `src/animation-cycle.js` 探测
+- 支持 SVG / GIF / APNG / WebP / PNG / JPG；动画周期由 `src/runtime/visual/animation-cycle.js` 探测
 - 更新视觉遵循主题绑定：`checking` 可选走 `theme.updateVisuals.checking`，未声明时回退到当前主题的 `thinking`；发现新版本时会进入 `available -> notification`；`downloading / success / error` 继续分别走 `carrying / attention / error`
 
 主题创建流程见 `docs/guides/guide-theme-creation.md`。
@@ -84,11 +84,11 @@ Settings 是独立 `BrowserWindow`，采用 5 层结构：
 
 | 层 | 文件 | 职责 |
 |---|---|---|
-| Schema / 持久化 | `src/prefs.js` | `SCHEMA` 定义；`load/save/migrate/validate`；JSON 损坏自动 `.bak` + fallback；文件本身不可读时进入不覆盖原文件的 read-failure safe mode |
-| 内存 store | `src/settings-store.js` | `createStore()` 返回 `{ getSnapshot, subscribe, _commit }`；`_commit` closure-private |
-| 控制器 / actions | `src/settings-controller.js` + `src/settings-actions*.js` | controller 是唯一写入者；actions 提供校验、command 与失败可阻止提交的 pre-commit gates |
-| 提交后 effects | `src/settings-effect-router.js` | 订阅 committed changes，更新 tray/dock/window/HUD/renderer 等 runtime 状态与广播；失败不得回滚已提交 prefs |
-| UI | `src/settings-ui-core.js` + `src/settings-renderer.js` + `src/settings-tab-*.js` + `src/settings.html` + `src/preload-settings.js` | core 持 shared state，renderer 是侧栏/tab shell，各 tab 只通过 preload/IPC 调 controller；新增 tab 还要登记 script 与 icon |
+| Schema / 持久化 | `src/core/settings/prefs.js` | `SCHEMA` 定义；`load/save/migrate/validate`；JSON 损坏自动 `.bak` + fallback；文件本身不可读时进入不覆盖原文件的 read-failure safe mode |
+| 内存 store | `src/core/settings/store.js` | `createStore()` 返回 `{ getSnapshot, subscribe, _commit }`；`_commit` closure-private |
+| 控制器 / actions | `src/core/settings/controller.js` + `src/core/settings/actions*.js` | controller 是唯一写入者；actions 提供校验、command 与失败可阻止提交的 pre-commit gates |
+| 提交后 effects | `src/core/settings/effect-router.js` | 订阅 committed changes，更新 tray/dock/window/HUD/renderer 等 runtime 状态与广播；失败不得回滚已提交 prefs |
+| UI | `src/ui/settings/ui-core.js` + `src/ui/settings/renderer.js` + `src/ui/settings/tabs/*.js` + `src/ui/settings/settings.html` + `src/ui/settings/preload.js` | core 持 shared state，renderer 是侧栏/tab shell，各 tab 只通过 preload/IPC 调 controller；新增 tab 还要登记 script 与 icon |
 
 关键取舍：
 
@@ -186,8 +186,8 @@ Mini 状态映射：
 - Settings → Shortcuts 的“快速选择会话”默认未分配。快捷键打开的是**完整 Dashboard 本身**的一个临时键盘模式，不是第二套 UI：同一份 `dashboard.html` / preload / renderer / 页面状态，卡片、group、quota、alias、automation 全部保留。
 - 平台 gate 的唯一真相是 `shortcut-actions.js` 的 `SHORTCUT_ACTIONS.quickSelectSession.supportedPlatforms`，由 `isShortcutActionSupported()` 统一判定。Linux：Settings 不渲染该行、`globalShortcut` 不注册、录制被拒、绕过 UI 的 `registerShortcut` / `resetShortcut` 明确报错。预览版遗留的 `shortcuts.quickSelectSession` 值**原样保留在 prefs**，只是不执行、不占用冲突位，也不会被 Reset All 改写。
 - **不支持的平台上这套 IPC 根本不注册**：`session-ipc.js` 只在 `quickMode.isSupported()` 时注册 `dashboard:quick-*`，`preload-dashboard.js` 也只在 darwin/win32 暴露对应方法并订阅对应通道，renderer 按方法是否存在做特性检测。因此 Linux 上不存在“可以调用但回 unsupported”的能力面，也不会调用未注册通道。
-- `src/dashboard.js` 是唯一 owner。darwin/win32 的普通宿主是 `BaseWindow + WebContentsView`（`src/dashboard-host.js`），Linux 仍是 `BrowserWindow`。BaseWindow **不会**触发 `ready-to-show`，首次显示由该 view 真实 `webContents` 的 load 事件驱动；页面的 `webContents` 只能从 owner 取，不能走 `window.webContents` 或 `BrowserWindow.fromWebContents()`。
-- quick 宿主（`src/dashboard-quick-mode.js`）懒创建：macOS `type:"panel"`，Windows `type:"toolbar" + skipTaskbar`。尺寸取普通宿主的 `getNormalBounds()` 并按当前 workArea 钳制——**不得沿用全屏 / maximized / macOS Zoom 的 transient rect**，否则 panel 会铺满整屏挡住来源窗口。
+- `src/ui/dashboard/dashboard.js` 是唯一 owner。darwin/win32 的普通宿主是 `BaseWindow + WebContentsView`（`src/ui/dashboard/host.js`），Linux 仍是 `BrowserWindow`。BaseWindow **不会**触发 `ready-to-show`，首次显示由该 view 真实 `webContents` 的 load 事件驱动；页面的 `webContents` 只能从 owner 取，不能走 `window.webContents` 或 `BrowserWindow.fromWebContents()`。
+- quick 宿主（`src/ui/dashboard/quick-mode.js`）懒创建：macOS `type:"panel"`，Windows `type:"toolbar" + skipTaskbar`。尺寸取普通宿主的 `getNormalBounds()` 并按当前 workArea 钳制——**不得沿用全屏 / maximized / macOS Zoom 的 transient rect**，否则 panel 会铺满整屏挡住来源窗口。
 - 借用规则按真机结论固定：**禁止 `hide()` + `showInactive()` 归还**（实测归还时会把普通 Dashboard 抬到来源窗口之上）。可见但非前台的普通宿主改为 `opacity=0` + `setIgnoreMouseEvents(true)`，原值捕获一次、任何退出路径幂等恢复（恢复的是捕获值，不是硬编码 1）。`setIgnoreMouseEvents(true)` **不挡键盘**，所以被停放的宿主绝不能持有焦点。冷启动 / 隐藏 / 最小化的普通宿主不 park、不 show、不 restore。普通 Dashboard 已聚焦时只就地进入数字模式，不借用、不改任何宿主旗标。
 - **统一 busy gate**：renderer 存在 activeEdit / composing / 聚焦的 native select 或 editable 元素时，本次数字模式与转移**整体拒绝**——不保留数字映射、不 force render、不取消编辑、不 commit、不吞按键，只在固定的模式提示节点提示“先结束编辑”。判定发生在任何原生动作之前，因为 detach 本身就会让别名输入框 blur 并提交半截草稿；`dashboard-renderer.js` 的 forced 重绘还会在 rAF 里重新 `focus()` + `select()` 整段草稿。**busy 在 `enter` 与 `ready` 两个时刻都要判**：等待 `enter` 回包期间用户开始编辑时，renderer 以 `ready{busy:true}` 让 main 放弃本次数字轮，绝不转移。结束编辑后需要再次明确按快捷键才进入，不会暗中 armed。
 - **重开先撤销数字权限，不能先结束物理借用**：Windows 在 `2ca873f9` 实测 quick 内编辑 / IME 期间再次快捷键会先 `dismiss(reenter)` → 转移 view → input blur 提交草稿，随后才返回 busy。现在 `show()` 同步废除旧 active/ready/mapping，使旧数字与迟到 IPC 立即失效，但保留 view、宿主、parking 和输入焦点，先进行新轮 enter / ready 协商。已有 quick 宿主在接受后直接复用，不为替换数字而重挂 / 重定位；需要回普通宿主时也只能在两次 busy 检查后移动。
@@ -223,7 +223,7 @@ Mini 状态映射：
 
 ### Account Quota（用量聚合 / Session HUD 额度区）
 
-- `sessionHudShowQuota`（Settings → 通用 → 会话管理 → 额度 →「采集并显示额度」）同时是显示开关和**主动采集总闸**。`src/usage-collector.js` 在入队和提交时都重读该值；每个来源再按 agent-gate 判断对应 Agent 是否启用。主动来源：`claude-oauth`（Claude Code，只读 OAuth 登录 + `/api/oauth/usage` → `claudeQuota`）、`codex-app-server`（Codex，`account/rateLimits/read` → `codexQuota` / `codexSparkQuota`）、`omp-usage`（OMP，`omp usage --json --redact`；`anthropic` → `claudeQuota`，`openai-codex` → `codexQuota`，其余 → `extraQuota[providerId]`）。结果写入 `state-account-quota.js` 的本机 source（key `""`），与 statusline、Codex rollout、Kimi、Antigravity、Remote SSH 等被动来源共用同一 store。
+- `sessionHudShowQuota`（Settings → 通用 → 会话管理 → 额度 →「采集并显示额度」）同时是显示开关和**主动采集总闸**。`src/quota/usage-collector.js` 在入队和提交时都重读该值；每个来源再按 agent-gate 判断对应 Agent 是否启用。主动来源：`claude-oauth`（Claude Code，只读 OAuth 登录 + `/api/oauth/usage` → `claudeQuota`）、`codex-app-server`（Codex，`account/rateLimits/read` → `codexQuota` / `codexSparkQuota`）、`omp-usage`（OMP，`omp usage --json --redact`；`anthropic` → `claudeQuota`，`openai-codex` → `codexQuota`，其余 → `extraQuota[providerId]`）。结果写入 `state-account-quota.js` 的本机 source（key `""`），与 statusline、Codex rollout、Kimi、Antigravity、Remote SSH 等被动来源共用同一 store。
 - 凭据只读：不刷新、不轮换、不回写 token；过期即 `needs-login`。macOS 钥匙串（`Claude Code-credentials`）只在 `interactive: true` 的刷新（单击桌宠、打开 Dashboard、Settings「立即刷新」）读取，启动与后台从不读取，只有钥匙串可用而本次非交互时状态为 `waiting-interaction`。token、响应正文、邮箱、账号/组织 ID 不写日志、不落盘。
 - 触发：启动约 15 秒后一次（非交互）、单击桌宠、打开 Dashboard、打开总闸或启用 Agent（非交互）、Settings「立即刷新」（交互 + force）。每个来源最小间隔 5 分钟（force 60 秒），单飞；429 退避 Retry-After 或 15 分钟。**没有周期轮询**，数值在两次查看之间会变旧。`codex` / `omp` 二进制在 PATH 之外还查 `/opt/homebrew/bin`、`/usr/local/bin`、`~/.local/bin`、`~/.bun/bin`、`~/.npm-global/bin`（Windows 为 `%APPDATA%\\npm`），因为从 Dock 启动的 app 没有 shell PATH。
 - OMP 映射：有有限 `usedFraction` 的是窗口额度，`used = 0` 且没有有限 `window.resetsAt` 时**丢弃**（无信息，例如 provider 的“状态栏占位”、Anthropic 尚未开始的窗口）——除非该窗口有真实容量（有限且大于 0、单位不是 `percent` 的 `amount.limit`，例如 Command Code 尚未开始的 14 credits 5h 窗口），此时按 0% 保留；按档位（tier）划分的额度在所有 provider 上都忽略；没有 `usedFraction` 但有 `remaining` 的是余额。同一 provider 的一次报告是完整快照，整体替换旧 limits。

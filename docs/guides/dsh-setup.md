@@ -182,7 +182,7 @@ The same operation is available for development:
 
 ```bash
 npm run install:dsh
-node hooks/dsh-install.js --repair
+node hooks/deepseek-harness/dsh-install.js --repair
 ```
 
 The `<dsh-home-hash>` namespace is derived from the canonical `DSH_HOME` path.

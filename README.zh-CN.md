@@ -41,17 +41,17 @@ Clawd 住在你的桌面上，实时感知 AI 编程助手正在做什么。发�
 - **Gemini CLI** — 可选 command hook，写入 `~/.gemini/settings.json`（从 Settings → Agents 安装，或执行 `npm run install:gemini-hooks`）
 - **Antigravity CLI (agy)** — 可选 command hook，写入 `~/.gemini/config/hooks.json`（从 Settings → Agents 安装，或执行 `npm run install:antigravity-hooks`）；**仅状态同步**：Clawd 不会为 agy 弹任何权限气泡，所有 Allow / Deny / Always-allow 都在 agy 自己的终端菜单里完成
 - **Cursor Agent** — 可选 [Cursor IDE hooks](https://cursor.com/docs/agent/hooks)，写入 `~/.cursor/hooks.json`（从 Settings → Agents 安装，或执行 `npm run install:cursor-hooks`）
-- **CodeBuddy** — 可选 Claude Code 兼容 command hook + HTTP 权限 hook，写入 `~/.codebuddy/settings.json`（从 Settings → Agents 安装，或执行 `node hooks/codebuddy-install.js`）
+- **CodeBuddy** — 可选 Claude Code 兼容 command hook + HTTP 权限 hook，写入 `~/.codebuddy/settings.json`（从 Settings → Agents 安装，或执行 `node hooks/codebuddy/codebuddy-install.js`）
 - **自定义 HTTP Agent** — 在 Settings 注册其他本机可执行文件，再由应用或 adapter 主动向 Clawd 的动态 `/state` 地址上报生命周期事件。“注册”不会安装 hook，也不会让普通应用自动上报；v1 仅支持状态，权限决定留在应用自己的界面中。详见[自定义 HTTP Agent 指南](docs/guides/custom-agent-http.md)。
-- **WorkBuddy** — 可选 Claude Code 兼容 command hook，当前写入 `~/.workbuddy-ai/settings.json`，旧版使用 `~/.workbuddy/settings.json`（从 Settings → Agents 安装，或执行 `node hooks/workbuddy-install.js`）。仅状态 + 通知：桌面应用在其原生沙箱与 GUI 中处理权限，因此 Clawd 不为它注册权限 hook
-- **Grok Build** — 可选 Claude Code 兼容 command hook，写入 `~/.grok/hooks/clawd-on-desk.json`（从 Settings → Agents 安装，或执行 `node hooks/grok-install.js`）。仅状态 + 通知：Grok 没有阻塞式 `PermissionRequest`，允许/拒绝仍在 Grok 终端里完成
+- **WorkBuddy** — 可选 Claude Code 兼容 command hook，当前写入 `~/.workbuddy-ai/settings.json`，旧版使用 `~/.workbuddy/settings.json`（从 Settings → Agents 安装，或执行 `node hooks/workbuddy/workbuddy-install.js`）。仅状态 + 通知：桌面应用在其原生沙箱与 GUI 中处理权限，因此 Clawd 不为它注册权限 hook
+- **Grok Build** — 可选 Claude Code 兼容 command hook，写入 `~/.grok/hooks/clawd-on-desk.json`（从 Settings → Agents 安装，或执行 `node hooks/grok-build/grok-install.js`）。仅状态 + 通知：Grok 没有阻塞式 `PermissionRequest`，允许/拒绝仍在 Grok 终端里完成
 - **Kiro CLI** — 可选 command hooks，注入到 `~/.kiro/agents/` 下的自定义 agent 配置中，并自动创建一个 `clawd` agent；安装集成后 Clawd 会继续从内置 `kiro_default` 同步它，尽量保持与默认 agent 一致。macOS 与 Windows 上状态动效已验证可用；需要时可用 `kiro-cli --agent clawd` 或在会话内执行 `/agent swap clawd` 启用 hooks
 - **Kimi Code CLI（Kimi-CLI）** — 可选 command hooks，写入 `~/.kimi/config.toml`（`[[hooks]]` 条目）（从 Settings → Agents 安装，或执行 `npm run install:kimi-hooks`）
 - **Qwen Code** — 可选 command hooks，写入 `~/.qwen/settings.json`（从 Settings → Agents 安装，或执行 `npm run install:qwen-hooks`）；支持状态追踪和 Qwen `PermissionRequest` 桌面权限气泡
 - **ZCode** — 可选状态 + 阻塞式 `PermissionRequest` hooks，写入 `~/.zcode/cli/config.json` 的 `hooks.events.*`（从 Settings → Agents 安装，或执行 `npm run install:zcode-hooks`）；Clawd 提供人工 Allow/Deny 权限气泡，global 与 per-session 自动审批保持 defer。Clawd 会保留用户显式设置的全局或单项 `enabled:false`，并且不会覆盖第三方 `PermissionRequest` hook
 - **CodeWhale** — 可选 state-only lifecycle hooks，写入 `~/.codewhale/config.toml`（`[[hooks.hooks]]` 条目）（从 Settings → Agents 安装，或执行 `npm run install:codewhale-hooks`）；Phase 1 只驱动 idle、thinking、working、sleeping、error、attention、sweeping 等状态动画，不接权限气泡和子代理追踪
 - **Reasonix CLI** — 可选 state-only command hooks，写入 `<Reasonix home>/settings.json`（macOS/Linux 为 `~/.reasonix/settings.json`，Windows 为 `%APPDATA%\reasonix\settings.json`；从 Settings → Agents 安装，或执行 `npm run install:reasonix-hooks`）；Phase 1 只驱动生命周期、工具调用、通知、压缩和子代理结束动效，权限决策仍留在 Reasonix 自己的终端流程
-- **opencode** — 可选 [plugin 集成](https://opencode.ai/docs/plugins)，写入 `~/.config/opencode/` 下当前生效的文件（`config.json` → `opencode.json` → `opencode.jsonc`，后者优先）（从 Settings → Agents 安装，或执行 `node hooks/opencode-install.js`）；支持零延迟事件流和 Allow/Always/Deny 权限气泡。`task` 工具产生的子会话是 headless，不参与可见的多会话动画聚合
+- **opencode** — 可选 [plugin 集成](https://opencode.ai/docs/plugins)，写入 `~/.config/opencode/` 下当前生效的文件（`config.json` → `opencode.json` → `opencode.jsonc`，后者优先）（从 Settings → Agents 安装，或执行 `node hooks/opencode/opencode-install.js`）；支持零延迟事件流和 Allow/Always/Deny 权限气泡。`task` 工具产生的子会话是 headless，不参与可见的多会话动画聚合
 - **MiMo Code** — 可选 [plugin 集成](https://opencode.ai/docs/plugins)，写入 `~/.config/mimocode/` 下当前生效的文件（`config.json` → `mimocode.json` → 默认 `mimocode.jsonc`，后者优先；从 Settings → Agents 安装，或执行 `npm run install:mimocode-plugin`）；与 opencode 共享 `@mimo-ai/plugin` SDK 和权限行为，`task` 子会话同样是 headless
 - **Pi** — 可选全局 extension，写入 `~/.pi/agent/extensions/clawd-on-desk`（从 Settings → Agents 安装，或执行 `npm run install:pi-extension`）；仅同步交互式 Pi 会话生命周期和工具活动状态，并保留 Pi 默认 YOLO 行为
 - **OMP (oh-my-pi)** — 可选全局 extension，写入 `~/.omp/agent/extensions/clawd-on-desk`（从 Settings → Agents 安装，或执行 `npm run install:omp-extension`）；仅同步交互式会话生命周期与工具活动状态。`session_stop` 只记录完成候选，随后仅在 OMP 确认没有 extension 请求续跑的终态 `agent_end` 才提交，因此完成提示音会等这一轮真正结束才响。若已存在社区桥接 `clawd-on-desk-omp.ts`，Clawd 保留它并跳过自身安装
@@ -177,7 +177,7 @@ cd clawd-on-desk
 # 安装依赖
 npm install
 
-# 启动 Clawd（启动时会自动注册 Claude Code 和 Codex hooks；如需预先手动注册 Claude，可单独执行 `node hooks/install.js`）
+# 启动 Clawd（启动时会自动注册 Claude Code 和 Codex hooks；如需预先手动注册 Claude，可单独执行 `node hooks/claude-code/install.js`）
 npm start
 ```
 

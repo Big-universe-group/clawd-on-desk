@@ -68,7 +68,7 @@ Turn off **Record footprints** to stop new event tickets and close the current c
 ## Maintainer invariants
 
 - Record only after the agent gate and all source, replay, deduplication, subagent, and completion arbitration have accepted the event. `updateSession()` entry is not an acceptance boundary.
-- Metric support belongs to the explicit table in `src/recap-metrics.js`; do not infer it from registry capabilities or normalized event names.
+- Metric support belongs to the explicit table in `src/runtime/recap/metrics.js`; do not infer it from registry capabilities or normalized event names.
 - Keep ephemeral ingress identities separate from the persisted allowlist. Persist only HMAC values when a stable identity is required.
 - Preserve `null` for unsupported metrics. Never render or aggregate it as zero.
 - DND must not stop recap coverage or discard pending completion arbitration. Suspend, process shutdown, and the recording preference do stop coverage.

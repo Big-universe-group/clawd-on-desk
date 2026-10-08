@@ -71,34 +71,34 @@
 
 | 文件 | 行数 | 用途 |
 |---|---|---|
-| `agents/codewhale.js` | ~40 | Agent 元数据配置 |
-| `hooks/codewhale-hook.js` | ~210 | 生命周期 hook 脚本（事件翻译 + HTTP POST） |
-| `hooks/codewhale-install.js` | ~350 | 安装脚本（读写 `~/.codewhale/config.toml`） |
+| `src/agents/codewhale/descriptor.js` | ~40 | Agent 元数据配置 |
+| `hooks/codewhale/codewhale-hook.js` | ~210 | 生命周期 hook 脚本（事件翻译 + HTTP POST） |
+| `hooks/codewhale/codewhale-install.js` | ~350 | 安装脚本（读写 `~/.codewhale/config.toml`） |
 | `assets/icons/agents/codewhale.png` | — | 64×64 runtime agent PNG |
 
 ### 3.2 修改文件（核心）
 
 | 文件 | 改动行数 | 改动内容 |
 |---|---|---|
-| `agents/registry.js` | +2 | require + AGENTS 数组注册 |
-| `src/prefs.js` | +1 | agents 默认值白名单 |
-| `src/integration-sync.js` | +18 | `syncCodewhaleHooks()` 自动同步函数 |
-| `src/server-agent-id.js` | +1 | `HOOK_SOURCE_AGENT_IDS` 注册 |
-| `src/settings-actions-agents.js` | +1 | `AUTO_REPAIRABLE_AGENT_IDS` |
-| `src/settings-agent-order.js` | +1 | `NON_COLLAPSIBLE` 排序 |
-| `src/i18n.js` | +5 | 5 种语言的 eventSource 翻译键 |
-| `hooks/codewhale-install.js` | 多行 | 幂等注册、legacy orphan cleanup、Windows command quoting、CodeWhale config path resolver |
-| `hooks/codewhale-hook.js` | 多行 | session_title + 稳定 session id + session 缓存 + 可测试入口 |
-| `src/doctor-detectors/agent-descriptors.js` | 多行 | CodeWhale descriptor |
-| `src/doctor-detectors/agent-integrations.js` | 多行 | `codewhale-hooks-toml` Doctor 检查 |
-| `hooks/cleanup-integrations.js` | 多行 | managed cleanup 接入 CodeWhale |
+| `src/agents/registry.js` | +2 | require + AGENTS 数组注册 |
+| `src/core/settings/prefs.js` | +1 | agents 默认值白名单 |
+| `src/agents/integration-sync.js` | +18 | `syncCodewhaleHooks()` 自动同步函数 |
+| `src/agents/server-agent-id.js` | +1 | `HOOK_SOURCE_AGENT_IDS` 注册 |
+| `src/agents/settings-actions.js` | +1 | `AUTO_REPAIRABLE_AGENT_IDS` |
+| `src/agents/settings-order.js` | +1 | `NON_COLLAPSIBLE` 排序 |
+| `src/core/i18n/i18n.js` | +5 | 5 种语言的 eventSource 翻译键 |
+| `hooks/codewhale/codewhale-install.js` | 多行 | 幂等注册、legacy orphan cleanup、Windows command quoting、CodeWhale config path resolver |
+| `hooks/codewhale/codewhale-hook.js` | 多行 | session_title + 稳定 session id + session 缓存 + 可测试入口 |
+| `src/agents/doctor/descriptors.js` | 多行 | CodeWhale descriptor |
+| `src/agents/doctor/integrations.js` | 多行 | `codewhale-hooks-toml` Doctor 检查 |
+| `hooks/shared/cleanup-integrations.js` | 多行 | managed cleanup 接入 CodeWhale |
 | `package.json` | 1 行 | 保留 `npm start` 的 sidecar preflight |
 
 ---
 
 ## 4. 新增文件详解
 
-### 4.1 `agents/codewhale.js` — Agent 配置
+### 4.1 `src/agents/codewhale/descriptor.js` — Agent 配置
 
 ```js
 module.exports = {
@@ -121,7 +121,7 @@ module.exports = {
 - `capabilities.sessionEnd: true` — 会话结束时 Clawd 显示 sleeping 动画而非隐藏
 - `permissionApproval: false` — Phase 2（权限审批气泡）需要 CodeWhale 源码改动
 
-### 4.2 `hooks/codewhale-hook.js` — Hook 脚本
+### 4.2 `hooks/codewhale/codewhale-hook.js` — Hook 脚本
 
 这是整合同的核心文件。CodeWhale 在每次生命周期事件触发时调用此脚本。
 
@@ -153,7 +153,7 @@ CodeWhale → 设置环境变量 → 调用 hook 脚本 → 翻译事件 → POS
 
 Clawd 默认用 `path.basename(cwd)` 作为 HUD 标签，即工作空间目录名（如 `claude_on_desk`）。hook 脚本通过 `session_title: "CodeWhale"` 覆盖，使 HUD 显示正确的 agent 名。
 
-### 4.3 `hooks/codewhale-install.js` — 安装脚本
+### 4.3 `hooks/codewhale/codewhale-install.js` — 安装脚本
 
 操作 `~/.codewhale/config.toml` 的 `[[hooks.hooks]]` 部分：
 
@@ -184,7 +184,7 @@ timeout_secs = 5
 
 ### 4.4 `assets/icons/agents/codewhale.png`
 
-64×64 runtime agent PNG。所有 runtime agent PNG 都必须保持 64×64，避免 `test/state-agent-icons.test.js` 失败。
+64×64 runtime agent PNG。所有 runtime agent PNG 都必须保持 64×64，避免 `test/runtime/state/state-agent-icons.test.js` 失败。
 
 ---
 
@@ -242,7 +242,7 @@ const command = `${nodePath} "${hookPath}" ${event}`;
 
 CodeWhale CLI 会尊重 `CODEWHALE_CONFIG_PATH` 和 `DEEPSEEK_CONFIG_PATH`。installer 和 Doctor 现在共用 `resolveCodewhaleConfigPath()`，默认仍是 `~/.codewhale/config.toml`，但显式 env/config path 会优先生效。
 
-### 5.2 `agents/registry.js`
+### 5.2 `src/agents/registry.js`
 
 ```js
 const codewhale = require("./codewhale");
@@ -253,14 +253,14 @@ const AGENTS = [
 ];
 ```
 
-### 5.3 `src/prefs.js`
+### 5.3 `src/core/settings/prefs.js`
 
 ```js
 // agents 默认值白名单中新增
 "codewhale": { integrationInstalled: false, enabled: false, permissionsEnabled: false, notificationHookEnabled: true },
 ```
 
-### 5.4 `src/integration-sync.js`
+### 5.4 `src/agents/integration-sync.js`
 
 ```js
 function syncCodewhaleHooks() {
@@ -272,7 +272,7 @@ function syncCodewhaleHooks() {
 
 CodeWhale 只有在 Settings 中安装且启用后才会在 Clawd 启动时自动调用此函数；用户触发 Install / Fix / Repair 时也会调用。
 
-### 5.5 `src/server-agent-id.js`
+### 5.5 `src/agents/server-agent-id.js`
 
 ```js
 const HOOK_SOURCE_AGENT_IDS = new Map([
@@ -283,7 +283,7 @@ const HOOK_SOURCE_AGENT_IDS = new Map([
 
 将 hook source 字符串 `"codewhale-hook"` 映射到 agent `"codewhale"`。
 
-### 5.6 `src/settings-actions-agents.js`
+### 5.6 `src/agents/settings-actions.js`
 
 ```js
 const AUTO_REPAIRABLE_AGENT_IDS = new Set([
@@ -294,7 +294,7 @@ const AUTO_REPAIRABLE_AGENT_IDS = new Set([
 
 允许设置面板中一键修复 CodeWhale hooks。
 
-### 5.7 `src/settings-agent-order.js`
+### 5.7 `src/agents/settings-order.js`
 
 ```js
 const NON_COLLAPSIBLE = [
@@ -317,9 +317,9 @@ CodeWhale 集成本身不需要改动 `npm start`。Telegram legacy sidecar 已�
 
 CodeWhale 已进入 Doctor descriptor 和 integration checks：
 
-- `src/doctor-detectors/agent-descriptors.js` 使用 `configMode: "codewhale-hooks-toml"`。
-- `src/doctor-detectors/agent-integrations.js` 校验 7 个 CodeWhale hook events、script path、broken command，并识别 `[hooks].enabled = false`。
-- `hooks/cleanup-integrations.js` 调用 `unregisterCodewhaleHooks()` 清理 canonical hooks 和 legacy orphan hooks。
+- `src/agents/doctor/descriptors.js` 使用 `configMode: "codewhale-hooks-toml"`。
+- `src/agents/doctor/integrations.js` 校验 7 个 CodeWhale hook events、script path、broken command，并识别 `[hooks].enabled = false`。
+- `hooks/shared/cleanup-integrations.js` 调用 `unregisterCodewhaleHooks()` 清理 canonical hooks 和 legacy orphan hooks。
 
 ---
 
@@ -395,7 +395,7 @@ CodeWhale 有两个独立的 hook/事件系统：
    DEEPSEEK_SESSION_ID=test_001 \
    DEEPSEEK_WORKSPACE=/tmp \
    DEEPSEEK_MODE=agent \
-   node hooks/codewhale-hook.js session_start
+   node hooks/codewhale/codewhale-hook.js session_start
    ```
 
 ### 8.2 HUD 标签显示错误（如 `claude_on_desk`）
@@ -479,5 +479,5 @@ grep "codewhale-hook" ~/.codewhale/config.toml
 # 手动触发事件
 cd clawd-on-desk
 DEEPSEEK_SESSION_ID=debug DEEPSEEK_WORKSPACE=$(pwd) \
-  node hooks/codewhale-hook.js session_start
+  node hooks/codewhale/codewhale-hook.js session_start
 ```

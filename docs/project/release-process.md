@@ -567,7 +567,7 @@ freezes the wrapper and neither of those links, so the workflow installs komac
 itself from a release archive whose SHA-256 is pinned in `env`.
 
 Bumping `KOMAC_VERSION` requires bumping `KOMAC_SHA256` in the same edit; the
-checksum is asserted in `test/winget-arch-contract.test.js`.
+checksum is asserted in `test/repo/winget-arch-contract.test.js`.
 
 All third-party Actions used by this workflow are pinned to full commit SHAs.
 When updating an Action, resolve and review the new tag target and change the SHA

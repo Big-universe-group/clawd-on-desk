@@ -42,16 +42,16 @@ Clawd 住在你的桌面上，即時感知 AI 程式設計助理在做什麼。�
 - **Gemini CLI** — 在 `~/.gemini/settings.json` 設定 command hook（Clawd 啟動時自動註冊，或執行 `npm run install:gemini-hooks`）
 - **Antigravity CLI (agy)** — 在 `~/.gemini/config/hooks.json` 設定 command hook（已有 Antigravity 設定時 Clawd 啟動會自動註冊，或執行 `npm run install:antigravity-hooks`）；**僅同步狀態**：Clawd 不會為 agy 顯示任何權限對話框，所有 Allow / Deny / Always-allow 都在 agy 自己的終端機選單完成
 - **Cursor Agent** — [Cursor IDE hooks](https://cursor.com/docs/agent/hooks)，設定在 `~/.cursor/hooks.json`（Clawd 啟動時自動註冊，或執行 `npm run install:cursor-hooks`）
-- **CodeBuddy** — 以 Claude Code 相容的 command hook + HTTP 權限 hook 整合，設定寫入 `~/.codebuddy/settings.json`（Clawd 啟動時自動註冊，或執行 `node hooks/codebuddy-install.js`）
+- **CodeBuddy** — 以 Claude Code 相容的 command hook + HTTP 權限 hook 整合，設定寫入 `~/.codebuddy/settings.json`（Clawd 啟動時自動註冊，或執行 `node hooks/codebuddy/codebuddy-install.js`）
 - **自訂 HTTP Agent** — 在 Settings 註冊其他本機應用，再由應用或 adapter 主動向 Clawd 的動態 `/state` 位址上報事件；註冊不會安裝 hook，v1 僅同步狀態，權限決定留在應用自己的介面。詳見[自訂 HTTP Agent 指南](docs/guides/custom-agent-http.md)
-- **WorkBuddy** — 可選 Claude Code 相容 command hook，當前使用 `~/.workbuddy-ai/settings.json`，舊版使用 `~/.workbuddy/settings.json`（從 Settings → Agents 安裝，或執行 `node hooks/workbuddy-install.js`）；僅同步狀態與通知，權限仍由 WorkBuddy 原生 GUI 處理
-- **Grok Build** — 可選 Claude Code 相容 command hook，寫入 `~/.grok/hooks/clawd-on-desk.json`（從 Settings → Agents 安裝，或執行 `node hooks/grok-install.js`）。僅同步狀態與通知；Grok 沒有阻塞式 `PermissionRequest` hook，Allow / Deny 仍由 Grok TUI 處理。
+- **WorkBuddy** — 可選 Claude Code 相容 command hook，當前使用 `~/.workbuddy-ai/settings.json`，舊版使用 `~/.workbuddy/settings.json`（從 Settings → Agents 安裝，或執行 `node hooks/workbuddy/workbuddy-install.js`）；僅同步狀態與通知，權限仍由 WorkBuddy 原生 GUI 處理
+- **Grok Build** — 可選 Claude Code 相容 command hook，寫入 `~/.grok/hooks/clawd-on-desk.json`（從 Settings → Agents 安裝，或執行 `node hooks/grok-build/grok-install.js`）。僅同步狀態與通知；Grok 沒有阻塞式 `PermissionRequest` hook，Allow / Deny 仍由 Grok TUI 處理。
 - **Kiro CLI** — command hooks 注入到 `~/.kiro/agents/` 下的自訂 agent 設定，並自動建立 `clawd` agent；Clawd 每次啟動都會從內建的 `kiro_default` 重新同步它，盡量和預設 agent 保持一致。macOS 與 Windows 上狀態動效已驗證可用；需要時可用 `kiro-cli --agent clawd` 或在工作階段內執行 `/agent swap clawd` 啟用 hooks（Clawd 啟動時自動註冊，或執行 `npm run install:kiro-hooks`）
 - **Kimi Code CLI（Kimi-CLI）** — 在 `~/.kimi/config.toml` 的 `[[hooks]]` 條目設定 command hooks（Clawd 啟動時自動註冊，或執行 `npm run install:kimi-hooks`）
 - **Qwen Code** — 在 `~/.qwen/settings.json` 設定 command hooks（Clawd 啟動時自動註冊，或執行 `npm run install:qwen-hooks`）；支援狀態追蹤和 Qwen `PermissionRequest` 桌面權限對話框
 - **ZCode** — 可選狀態 + 阻塞式 `PermissionRequest` hooks，寫入 `~/.zcode/cli/config.json` 的 `hooks.events.*`（從 Settings → Agents 安裝，或執行 `npm run install:zcode-hooks`）；Clawd 提供人工 Allow/Deny 權限氣泡，global 與 per-session 自動審批保持 defer。Clawd 會保留使用者明確設定的全域或單項 `enabled:false`，並且不會覆蓋第三方 `PermissionRequest` hook
 - **opencode** — 可選 [外掛整合](https://opencode.ai/docs/plugins)，寫入 `~/.config/opencode/` 下目前生效的檔案（`config.json` → `opencode.json` → `opencode.jsonc`，後者優先）（從 Settings → Agents 安裝）；支援零延遲事件流與 Allow/Always/Deny 權限對話框。`task` 工具產生的子工作階段是 headless，不參與可見的多工作階段動畫聚合
-- **MiMo Code** — 可選 [外掛整合](https://opencode.ai/docs/plugins)，寫入 `~/.config/mimocode/mimocode.jsonc`（從 Settings → Agents 安裝，或執行 `node hooks/mimocode-install.js`）；與 opencode 共用 `@mimo-ai/plugin` SDK 與權限行為，`task` 子工作階段同樣是 headless
+- **MiMo Code** — 可選 [外掛整合](https://opencode.ai/docs/plugins)，寫入 `~/.config/mimocode/mimocode.jsonc`（從 Settings → Agents 安裝，或執行 `node hooks/opencode/mimocode-install.js`）；與 opencode 共用 `@mimo-ai/plugin` SDK 與權限行為，`task` 子工作階段同樣是 headless
 - **Pi** — 以全域擴充功能整合，寫入 `~/.pi/agent/extensions/clawd-on-desk`（Clawd 啟動時自動註冊，或執行 `npm run install:pi-extension`）；僅同步互動式 Pi 工作階段生命週期和工具活動狀態，並保留 Pi 預設 YOLO 行為
 - **OpenClaw** — 靠 `~/.openclaw/openclaw.json` 裡的外掛路徑做狀態感知（OpenClaw 設定已存在時 Clawd 啟動會自動註冊，或執行 `npm run install:openclaw-plugin`）；Phase 1 針對本機 `openclaw tui --local` 工作階段，只驅動動畫，沒接權限對話框和終端機焦點
 - **Hermes Agent** — [外掛整合](https://hermes-agent.org/)，寫入 Hermes 受管理的外掛目錄（偵測到 Hermes 後 Clawd 啟動時自動註冊，或執行 `npm run install:hermes-plugin`）；支援狀態、工作階段、SessionEnd 和終端機焦點
@@ -177,7 +177,7 @@ cd clawd-on-desk
 # 安裝相依套件
 npm install
 
-# 啟動 Clawd（啟動時會自動註冊 Claude Code hooks；要先手動註冊的話，可以單獨跑 `node hooks/install.js`）
+# 啟動 Clawd（啟動時會自動註冊 Claude Code hooks；要先手動註冊的話，可以單獨跑 `node hooks/claude-code/install.js`）
 npm start
 ```
 
