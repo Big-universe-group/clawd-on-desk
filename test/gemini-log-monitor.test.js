@@ -3,8 +3,8 @@ const assert = require("node:assert");
 const fs = require("fs");
 const path = require("path");
 const os = require("os");
-const GeminiLogMonitor = require("../agents/gemini-log-monitor");
-const geminiConfig = require("../agents/gemini-cli");
+const GeminiLogMonitor = require("../src/agents/gemini-cli/log-monitor");
+const geminiConfig = require("../src/agents/gemini-cli/descriptor");
 
 const LEGACY_GEMINI_LOG_CONFIG = {
   sessionDir: "~/.gemini/tmp",

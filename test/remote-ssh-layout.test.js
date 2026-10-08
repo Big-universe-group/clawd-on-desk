@@ -11,7 +11,7 @@ const {
   normalizeRemoteRuntimeIdentity,
   resolveRemoteRuntimeLayout,
   collectRemoteLayoutPathSet,
-} = require("../src/remote-ssh-layout");
+} = require("../src/features/remote-ssh/layout");
 
 test("account-default layout normalizes the reserved runtime key and covers every live path", () => {
   const layout = resolveRemoteRuntimeLayout({

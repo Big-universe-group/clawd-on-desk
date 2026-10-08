@@ -6,13 +6,13 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 
-const createAgentRuntimeMain = require("../src/agent-runtime-main");
-const CodexSubagentClassifier = require("../agents/codex-subagent-classifier");
-const { resolveCodexOfficialHookState } = require("../src/server-codex-official-turns");
-const { makeSessionKey } = require("../src/session-key");
-const { digestCodexTurnId } = require("../src/codex-turn-id");
-const { CODEX_LOCAL_WORKING_STALE_FLOOR_MS } = require("../src/state-stale-cleanup");
-const themeLoader = require("../src/theme-loader");
+const createAgentRuntimeMain = require("../src/agents/runtime-main");
+const CodexSubagentClassifier = require("../src/agents/codex/subagent-classifier");
+const { resolveCodexOfficialHookState } = require("../src/agents/codex/server-official-turns");
+const { makeSessionKey } = require("../src/core/util/session-key");
+const { digestCodexTurnId } = require("../src/agents/codex/turn-id");
+const { CODEX_LOCAL_WORKING_STALE_FLOOR_MS } = require("../src/runtime/state/stale-cleanup");
+const themeLoader = require("../src/features/themes/loader");
 
 const SRC_DIR = path.join(__dirname, "..", "src");
 const localSessionKey = (rawSessionId) => makeSessionKey({
@@ -56,7 +56,7 @@ function makeRealStateHarness() {
   const stateChanges = [];
   const snapshots = [];
   const noop = () => {};
-  const state = require("../src/state")({
+  const state = require("../src/runtime/state/state")({
     lang: "en",
     theme,
     doNotDisturb: false,
@@ -139,8 +139,8 @@ describe("agent-runtime-main", () => {
   });
 
   it("lets a live compaction item reach a session with recent official hooks", () => {
-    const CodexLogMonitor = require("../agents/codex-log-monitor");
-    const codexConfig = require("../agents/codex");
+    const CodexLogMonitor = require("../src/agents/codex/log-monitor");
+    const codexConfig = require("../src/agents/codex/descriptor");
     class ManualCodexLogMonitor extends CodexLogMonitor {
       start() {} // Exercise the production parser without a background poller.
     }
@@ -1428,7 +1428,7 @@ describe("agent-runtime-main", () => {
       isAgentEnabled: () => true,
       getStateRuntime: () => harness.state,
       updateSession: (...args) => harness.state.updateSession(...args),
-      loadCodexArchiveTracker: () => require("../src/codex-archive-tracker"),
+      loadCodexArchiveTracker: () => require("../src/agents/codex/archive-tracker"),
       codexArchiveOptions: {
         codexHome: root,
         setInterval: () => 0,
@@ -1624,7 +1624,7 @@ describe("agent-runtime-main", () => {
       isAgentEnabled: () => true,
       getStateRuntime: () => harness.state,
       updateSession: (...args) => harness.state.updateSession(...args),
-      loadCodexArchiveTracker: () => require("../src/codex-archive-tracker"),
+      loadCodexArchiveTracker: () => require("../src/agents/codex/archive-tracker"),
       codexArchiveOptions: {
         codexHome: root,
         setInterval: () => 0,

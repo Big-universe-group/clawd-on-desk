@@ -3,7 +3,7 @@
 const { describe, it } = require("node:test");
 const assert = require("node:assert");
 
-const createGrokTurnFence = require("../src/grok-turn-fence");
+const createGrokTurnFence = require("../src/agents/grok-build/turn-fence");
 const { normalizeGrokPromptId, digestGrokPromptId, classifyGrokEvent } = createGrokTurnFence;
 
 function apply(fence, input) {

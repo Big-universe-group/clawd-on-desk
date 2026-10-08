@@ -2,7 +2,7 @@
 
 const { describe, it } = require("node:test");
 const assert = require("node:assert");
-const recipientApi = require("../src/feishu-approval-recipient");
+const recipientApi = require("../src/features/feishu/recipient");
 const { classifyFeishuApprovalRecipient } = recipientApi;
 
 describe("Feishu approval recipient classifier", () => {

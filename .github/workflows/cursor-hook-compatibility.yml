@@ -11,7 +11,7 @@ on:
       - "hooks/shared-process.js"
       - "hooks/server-config.js"
       - "hooks/json-utils.js"
-      - "src/remote-ssh-deploy.js"
+      - "src/features/remote-ssh/deploy.js"
       - "test/cursor-*.test.js"
       - "test/shared-process.test.js"
       - "test/helpers/spawned-hook.js"

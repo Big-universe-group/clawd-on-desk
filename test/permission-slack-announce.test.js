@@ -19,9 +19,9 @@ const Module = require("node:module");
 
 const {
   classifyPermissionInteraction,
-} = require("../src/permission-automation-policy");
+} = require("../src/runtime/permission/automation-policy");
 
-const PERMISSION_MODULE_PATH = require.resolve("../src/permission");
+const PERMISSION_MODULE_PATH = require.resolve("../src/runtime/permission/permission");
 
 class FakeBrowserWindow {
   constructor() {
@@ -73,7 +73,7 @@ function loadPermissionWithFakeElectron() {
     return originalLoad.apply(this, arguments);
   };
   try {
-    return require("../src/permission");
+    return require("../src/runtime/permission/permission");
   } finally {
     Module._load = originalLoad;
   }

@@ -11,14 +11,14 @@ const SRC = path.join(__dirname, "..", "src");
 function loadI18n() {
   const context = { globalThis: null };
   context.globalThis = context;
-  vm.runInNewContext(fs.readFileSync(path.join(SRC, "settings-i18n.js"), "utf8"), context);
+  vm.runInNewContext(fs.readFileSync(path.join(SRC, "core", "i18n", "settings-i18n.js"), "utf8"), context);
   return context.ClawdSettingsI18n;
 }
 
 test("recap tab is loaded before the Settings renderer and sits directly above About", () => {
-  const html = fs.readFileSync(path.join(SRC, "settings.html"), "utf8");
-  const renderer = fs.readFileSync(path.join(SRC, "settings-renderer.js"), "utf8");
-  assert.ok(html.indexOf('settings-tab-recap.js') < html.indexOf('settings-renderer.js'));
+  const html = fs.readFileSync(path.join(SRC, "ui", "settings", "settings.html"), "utf8");
+  const renderer = fs.readFileSync(path.join(SRC, "ui", "settings", "renderer.js"), "utf8");
+  assert.ok(html.indexOf('src="tabs/recap.js"') < html.indexOf('src="renderer.js"'));
   assert.match(renderer, /\{ id: "recap"[\s\S]*\{ id: "about"/);
 });
 
@@ -56,7 +56,7 @@ test("every supported Settings locale has the complete recap key set", () => {
 test("recap tab stays browser-only and aggregates scope rows without turning null into zero", () => {
   const context = { globalThis: null };
   context.globalThis = context;
-  vm.runInNewContext(fs.readFileSync(path.join(SRC, "settings-tab-recap.js"), "utf8"), context);
+  vm.runInNewContext(fs.readFileSync(path.join(SRC, "ui", "settings", "tabs", "recap.js"), "utf8"), context);
   const core = {
     state: { snapshot: { lang: "en" }, activeTab: "recap" },
     runtime: { agentMetadata: [{ id: "codex", name: "Codex" }] },
@@ -101,10 +101,10 @@ test("recap tab stays browser-only and aggregates scope rows without turning nul
 });
 
 test("recap card keeps day grids square, makes only today a bar chart, and exposes no export surface", () => {
-  const css = fs.readFileSync(path.join(SRC, "settings.css"), "utf8");
-  const preload = fs.readFileSync(path.join(SRC, "preload-settings.js"), "utf8");
-  const renderer = fs.readFileSync(path.join(SRC, "settings-renderer.js"), "utf8");
-  const tab = fs.readFileSync(path.join(SRC, "settings-tab-recap.js"), "utf8");
+  const css = fs.readFileSync(path.join(SRC, "ui", "settings", "settings.css"), "utf8");
+  const preload = fs.readFileSync(path.join(SRC, "ui", "settings", "preload.js"), "utf8");
+  const renderer = fs.readFileSync(path.join(SRC, "ui", "settings", "renderer.js"), "utf8");
+  const tab = fs.readFileSync(path.join(SRC, "ui", "settings", "tabs", "recap.js"), "utf8");
   assert.match(css, /\.recap-cell\s*\{[\s\S]*?aspect-ratio:\s*1/);
   assert.match(css, /\.recap-grid-today \.recap-cell\s*\{[\s\S]*?aspect-ratio:\s*auto/);
   assert.match(css, /\.recap-bar-fill\s*\{[\s\S]*?height:\s*calc\(var\(--recap-bar-ratio, 0\) \* 100%\)/);
@@ -130,7 +130,7 @@ test("recap card keeps day grids square, makes only today a bar chart, and expos
 test("today bar ratios use one honest linear scale", () => {
   const context = { globalThis: null };
   context.globalThis = context;
-  vm.runInNewContext(fs.readFileSync(path.join(SRC, "settings-tab-recap.js"), "utf8"), context);
+  vm.runInNewContext(fs.readFileSync(path.join(SRC, "ui", "settings", "tabs", "recap.js"), "utf8"), context);
   const ratio = context.ClawdSettingsTabRecap.__test.barRatio;
   assert.equal(ratio(0, 20), 0);
   assert.equal(ratio(5, 20), 0.25);
@@ -141,7 +141,7 @@ test("today bar ratios use one honest linear scale", () => {
 test("recap timeline models have the fixed four geometries", () => {
   const context = { globalThis: null };
   context.globalThis = context;
-  vm.runInNewContext(fs.readFileSync(path.join(SRC, "settings-tab-recap.js"), "utf8"), context);
+  vm.runInNewContext(fs.readFileSync(path.join(SRC, "ui", "settings", "tabs", "recap.js"), "utf8"), context);
   const model = context.ClawdSettingsTabRecap.__test.buildTimelineModel;
   const base = {
     anchorDate: "2026-08-29",
@@ -168,7 +168,7 @@ test("recap timeline models have the fixed four geometries", () => {
 test("recap timeline separates activity, coverage, future, not-started, gap, and fold", () => {
   const context = { globalThis: null };
   context.globalThis = context;
-  vm.runInNewContext(fs.readFileSync(path.join(SRC, "settings-tab-recap.js"), "utf8"), context);
+  vm.runInNewContext(fs.readFileSync(path.join(SRC, "ui", "settings", "tabs", "recap.js"), "utf8"), context);
   const model = context.ClawdSettingsTabRecap.__test.buildTimelineModel;
   const normalKinds = Array(24).fill("normal");
   normalKinds[1] = "fold";
@@ -281,7 +281,7 @@ test("recap timeline separates activity, coverage, future, not-started, gap, and
 test("month and year models reserve blank and future cells without inventing activity", () => {
   const context = { globalThis: null };
   context.globalThis = context;
-  vm.runInNewContext(fs.readFileSync(path.join(SRC, "settings-tab-recap.js"), "utf8"), context);
+  vm.runInNewContext(fs.readFileSync(path.join(SRC, "ui", "settings", "tabs", "recap.js"), "utf8"), context);
   const model = context.ClawdSettingsTabRecap.__test.buildTimelineModel;
   const base = {
     anchorDate: "2026-08-29",
@@ -303,7 +303,7 @@ test("month and year models reserve blank and future cells without inventing act
 test("known agent colors match the approved palette and fallbacks are deterministic", () => {
   const context = { globalThis: null };
   context.globalThis = context;
-  vm.runInNewContext(fs.readFileSync(path.join(SRC, "settings-tab-recap.js"), "utf8"), context);
+  vm.runInNewContext(fs.readFileSync(path.join(SRC, "ui", "settings", "tabs", "recap.js"), "utf8"), context);
   const color = context.ClawdSettingsTabRecap.__test.agentColorToken;
   assert.equal(color("claude-code"), "var(--recap-agent-claude)");
   assert.equal(color("codex"), "var(--recap-agent-codex)");

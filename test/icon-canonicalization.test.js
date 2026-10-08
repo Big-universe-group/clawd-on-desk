@@ -32,11 +32,15 @@ test("ordinary tray and README callers use the canonical application icon", () =
     "the byte-identical assets/tray-icon.png copy must stay retired",
   );
 
-  for (const relativePath of ["src/main.js", "src/menu.js"]) {
+  for (const relativePath of ["src/main.js", "src/ui/menu/menu.js"]) {
     const source = fs.readFileSync(path.join(ROOT, relativePath), "utf8");
-    assert.match(
-      source,
-      /iconPath: path\.join\(__dirname, "\.\.\/assets\/icon\.png"\)/,
+    // The literal is resolved from the caller's own directory, so it stays
+    // correct however deep the file sits in the layered src/ tree.
+    const iconPathLiteral = source.match(/iconPath: path\.join\(__dirname, ("(?:\\.|[^"])*")\)/);
+    assert.ok(iconPathLiteral, `${relativePath} should set iconPath relative to __dirname`);
+    assert.strictEqual(
+      path.resolve(path.dirname(path.join(ROOT, relativePath)), JSON.parse(iconPathLiteral[1])),
+      CANONICAL_ICON,
       `${relativePath} should load the canonical icon for Windows/Linux trays`,
     );
     assert.doesNotMatch(

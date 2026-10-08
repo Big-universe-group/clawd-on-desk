@@ -3,11 +3,11 @@ const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
-const { registerQuotaNotificationIpc } = require("../src/quota-notification-ipc");
+const { registerQuotaNotificationIpc } = require("../src/quota/notification-ipc");
 function harness(testNotification = async () => true) {
   const handlers = new Map();
   let destroyed = false, unreadable = false;
-  const contents = { mainFrame: { url: pathToFileURL(path.join(__dirname, "../src/settings.html")).href },
+  const contents = { mainFrame: { url: pathToFileURL(path.join(__dirname, "../src/ui/settings/settings.html")).href },
     isDestroyed: () => destroyed };
   const win = { webContents: contents, isDestroyed: () => destroyed };
   const event = { sender: contents, senderFrame: contents.mainFrame };

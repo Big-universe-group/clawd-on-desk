@@ -6,8 +6,8 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const { spawnSync } = require("node:child_process");
-const { MAX_COVERAGE_DAYS_PER_MONTH, createRecapCoverage } = require("../src/recap-coverage");
-const { createRecapStore } = require("../src/recap-store");
+const { MAX_COVERAGE_DAYS_PER_MONTH, createRecapCoverage } = require("../src/runtime/recap/coverage");
+const { createRecapStore } = require("../src/runtime/recap/store");
 
 function fixture(t, options = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "clawd-recap-coverage-"));
@@ -277,8 +277,8 @@ test("cold-process 400-day coverage query reuses frozen day shapes", (t) => {
   coverage.resetMemory();
 
   const childSource = `
-    const { createRecapCoverage } = require(${JSON.stringify(path.join(__dirname, "..", "src", "recap-coverage.js"))});
-    const { createRecapStore } = require(${JSON.stringify(path.join(__dirname, "..", "src", "recap-store.js"))});
+    const { createRecapCoverage } = require(${JSON.stringify(path.join(__dirname, "..", "src", "runtime", "recap", "coverage.js"))});
+    const { createRecapStore } = require(${JSON.stringify(path.join(__dirname, "..", "src", "runtime", "recap", "store.js"))});
     const store = createRecapStore({ root: process.env.CLAWD_RECAP_TEST_ROOT });
     store.initialize();
     const coverage = createRecapCoverage({

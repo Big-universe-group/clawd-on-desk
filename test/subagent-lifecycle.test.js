@@ -9,7 +9,7 @@ const {
   hasConfirmedSubagents,
   hasSubagentHoldEvidence,
   normalizeChildId,
-} = require("../src/subagent-lifecycle");
+} = require("../src/agents/subagent-lifecycle");
 
 test("normalizes only bounded single-line child ids", () => {
   assert.strictEqual(normalizeChildId("  child-a  "), "child-a");

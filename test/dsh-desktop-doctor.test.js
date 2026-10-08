@@ -6,7 +6,7 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 
-const { checkAgentIntegrations } = require("../src/doctor-detectors/agent-integrations");
+const { checkAgentIntegrations } = require("../src/agents/doctor/integrations");
 const {
   BRIDGE_PACKAGE_NAME,
   BRIDGE_PROTOCOL_VERSION,

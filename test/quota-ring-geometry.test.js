@@ -3,7 +3,7 @@
 const { describe, it } = require("node:test");
 const assert = require("node:assert/strict");
 
-const quotaGeometry = require("../src/quota-ring-geometry");
+const quotaGeometry = require("../src/quota/ring-geometry");
 const {
   countQuotaCoins,
   formatWindowLabel,

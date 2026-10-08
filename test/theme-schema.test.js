@@ -3,7 +3,7 @@
 const { describe, it, afterEach, mock } = require("node:test");
 const assert = require("node:assert");
 
-const schema = require("../src/theme-schema");
+const schema = require("../src/features/themes/schema");
 
 afterEach(() => {
   mock.restoreAll();

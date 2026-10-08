@@ -4,15 +4,15 @@ const { describe, it } = require("node:test");
 const assert = require("node:assert");
 
 const path = require("path");
-const registry = require("../agents/registry");
+const registry = require("../src/agents/registry");
 
 // Load default theme for test ctx
-const themeLoader = require("../src/theme-loader");
+const themeLoader = require("../src/features/themes/loader");
 themeLoader.init(path.join(__dirname, "..", "src"));
 const _defaultTheme = themeLoader.loadTheme("clawd");
 
 // Instantiate state.js to get the authoritative STATE_PRIORITY
-const state = require("../src/state.js")({
+const state = require("../src/runtime/state/state.js")({
   theme: _defaultTheme,
   doNotDisturb: false, miniTransitioning: false, miniMode: false,
   mouseOverPet: false, idlePaused: false, forceEyeResend: false,

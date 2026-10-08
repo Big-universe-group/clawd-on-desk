@@ -9,8 +9,8 @@ const {
   getProportionalPixelSize,
   getSavedPixelSize,
   resolveSizeSliderContext,
-} = require("../src/size-utils");
-const { uiSizeToPrefs, prefsSizeToUi, clampSizeUi } = require("../src/settings-size-slider");
+} = require("../src/core/util/size-utils");
+const { uiSizeToPrefs, prefsSizeToUi, clampSizeUi } = require("../src/ui/settings/size-slider");
 
 describe("size utils", () => {
   it("uses the saved slider value when keep size is off or proportional pixels are already synchronized", () => {

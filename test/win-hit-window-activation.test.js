@@ -13,7 +13,7 @@ const {
   WM_MOUSEACTIVATE,
   MA_NOACTIVATE,
   STYLE_REFRESH_FLAGS,
-} = require("../src/win-hit-window-activation");
+} = require("../src/platform/win/hit-window-activation");
 
 function makeHarness({
   initialStyle = 0n,

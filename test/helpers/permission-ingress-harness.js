@@ -2,8 +2,8 @@
 
 const http = require("node:http");
 const { once } = require("node:events");
-const initServer = require("../../src/server");
-const initPermission = require("../../src/permission");
+const initServer = require("../../src/core/server/server");
+const initPermission = require("../../src/runtime/permission/permission");
 
 // Real HTTP routing and permission ownership, with no startup integration sync,
 // runtime-file writes, remote clients, agent execution, or user preferences.

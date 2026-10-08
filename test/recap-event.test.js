@@ -5,11 +5,11 @@ const assert = require("node:assert");
 const {
   MAX_CANONICAL_EVENT_BYTES,
   createCanonicalRecapEvent,
-} = require("../src/recap-event");
+} = require("../src/runtime/recap/event");
 const {
   createMemoryRecapSink,
   recordCanonicalRecapEvent,
-} = require("../src/recap-sink");
+} = require("../src/runtime/recap/sink");
 
 describe("recap canonical event", () => {
   it("copies only the public allowlist and canonicalizes metrics", () => {

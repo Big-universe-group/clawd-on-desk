@@ -13,7 +13,7 @@ function deferred() {
 
 function loadFocusWithMock(options = {}) {
   const cpKey = require.resolve("child_process");
-  const focusKey = require.resolve("../src/focus");
+  const focusKey = require.resolve("../src/runtime/focus/focus");
   const origCp = require.cache[cpKey];
   const origFocus = require.cache[focusKey];
   const origPlatform = Object.getOwnPropertyDescriptor(process, "platform");
@@ -48,7 +48,7 @@ function loadFocusWithMock(options = {}) {
 
   let initFocus;
   try {
-    initFocus = require("../src/focus");
+    initFocus = require("../src/runtime/focus/focus");
   } finally {
     Object.defineProperty(process, "platform", origPlatform);
   }
@@ -120,7 +120,7 @@ describe("Windows terminal focus", () => {
     }
 
     it(`Direct Send copies fallback after ${reason} without invoking paste`, async () => {
-      const { createTelegramDirectSend, createClipboardFallbackDeliveryAdapter } = require("../src/telegram-direct-send");
+      const { createTelegramDirectSend, createClipboardFallbackDeliveryAdapter } = require("../src/features/telegram/direct-send");
       const harness = editorFocusHarness();
       const focusEntered = deferred();
       const copied = [];

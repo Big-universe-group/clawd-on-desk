@@ -7,8 +7,8 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { fileURLToPath } = require("node:url");
 
-const createThemeContext = require("../src/theme-context");
-const themeLoader = require("../src/theme-loader");
+const createThemeContext = require("../src/features/themes/context");
+const themeLoader = require("../src/features/themes/loader");
 
 const ROOT = path.join(__dirname, "..");
 const SOUNDS_DIR = path.join(ROOT, "assets", "sounds");

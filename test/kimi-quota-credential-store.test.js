@@ -9,7 +9,7 @@ const test = require("node:test");
 const {
   STORAGE_UNAVAILABLE,
   createKimiQuotaCredentialStore,
-} = require("../src/kimi-quota-credential-store");
+} = require("../src/agents/kimi-cli/quota/credential-store");
 
 function withTempDir(fn) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "clawd-kimi-credential-"));

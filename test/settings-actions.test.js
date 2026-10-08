@@ -12,8 +12,8 @@ const {
   requireFiniteNumber,
   requireEnum,
   applyThemeSelection,
-} = require("../src/settings-actions");
-const prefs = require("../src/prefs");
+} = require("../src/core/settings/actions");
+const prefs = require("../src/core/settings/prefs");
 
 describe("validator helpers", () => {
   it("requireBoolean accepts only booleans", () => {

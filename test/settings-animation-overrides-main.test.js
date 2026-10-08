@@ -6,13 +6,13 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 
-const createSettingsAnimationOverridesMain = require("../src/settings-animation-overrides-main");
+const createSettingsAnimationOverridesMain = require("../src/features/anim-overrides/main");
 const {
   registerSettingsAnimationOverridesIpc,
 } = createSettingsAnimationOverridesMain;
 const animationOverrideTest = createSettingsAnimationOverridesMain.__test;
-const themeLoader = require("../src/theme-loader");
-const { createTranslator } = require("../src/i18n");
+const themeLoader = require("../src/features/themes/loader");
+const { createTranslator } = require("../src/core/i18n/i18n");
 
 themeLoader.init(path.join(__dirname, "..", "src"));
 
@@ -49,7 +49,7 @@ function createRealStateRuntime({ theme, miniMode = false } = {}) {
     getCursorScreenPoint: () => ({ x: 100, y: 100 }),
   };
   ctx.t = createTranslator(() => ctx.lang);
-  const api = require("../src/state")(ctx);
+  const api = require("../src/runtime/state/state")(ctx);
   return { api, sounds, flashes };
 }
 

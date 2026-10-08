@@ -3,7 +3,7 @@
 const { describe, it } = require("node:test");
 const assert = require("node:assert");
 const { EventEmitter } = require("node:events");
-const initPermission = require("../src/permission");
+const initPermission = require("../src/runtime/permission/permission");
 
 const {
   CLAWD_SERVER_HEADER,
@@ -11,7 +11,7 @@ const {
   CLAWD_HOOK_PID_HEADER,
   CLAWD_PROCESS_INSTANCE_HEADER,
 } = require("../hooks/server-config");
-const { PREVIEW_MAX } = require("../src/server-permission-utils");
+const { PREVIEW_MAX } = require("../src/core/server/permission-utils");
 const {
   MAX_PERMISSION_BODY_BYTES,
   handlePermissionPost,
@@ -20,13 +20,13 @@ const {
   shouldBypassCodexBubble,
   shouldBypassCopilotBubble,
   shouldBypassFamilyBubble,
-} = require("../src/server-route-permission");
+} = require("../src/core/server/route-permission");
 const {
   INTERACTION_INTENT,
   classifyPermissionInteraction,
   isValidInteraction,
-} = require("../src/permission-automation-policy");
-const { makeSessionKey } = require("../src/session-key");
+} = require("../src/runtime/permission/automation-policy");
+const { makeSessionKey } = require("../src/core/util/session-key");
 
 function localSessionKey(rawSessionId) {
   return makeSessionKey({ profileId: "local", rawSessionId });
@@ -1024,7 +1024,7 @@ describe("server-route-permission POST", () => {
     const fs = require("node:fs");
     const path = require("node:path");
     const lines = fs
-      .readFileSync(path.join(__dirname, "..", "src", "server-route-permission.js"), "utf8")
+      .readFileSync(path.join(__dirname, "..", "src", "core", "server", "route-permission.js"), "utf8")
       .split("\n");
 
     const sites = [];
@@ -3230,7 +3230,7 @@ describe("destructive-action reminder — the route stamps what it accepted", ()
     // An earlier version of this lane compared call counts against the display-view
     // helper; those counts stayed equal while the remote-only path spread neither,
     // so it could not see that a bubbles-disabled install had no reminder at all.
-    const { NOT_INSPECTED_TAG } = require("../src/permission-reminder");
+    const { NOT_INSPECTED_TAG } = require("../src/runtime/permission/reminder");
     for (const { agentId, body } of ADAPTERS) {
       const res = await callPermissionPost(JSON.stringify({
         agent_id: agentId,
@@ -3254,7 +3254,7 @@ describe("destructive-action reminder — the route stamps what it accepted", ()
     // session grant resolves it through maybeAutoResolveSessionPermission without
     // a card ever existing. claude-code and codebuddy reach it AND are eligible for
     // an automatic allow, so an unstamped entry there is a silent miss.
-    const { NOT_INSPECTED_TAG } = require("../src/permission-reminder");
+    const { NOT_INSPECTED_TAG } = require("../src/runtime/permission/reminder");
     const bubblesOff = { ctx: { getBubblePolicy: () => ({ enabled: false, autoCloseMs: 0 }) } };
     const cases = [
       ["claude-code", {}, { hold: true, tag: "force-push" }],

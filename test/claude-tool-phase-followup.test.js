@@ -2,9 +2,9 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const path = require("node:path");
-const loader = require("../src/theme-loader");
-const { createMemoryRecapSink } = require("../src/recap-sink");
-const { createClaudeToolPhaseLedger } = require("../src/claude-tool-phase");
+const loader = require("../src/features/themes/loader");
+const { createMemoryRecapSink } = require("../src/runtime/recap/sink");
+const { createClaudeToolPhaseLedger } = require("../src/agents/claude-code/tool-phase");
 loader.init(path.join(__dirname, "..", "src"));
 
 function runtime() {
@@ -20,7 +20,7 @@ function runtime() {
     dismissPermissionsForDnd: noop, focusTerminalWindow: noop, processKill: () => true,
     getCursorScreenPoint: () => ({ x: 0, y: 0 }), recapSink: sink, isAgentEnabled: () => true,
     t: key => key };
-  const api = require("../src/state")(ctx), sid = "qa-claude-phase";
+  const api = require("../src/runtime/state/state")(ctx), sid = "qa-claude-phase";
   const send = (event, value, extra = {}) => api.updateSession(sid, value, event,
     { agentId: "claude-code", rawSessionId: sid, claudePromptId: "qa-prompt", ...extra });
   return { api, ctx, sink, effects, sounds, sid, send };

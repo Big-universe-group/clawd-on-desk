@@ -112,7 +112,7 @@ function createThemeTab({
   activeTab = "theme",
   officialThemeOperation = null,
 } = {}) {
-  const code = fs.readFileSync(path.join(SRC_DIR, "settings-tab-theme.js"), "utf8");
+  const code = fs.readFileSync(path.join(SRC_DIR, "ui", "settings", "tabs", "theme.js"), "utf8");
   const dom = createDom();
   const renderCalls = [];
   const state = { activeTab };
@@ -373,7 +373,11 @@ function createUiCore() {
     requestAnimationFrame: (cb) => cb(),
   };
   sandbox.globalThis = sandbox;
-  for (const file of ["settings-i18n.js", "settings-size-slider.js", "settings-ui-core.js"]) {
+  for (const file of [
+    path.join("core", "i18n", "settings-i18n.js"),
+    path.join("ui", "settings", "size-slider.js"),
+    path.join("ui", "settings", "ui-core.js"),
+  ]) {
     vm.runInNewContext(fs.readFileSync(path.join(SRC_DIR, file), "utf8"), sandbox);
   }
   return sandbox;

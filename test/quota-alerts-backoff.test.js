@@ -1,7 +1,7 @@
 "use strict";
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
-const { createQuotaAlerts } = require("../src/quota-alerts");
+const { createQuotaAlerts } = require("../src/quota/alerts");
 const START = 1800000001000;
 function fixture(notify) {
   let time = START;

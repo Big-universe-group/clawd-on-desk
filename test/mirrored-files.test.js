@@ -8,7 +8,7 @@ const {
   getRightSideMirrorFiles,
   isVisualMirrored,
   resolveMirroredFile,
-} = require("../src/mirrored-files");
+} = require("../src/core/util/mirrored-files");
 
 const theme = {
   states: { idle: ["idle.apng"], roam: ["roam.apng"] },

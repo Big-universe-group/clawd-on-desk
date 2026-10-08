@@ -3,7 +3,7 @@
 const test = require("node:test");
 const assert = require("node:assert");
 
-const { createDshStateSequenceFence } = require("../src/dsh-state-sequence");
+const { createDshStateSequenceFence } = require("../src/agents/deepseek-harness/state-sequence");
 
 test("DSH state fence accepts an ordered lifecycle and rejects duplicate or stale delivery", () => {
   const fence = createDshStateSequenceFence();

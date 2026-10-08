@@ -1,6 +1,6 @@
 const { describe, it } = require("node:test");
 const assert = require("node:assert");
-const KimiLogMonitor = require("../agents/kimi-log-monitor");
+const KimiLogMonitor = require("../src/agents/kimi-cli/log-monitor");
 
 describe("KimiLogMonitor lifecycle (hook-only stub)", () => {
   it("constructor/start/stop do not throw", () => {

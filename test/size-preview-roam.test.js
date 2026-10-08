@@ -3,11 +3,11 @@
 const assert = require("node:assert/strict");
 const Module = require("node:module");
 const { it } = require("node:test");
-const createRoam = require("../src/roam");
-const { getProportionalPixelSize } = require("../src/size-utils");
-const { createSettingsSizePreviewSession } = require("../src/settings-size-preview-session");
+const createRoam = require("../src/features/roam/roam");
+const { getProportionalPixelSize } = require("../src/core/util/size-utils");
+const { createSettingsSizePreviewSession } = require("../src/ui/settings/size-preview-session");
 
-const menuPath = require.resolve("../src/menu");
+const menuPath = require.resolve("../src/ui/menu/menu");
 const originalLoad = Module._load;
 let createMenu;
 try {

@@ -22,7 +22,7 @@ const { describe, it, beforeEach, afterEach } = require("node:test");
 const assert = require("node:assert");
 const { EventEmitter } = require("node:events");
 
-const { handleStatePost } = require("../src/server-route-state");
+const { handleStatePost } = require("../src/core/server/route-state");
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 1. Route normalization: null ≡ absent
@@ -110,7 +110,7 @@ describe("#681 — /state normalizes an explicit source_pid:null exactly like an
 // ═══════════════════════════════════════════════════════════════════════════
 
 const path = require("node:path");
-const themeLoader = require("../src/theme-loader");
+const themeLoader = require("../src/features/themes/loader");
 themeLoader.init(path.join(__dirname, "..", "src"));
 const _defaultTheme = themeLoader.loadTheme("clawd");
 
@@ -150,7 +150,7 @@ function makeCtx() {
 
 describe("#681 — an already-known sourcePid survives a later source_pid:null", () => {
   let api;
-  beforeEach(() => { api = require("../src/state")(makeCtx()); });
+  beforeEach(() => { api = require("../src/runtime/state/state")(makeCtx()); });
   afterEach(() => { api.cleanup(); });
 
   const sessionFor = (sid) => api.sessions.get(sid);

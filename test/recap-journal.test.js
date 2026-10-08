@@ -5,8 +5,8 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
-const { createRecapJournal } = require("../src/recap-journal");
-const { createRecapStore } = require("../src/recap-store");
+const { createRecapJournal } = require("../src/runtime/recap/journal");
+const { createRecapStore } = require("../src/runtime/recap/store");
 
 function fixture(t) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "clawd-recap-journal-"));

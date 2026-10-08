@@ -6,7 +6,7 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 
-const { importUserThemeZip } = require("../src/settings-theme-importer");
+const { importUserThemeZip } = require("../src/features/themes/settings-importer");
 const { buildZip } = require("./helpers/zip-builder");
 
 function writeThemeZip(dir, folder) {

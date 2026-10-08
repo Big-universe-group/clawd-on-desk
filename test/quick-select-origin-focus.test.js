@@ -1,7 +1,7 @@
 "use strict";
 const assert = require("node:assert/strict");
 const { test } = require("node:test");
-const createOriginFocus = require("../src/quick-select-origin-focus");
+const createOriginFocus = require("../src/platform/win/quick-select-origin-focus");
 
 function harness() {
   let foreground = 10;

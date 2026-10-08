@@ -6,11 +6,11 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const vm = require("node:vm");
-const { createRecapRuntime } = require("../src/recap-runtime");
-const prefs = require("../src/prefs");
-const { createSettingsController } = require("../src/settings-controller");
-const createRouter = require("../src/settings-effect-router");
-const SOURCE = fs.readFileSync(path.join(__dirname, "../src/settings-tab-recap.js"), "utf8");
+const { createRecapRuntime } = require("../src/runtime/recap/runtime");
+const prefs = require("../src/core/settings/prefs");
+const { createSettingsController } = require("../src/core/settings/controller");
+const createRouter = require("../src/core/settings/effect-router");
+const SOURCE = fs.readFileSync(path.join(__dirname, "../src/ui/settings/tabs/recap.js"), "utf8");
 
 function runtimeFixture(t, options = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "clawd-recap-ui-"));

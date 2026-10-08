@@ -2,8 +2,8 @@ const { describe, it, beforeEach, afterEach } = require("node:test");
 const assert = require("node:assert");
 const path = require("path");
 const childProcess = require("child_process");
-const themeLoader = require("../src/theme-loader");
-const { createTranslator } = require("../src/i18n");
+const themeLoader = require("../src/features/themes/loader");
+const { createTranslator } = require("../src/core/i18n/i18n");
 
 themeLoader.init(path.join(__dirname, "..", "src"));
 const defaultTheme = themeLoader.loadTheme("clawd");
@@ -50,7 +50,7 @@ describe("detectRunningAgentProcesses() agent coverage", () => {
     originalExec = childProcess.exec;
     originalExecFile = childProcess.execFile;
     originalPlatform = process.platform;
-    api = require("../src/state")(makeCtx());
+    api = require("../src/runtime/state/state")(makeCtx());
   });
 
   afterEach(() => {
@@ -110,7 +110,7 @@ describe("detectRunningAgentProcesses() agent coverage", () => {
     // only the cmdline token disambiguates it. The WQL must pair the two, not
     // match the bare shell (which would mis-credit the always-running app).
     api.cleanup();
-    api = require("../src/state")(makeCtx({
+    api = require("../src/runtime/state/state")(makeCtx({
       hasAnyEnabledAgent: () => true,
       isAgentEnabled: (agentId) => agentId === "zcode",
     }));
@@ -175,7 +175,7 @@ describe("detectRunningAgentProcesses() agent coverage", () => {
 
   it("filters the process query to enabled agents", async () => {
     api.cleanup();
-    api = require("../src/state")(makeCtx({
+    api = require("../src/runtime/state/state")(makeCtx({
       hasAnyEnabledAgent: () => true,
       isAgentEnabled: (agentId) => agentId === "qoder",
     }));
@@ -204,7 +204,7 @@ describe("detectRunningAgentProcesses() agent coverage", () => {
   ]) {
     it(`keeps exact-name and node filters separate when only ${agentId} is enabled`, async () => {
       api.cleanup();
-      api = require("../src/state")(makeCtx({
+      api = require("../src/runtime/state/state")(makeCtx({
         hasAnyEnabledAgent: () => true,
         isAgentEnabled: (enabledAgentId) => enabledAgentId === agentId,
       }));
@@ -231,7 +231,7 @@ describe("detectRunningAgentProcesses() agent coverage", () => {
 
   it("does not scan when the only enabled agent has an empty process surface", async () => {
     api.cleanup();
-    api = require("../src/state")(makeCtx({
+    api = require("../src/runtime/state/state")(makeCtx({
       hasAnyEnabledAgent: () => true,
       isAgentEnabled: (agentId) => agentId === "cursor-agent",
     }));

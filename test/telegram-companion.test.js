@@ -7,8 +7,8 @@ const {
   createTelegramCompanion,
   formatNotification,
   formatTelegramNotificationMessage,
-} = require("../src/telegram-companion");
-const { createTelegramDirectSend } = require("../src/telegram-direct-send");
+} = require("../src/features/telegram/companion");
+const { createTelegramDirectSend } = require("../src/features/telegram/direct-send");
 
 function tick() {
   // Flush the fire-and-forget microtask chain in onSnapshot.
@@ -693,8 +693,8 @@ test("custom completion formatter keeps the legacy plain string contract", async
 });
 
 test("completion notifications use the snapshot display tag, not raw or canonical prefixes", () => {
-  const { resolveSessionIdentity } = require("../src/session-key");
-  const { buildSessionSnapshotEntry } = require("../src/state-session-snapshot");
+  const { resolveSessionIdentity } = require("../src/core/util/session-key");
+  const { buildSessionSnapshotEntry } = require("../src/runtime/state/session-snapshot");
 
   function entryFor(rawSessionId) {
     const identity = resolveSessionIdentity(rawSessionId);
@@ -727,8 +727,8 @@ test("completion notifications use the snapshot display tag, not raw or canonica
 });
 
 test("completion notification tags still distinguish sessions without rawSessionId", () => {
-  const { resolveSessionIdentity } = require("../src/session-key");
-  const { buildSessionSnapshotEntry } = require("../src/state-session-snapshot");
+  const { resolveSessionIdentity } = require("../src/core/util/session-key");
+  const { buildSessionSnapshotEntry } = require("../src/runtime/state/session-snapshot");
 
   function tagFor(rawSessionId) {
     const identity = resolveSessionIdentity(rawSessionId, "local");

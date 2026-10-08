@@ -60,7 +60,7 @@ function Get-CimInstance {
 test("Windows editor fallback executes unique-window, ambiguity and cache boundaries", {
   skip: process.platform !== "win32" && "requires Windows PowerShell",
 }, async (t) => {
-  const focus = require("../src/focus")({});
+  const focus = require("../src/runtime/focus/focus")({});
   const { makeFocusCmd, PS_FOCUS_ADDTYPE, normalizeFocusResultPayload } = focus.__test;
   const resultWriter = PS_FOCUS_ADDTYPE.slice(PS_FOCUS_ADDTYPE.indexOf("function Write-ClawdFocusResult"));
   const cases = [];

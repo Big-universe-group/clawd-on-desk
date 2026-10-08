@@ -7,7 +7,7 @@ const {
   describeLocalDay,
   freezeLocalTime,
   isValidTimeZone,
-} = require("../src/recap-time");
+} = require("../src/runtime/recap/time");
 
 test("freezeLocalTime freezes civil date, hour and non-whole-hour offset", () => {
   const instant = Date.UTC(2026, 7, 29, 18, 30, 0);

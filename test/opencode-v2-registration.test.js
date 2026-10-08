@@ -81,7 +81,7 @@ describe("opencode v2 plugins-key registration", () => {
       "foreign entries preserved value-for-value"
     );
     assert.strictEqual(v2Registry.verifyV2RegisterPostcondition({
-      cfg: require("../agents/opencode-family").getFamilyConfig("opencode"),
+      cfg: require("../hooks/opencode-family").getFamilyConfig("opencode"),
       configPath: configPath(home),
       makeContext: () => ({
         fs, platform: process.platform, pluginDirName: "opencode-plugin-v2",

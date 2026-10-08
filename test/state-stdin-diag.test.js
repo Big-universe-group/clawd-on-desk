@@ -7,7 +7,7 @@ const { describe, it, beforeEach } = require("node:test");
 const assert = require("node:assert");
 const path = require("path");
 
-const themeLoader = require("../src/theme-loader");
+const themeLoader = require("../src/features/themes/loader");
 themeLoader.init(path.join(__dirname, "..", "src"));
 const _defaultTheme = themeLoader.loadTheme("clawd");
 
@@ -40,7 +40,7 @@ describe("formatStdinDiag", () => {
   let api;
 
   beforeEach(() => {
-    api = require("../src/state")(makeCtx());
+    api = require("../src/runtime/state/state")(makeCtx());
   });
 
   it("renders the never-arrived shape (bytes:0 + timeout)", () => {

@@ -10,10 +10,10 @@ const { describe, it, afterEach } = require("node:test");
 const assert = require("node:assert");
 const path = require("node:path");
 
-const themeLoader = require("../src/theme-loader");
+const themeLoader = require("../src/features/themes/loader");
 themeLoader.init(path.join(__dirname, "..", "src"));
 const defaultTheme = themeLoader.loadTheme("clawd");
-const { createTranslator } = require("../src/i18n");
+const { createTranslator } = require("../src/core/i18n/i18n");
 
 function makeCtx(overrides = {}) {
   const ctx = {
@@ -72,7 +72,7 @@ describe("WSL session PID cleanup", () => {
     // sourcePid aliases a local process (probe alive), agentPid is a Linux PID
     // with no local match (probe dead). Before the fix the session was stored
     // with pidReachable=true and deleted as `agent-exit` on the next sweep.
-    api = require("../src/state")(makeCtx({ processKill: makePidKill(new Set([2000])) }));
+    api = require("../src/runtime/state/state")(makeCtx({ processKill: makePidKill(new Set([2000])) }));
     updateSession(api, {
       id: "wsl-r1",
       state: "working",
@@ -101,7 +101,7 @@ describe("WSL session PID cleanup", () => {
     // no local match (probe dead). Before the fix the live alias kept the dead
     // WSL session forever; after the fix it deletes as `unreachable` once the
     // idle timeout elapses.
-    api = require("../src/state")(makeCtx({ processKill: makePidKill(new Set([1000])) }));
+    api = require("../src/runtime/state/state")(makeCtx({ processKill: makePidKill(new Set([1000])) }));
     updateSession(api, {
       id: "wsl-r2",
       state: "idle",
@@ -123,7 +123,7 @@ describe("WSL session PID cleanup", () => {
   });
 
   it("keeps the local control group unchanged: a dead agent PID still deletes the session", () => {
-    api = require("../src/state")(makeCtx({ processKill: makePidKill(new Set([2000])) }));
+    api = require("../src/runtime/state/state")(makeCtx({ processKill: makePidKill(new Set([2000])) }));
     updateSession(api, {
       id: "local-control",
       state: "working",

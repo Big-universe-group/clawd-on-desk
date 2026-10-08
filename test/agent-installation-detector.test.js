@@ -9,8 +9,8 @@ const path = require("node:path");
 const {
   detectAgentInstallation,
   detectAgentInstallations,
-} = require("../src/agent-installation-detector");
-const { getAgentDescriptor } = require("../src/doctor-detectors/agent-descriptors");
+} = require("../src/agents/installation-detector");
+const { getAgentDescriptor } = require("../src/agents/doctor/descriptors");
 const { registerReasonixHooks } = require("../hooks/reasonix-install");
 const { registerZcodeHooks, unregisterZcodeHooks } = require("../hooks/zcode-install");
 const { registerQoderHooks, unregisterQoderHooks } = require("../hooks/qoder-install");

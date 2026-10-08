@@ -7,7 +7,7 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 
-const catalog = require("../src/official-theme-catalog");
+const catalog = require("../src/features/themes/official/catalog");
 
 const VALID_URL = "https://github.com/rullerzhou-afk/clawd-themes/releases/download/hash-sage-v1.0.0/hash-sage-1.0.0.clawd-theme.zip";
 const VALID_NOTICE_URL = `https://github.com/rullerzhou-afk/clawd-themes/blob/${"1".repeat(40)}/themes/hash-sage/LICENSE`;

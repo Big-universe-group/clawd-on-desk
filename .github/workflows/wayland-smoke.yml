@@ -18,7 +18,7 @@ on:
     branches: [fix/linux-wayland-xwayland-default]
   pull_request:
     paths:
-      - src/linux-ozone.js
+      - src/platform/linux/linux-ozone.js
       - ci/wayland-smoke.sh
       - ci/appimage-wrapper-shutdown.py
       - .github/workflows/wayland-smoke.yml
@@ -35,13 +35,13 @@ on:
       # hand-enumerated list that silently misses new dependency files, plus the
       # server-side files that decide the mutation/verify path.
       - hooks/**
-      - src/claude-hook-health.js
-      - src/claude-settings-watcher.js
-      - src/claude-hook-operations.js
-      - src/prefs.js
-      - src/integration-sync.js
-      - src/server.js
-      - src/remote-ssh-deploy.js
+      - src/agents/claude-code/hook-health.js
+      - src/agents/claude-code/settings-watcher.js
+      - src/agents/claude-code/hook-operations.js
+      - src/core/settings/prefs.js
+      - src/agents/integration-sync.js
+      - src/core/server/server.js
+      - src/features/remote-ssh/deploy.js
       - test/**
 
 permissions:

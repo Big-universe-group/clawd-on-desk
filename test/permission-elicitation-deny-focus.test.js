@@ -11,7 +11,7 @@
 const { describe, it } = require("node:test");
 const assert = require("node:assert");
 
-const initPermission = require("../src/permission");
+const initPermission = require("../src/runtime/permission/permission");
 
 function createMockResponse() {
   const captured = {

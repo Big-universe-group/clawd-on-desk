@@ -8,7 +8,7 @@ const {
   ROUTING_NONCE_HEADER,
   createIngressRequestHandler,
   createRemoteSshIngress,
-} = require("../src/remote-ssh-ingress");
+} = require("../src/features/remote-ssh/ingress");
 
 function dispatch(handler, { method = "POST", path = "/state", nonce } = {}) {
   const req = {

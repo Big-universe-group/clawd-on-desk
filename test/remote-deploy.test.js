@@ -7,7 +7,7 @@ const { __test: { findMissingHookDependencies } } = require("../hooks/install");
 
 const SCRIPT_PATH = path.join(__dirname, "..", "scripts", "remote-deploy.sh");
 const HOOKS_DIR = path.join(__dirname, "..", "hooks");
-const { HOOK_FILES } = require("../src/remote-ssh-deploy");
+const { HOOK_FILES } = require("../src/features/remote-ssh/deploy");
 
 function parseDeployedFiles() {
   return [...HOOK_FILES];

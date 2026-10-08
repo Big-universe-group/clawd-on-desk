@@ -3,7 +3,7 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 
-const { createTelegramNativeRunner } = require("../src/telegram-native-runner");
+const { createTelegramNativeRunner } = require("../src/features/telegram/native-runner");
 const { createFakeTelegramServer } = require("./fakes/telegram-server");
 
 const VALID_TOKEN = "123456:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghi_jklmnop";

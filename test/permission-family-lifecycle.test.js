@@ -12,9 +12,9 @@ const Module = require("node:module");
 const os = require("node:os");
 const path = require("node:path");
 const { afterEach, describe, it } = require("node:test");
-const { makeSessionKey } = require("../src/session-key");
+const { makeSessionKey } = require("../src/core/util/session-key");
 
-const PERMISSION_MODULE_PATH = require.resolve("../src/permission");
+const PERMISSION_MODULE_PATH = require.resolve("../src/runtime/permission/permission");
 const tempLogPaths = new Set();
 
 afterEach(() => {
@@ -32,7 +32,7 @@ function loadPermissionWithElectron(fakeElectron) {
     return originalLoad.apply(this, arguments);
   };
   try {
-    return require("../src/permission");
+    return require("../src/runtime/permission/permission");
   } finally {
     Module._load = originalLoad;
   }
@@ -175,7 +175,7 @@ function makeRes() {
 }
 
 function postPermission(ctx, body) {
-  const { handlePermissionPost } = require("../src/server-route-permission");
+  const { handlePermissionPost } = require("../src/core/server/route-permission");
   const res = makeRes();
   const recorder = [];
   handlePermissionPost(makeReq(body), res, {

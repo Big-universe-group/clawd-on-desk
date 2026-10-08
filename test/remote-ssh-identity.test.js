@@ -9,7 +9,7 @@ const path = require("path");
 const {
   REMOTE_IDENTITY_STEP_NAMES,
   sanitizeIdentityTxn,
-} = require("../src/remote-ssh-profile");
+} = require("../src/features/remote-ssh/profile");
 const {
   deriveInstallId,
   installationIdentityPath,
@@ -24,8 +24,8 @@ const {
   acceptedRoutingNonces,
   cloneRecoverRemoteSsh,
   buildRemoteIdentityDocument,
-} = require("../src/remote-ssh-identity");
-const { checkSecureConnectReadiness } = require("../src/remote-ssh-runtime");
+} = require("../src/features/remote-ssh/identity");
+const { checkSecureConnectReadiness } = require("../src/features/remote-ssh/runtime");
 
 function withTempDir(fn) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "clawd-remote-identity-"));

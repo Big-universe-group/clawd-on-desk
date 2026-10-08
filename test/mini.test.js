@@ -4,7 +4,7 @@ const { describe, it, beforeEach, afterEach, mock } = require("node:test");
 const assert = require("node:assert");
 const path = require("node:path");
 
-const themeLoader = require("../src/theme-loader");
+const themeLoader = require("../src/features/themes/loader");
 themeLoader.init(path.join(__dirname, "..", "src"));
 const _defaultTheme = themeLoader.loadTheme("clawd");
 
@@ -14,7 +14,7 @@ function cloneTheme(theme) {
 
 function loadMiniWithElectron(screenExports) {
   const electronPath = require.resolve("electron");
-  const miniPath = require.resolve("../src/mini");
+  const miniPath = require.resolve("../src/ui/pet/mini");
   const previousElectron = Object.prototype.hasOwnProperty.call(require.cache, electronPath)
     ? require.cache[electronPath]
     : null;
@@ -33,7 +33,7 @@ function loadMiniWithElectron(screenExports) {
   delete require.cache[miniPath];
 
   return {
-    initMini: require("../src/mini"),
+    initMini: require("../src/ui/pet/mini"),
     restore() {
       if (previousElectron) require.cache[electronPath] = previousElectron;
       else delete require.cache[electronPath];

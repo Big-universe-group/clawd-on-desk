@@ -13,7 +13,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const RENDERER_SRC = fs.readFileSync(
-  path.join(__dirname, "..", "src", "bubble-renderer.js"),
+  path.join(__dirname, "..", "src", "ui", "bubbles", "bubble-renderer.js"),
   "utf8"
 );
 

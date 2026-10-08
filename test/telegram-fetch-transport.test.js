@@ -7,7 +7,7 @@ const {
   createTelegramFetchTransport,
   resolveProxyConfig,
   sanitizeProxy,
-} = require("../src/telegram-fetch-transport");
+} = require("../src/features/telegram/fetch-transport");
 
 const VALID_TOKEN = "123456789:ABCDEFGHIJKLMNOPQRSTUVWXYZ-_0123456789";
 

@@ -3,7 +3,7 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
 
-const { decodeShellBytes, countReplacements } = require("../src/remote-ssh-decode");
+const { decodeShellBytes, countReplacements } = require("../src/features/remote-ssh/decode");
 
 test("decodeShellBytes: empty input → empty string", () => {
   assert.equal(decodeShellBytes(null), "");

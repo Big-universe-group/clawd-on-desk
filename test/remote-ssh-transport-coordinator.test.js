@@ -7,7 +7,7 @@ const { EventEmitter } = require("node:events");
 const {
   TransportUndrainedError,
   createRemoteSshTransportCoordinator,
-} = require("../src/remote-ssh-transport-coordinator");
+} = require("../src/features/remote-ssh/transport-coordinator");
 
 function profile(id = "p1", host = "space") {
   return { id, host, port: 22, sshTransportMode: "auto" };

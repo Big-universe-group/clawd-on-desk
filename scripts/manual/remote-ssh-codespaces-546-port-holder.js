@@ -9,8 +9,8 @@
 const crypto = require("node:crypto");
 const path = require("node:path");
 const readline = require("node:readline");
-const { buildSshArgs } = require("../../src/remote-ssh-runtime");
-const { quoteForPosixShellArg } = require("../../src/remote-ssh-quote");
+const { buildSshArgs } = require("../../src/features/remote-ssh/runtime");
+const { quoteForPosixShellArg } = require("../../src/features/remote-ssh/quote");
 const { spawnToClose } = require("./remote-ssh-codespaces-546-readiness");
 
 function parseArgs(argv) {

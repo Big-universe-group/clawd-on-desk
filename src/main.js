@@ -1,5 +1,5 @@
 const { app, BrowserWindow, Notification, screen, ipcMain, globalShortcut, nativeTheme, dialog, shell, nativeImage, powerSaveBlocker, powerMonitor, clipboard, safeStorage, net } = require("electron");
-const { maybeRunPackageKoffiSmoke } = require("./package-koffi-smoke");
+const { maybeRunPackageKoffiSmoke } = require("./platform/koffi/package-smoke");
 if (maybeRunPackageKoffiSmoke({ app, BrowserWindow })) {
   return;
 }
@@ -16,7 +16,7 @@ if (maybeRunPackageKoffiSmoke({ app, BrowserWindow })) {
 // SetOzonePlatformForLinuxIfNeeded DOES honor a --ozone-platform already on argv,
 // so the fix is to relaunch ourselves with that flag: this first process selects
 // Wayland but exits before creating any window; the second boots into XWayland.
-const { planXWaylandRelaunch } = require("./linux-ozone");
+const { planXWaylandRelaunch } = require("./platform/linux/linux-ozone");
 const _xwaylandRelaunch = planXWaylandRelaunch({
   platform: process.platform,
   env: process.env,
@@ -70,7 +70,7 @@ if (_xwaylandRelaunch) {
   console.error("Clawd: XWayland relaunch failed; continuing under native Wayland (issue #441).");
 }
 
-const { clampTextScale, scaleWidth, scaleHeight, resolveTextScaleForKey } = require("./text-scale");
+const { clampTextScale, scaleWidth, scaleHeight, resolveTextScaleForKey } = require("./core/util/text-scale");
 const path = require("path");
 const fs = require("fs");
 const crypto = require("crypto");
@@ -79,134 +79,134 @@ const { EventEmitter } = require("events");
 const {
   applyWindowsAppUserModelId,
   shouldOpenSettingsWindowFromArgv,
-} = require("./settings-window-icon");
-const createSettingsWindowRuntime = require("./settings-window");
-const createRoamFenceLoader = require("./roam-fence");
-const createRoamFenceSettings = require("./roam-fence-settings");
-const createRoamFencePicker = require("./roam-fence-picker");
-const createPermissionAutomationConfirmationRuntime = require("./permission-automation-confirmation");
+} = require("./ui/settings/window-icon");
+const createSettingsWindowRuntime = require("./ui/settings/window");
+const createRoamFenceLoader = require("./features/roam/fence");
+const createRoamFenceSettings = require("./features/roam/fence-settings");
+const createRoamFencePicker = require("./features/roam/fence-picker");
+const createPermissionAutomationConfirmationRuntime = require("./runtime/permission/automation-confirmation");
 const {
   createSettingsSizePreviewSession,
-} = require("./settings-size-preview-session");
-const { registerSettingsIpc } = require("./settings-ipc");
-const { registerQuotaNotificationIpc } = require("./quota-notification-ipc");
-const { createQuotaAlertsRuntime } = require("./quota-alerts-runtime");
-const { createQuotaNotificationPresenter } = require("./quota-notifications");
-const createSettingsEffectRouter = require("./settings-effect-router");
-const { createRecapRuntime } = require("./recap-runtime");
-const { createKimiQuotaClient } = require("./kimi-quota-client");
-const { createKimiQuotaCredentialStore } = require("./kimi-quota-credential-store");
-const { createKimiQuotaRuntime } = require("./kimi-quota-runtime");
-const { createUsageCollector } = require("./usage-collector");
+} = require("./ui/settings/size-preview-session");
+const { registerSettingsIpc } = require("./core/settings/ipc");
+const { registerQuotaNotificationIpc } = require("./quota/notification-ipc");
+const { createQuotaAlertsRuntime } = require("./quota/alerts-runtime");
+const { createQuotaNotificationPresenter } = require("./quota/notifications");
+const createSettingsEffectRouter = require("./core/settings/effect-router");
+const { createRecapRuntime } = require("./runtime/recap/runtime");
+const { createKimiQuotaClient } = require("./agents/kimi-cli/quota/client");
+const { createKimiQuotaCredentialStore } = require("./agents/kimi-cli/quota/credential-store");
+const { createKimiQuotaRuntime } = require("./agents/kimi-cli/quota/runtime");
+const { createUsageCollector } = require("./quota/usage-collector");
 const {
   getPetTintIdForTheme,
   resolvePetTintPayload,
   buildPetAccessoryPayload,
   getPetMouthAccessoryIdForTheme,
   buildPetMouthAccessoryPayload,
-} = require("./pet-customization-catalog");
+} = require("./features/accessories/customization-catalog");
 const {
   finalizePetAccessorySlotsDelivery,
   getPetAccessorySlotsSnapshot,
   preparePetAccessorySlotsDelivery,
-} = require("./pet-accessory-state");
+} = require("./features/accessories/state");
 const {
   getEffectivePetAccessoryIdForTheme,
   createHolidayAccessoryRuntime,
-} = require("./holiday-accessory");
-const { registerSessionIpc } = require("./session-ipc");
-const { createSessionAutomationStore } = require("./session-automation-store");
-const { createSessionAutomationCoordinator } = require("./session-automation-coordinator");
+} = require("./features/accessories/holiday");
+const { registerSessionIpc } = require("./runtime/session/ipc");
+const { createSessionAutomationStore } = require("./runtime/session/automation/store");
+const { createSessionAutomationCoordinator } = require("./runtime/session/automation/coordinator");
 const {
   selectSessionAutomationDialogParent,
-} = require("./session-automation-dialog-parent");
-const { createSessionFolderOpener } = require("./session-open-folder");
-const { isTrustedMainFrameEvent, registerPetInteractionIpc } = require("./pet-interaction-ipc");
-const { createSystemWakeRecovery } = require("./system-wake-recovery");
-const { formatLocalTimestamp } = require("./log-timestamp");
-const { launchClaudeSession, openTerminalAt } = require("./launch-claude");
+} = require("./runtime/session/automation/dialog-parent");
+const { createSessionFolderOpener } = require("./runtime/session/open-folder");
+const { isTrustedMainFrameEvent, registerPetInteractionIpc } = require("./ui/pet/pet-interaction-ipc");
+const { createSystemWakeRecovery } = require("./platform/system-wake-recovery");
+const { formatLocalTimestamp } = require("./core/log/log-timestamp");
+const { launchClaudeSession, openTerminalAt } = require("./agents/claude-code/launch");
 const { dialog: electronDialog } = require("electron");
-const initPermission = require("./permission");
-const { isPassiveNotifyEntry } = require("./passive-notify-entry");
+const initPermission = require("./runtime/permission/permission");
+const { isPassiveNotifyEntry } = require("./runtime/permission/passive-notify-entry");
 const { registerPermissionIpc } = initPermission;
-const telegramApprovalSettings = require("./telegram-approval-settings");
-const { sanitizeTelegramApprovalLogMeta } = require("./telegram-approval-log-meta");
-const discordPresenceSettings = require("./discord-presence-settings");
-const { createDiscordPresenceBridge } = require("./discord-presence-rpc");
-const { resolveAgentDisplayName } = require("./agent-display-name");
+const telegramApprovalSettings = require("./features/telegram/approval-settings");
+const { sanitizeTelegramApprovalLogMeta } = require("./features/telegram/approval-log-meta");
+const discordPresenceSettings = require("./features/discord/settings");
+const { createDiscordPresenceBridge } = require("./features/discord/rpc");
+const { resolveAgentDisplayName } = require("./agents/display-name");
 const {
   FeishuApprovalClient,
   classifyFeishuSdkError,
   lookupOpenIdByEmail,
-} = require("./feishu-approval-client");
-const feishuApprovalSettings = require("./feishu-approval-settings");
-const { createSlackNotifyClient } = require("./slack-notify-client");
-const slackNotifySettings = require("./slack-notify-settings");
-const { saveFeishuApproverByEmail } = require("./settings-actions");
+} = require("./features/feishu/client");
+const feishuApprovalSettings = require("./features/feishu/settings");
+const { createSlackNotifyClient } = require("./features/slack/notify-client");
+const slackNotifySettings = require("./features/slack/notify-settings");
+const { saveFeishuApproverByEmail } = require("./core/settings/actions");
 const {
   buildTelegramApprovalStatus,
   isNativeTelegramApprovalSelected,
   buildTelegramStatusDiagnostic,
   formatTelegramStatusDiagnostic,
-} = require("./telegram-approval-runtime-status");
-const { createTelegramMigrationController } = require("./telegram-migration-controller");
-const { createTelegramMigrationNudge } = require("./telegram-migration-nudge");
-const { createFeishuApprovalMigrationNudge } = require("./feishu-approval-migration-nudge");
-const { createTrayBalloonOwner } = require("./tray-balloon-owner");
-const initUpdateBubble = require("./update-bubble");
+} = require("./features/telegram/approval-runtime-status");
+const { createTelegramMigrationController } = require("./features/telegram/migration-controller");
+const { createTelegramMigrationNudge } = require("./features/telegram/migration-nudge");
+const { createFeishuApprovalMigrationNudge } = require("./features/feishu/migration-nudge");
+const { createTrayBalloonOwner } = require("./ui/menu/tray-balloon-owner");
+const initUpdateBubble = require("./ui/bubbles/update-bubble");
 const { registerUpdateBubbleIpc } = initUpdateBubble;
-const createSettingsAnimationOverridesMain = require("./settings-animation-overrides-main");
+const createSettingsAnimationOverridesMain = require("./features/anim-overrides/main");
 const { registerSettingsAnimationOverridesIpc } = createSettingsAnimationOverridesMain;
-const createShortcutRuntime = require("./shortcut-runtime");
+const createShortcutRuntime = require("./core/shortcuts/runtime");
 const {
   findNearestWorkArea,
   buildDisplaySnapshot,
   SYNTHETIC_WORK_AREA,
-} = require("./work-area");
+} = require("./core/util/work-area");
 const {
   isUsableWorkArea: isUsableBubbleWorkArea,
   resolveBubbleWorkArea,
-} = require("./bubble-work-area");
+} = require("./runtime/permission/bubble-work-area");
 const {
   getLaunchPixelSize,
   getLaunchSizingWorkArea,
   getProportionalPixelSize,
   resolveSizeSliderContext,
-} = require("./size-utils");
-const { formatSizeKey } = require("./settings-size-slider");
-const { keepOutOfTaskbar } = require("./taskbar");
-const { loadTrayNormalIcon, loadTrayFlashIcon, buildTrayRainbowFrames } = require("./tray-flash-icon");
+} = require("./core/util/size-utils");
+const { formatSizeKey } = require("./ui/settings/size-slider");
+const { keepOutOfTaskbar } = require("./platform/taskbar");
+const { loadTrayNormalIcon, loadTrayFlashIcon, buildTrayRainbowFrames } = require("./ui/menu/tray-flash-icon");
 const {
   installStartupDockIcon,
   resolveRuntimeDockIconPolicy,
-} = require("./mac-dock-icon-runtime");
-const createTopmostRuntime = require("./topmost-runtime");
+} = require("./platform/mac/dock-icon-runtime");
+const createTopmostRuntime = require("./ui/pet/topmost-runtime");
 const { WIN_TOPMOST_LEVEL } = createTopmostRuntime;
 const {
   createHitWindowActivationRuntime,
-} = require("./win-hit-window-activation");
-const { startMobilePreviewServerSafely } = require("./network/mobile-preview-lifecycle");
-const createThemeFadeSequencer = require("./theme-fade-sequencer");
-const createThemeRuntime = require("./theme-runtime");
-const createAgentRuntimeMain = require("./agent-runtime-main");
-const createFloatingWindowRuntime = require("./floating-window-runtime");
-const createPetWindowRuntime = require("./pet-window-runtime");
-const { collectRequiredAssetFiles } = require("./theme-schema");
-const { describeGeometrySync } = require("./pet-accessory-state");
-const { createDisplayedVisualProjection } = require("./displayed-visual-projection");
-const { getRightSideMirrorFiles, isVisualMirrored, resolveMirroredFile } = require("./mirrored-files");
-const { createTestReactionHandler } = require("./test-reaction");
-const createMacHideController = require("./mac-hide");
+} = require("./platform/win/hit-window-activation");
+const { startMobilePreviewServerSafely } = require("./features/mobile/preview-lifecycle");
+const createThemeFadeSequencer = require("./features/themes/fade-sequencer");
+const createThemeRuntime = require("./features/themes/runtime");
+const createAgentRuntimeMain = require("./agents/runtime-main");
+const createFloatingWindowRuntime = require("./ui/pet/floating-window-runtime");
+const createPetWindowRuntime = require("./ui/pet/pet-window-runtime");
+const { collectRequiredAssetFiles } = require("./features/themes/schema");
+const { describeGeometrySync } = require("./features/accessories/state");
+const { createDisplayedVisualProjection } = require("./runtime/visual/displayed-visual-projection");
+const { getRightSideMirrorFiles, isVisualMirrored, resolveMirroredFile } = require("./core/util/mirrored-files");
+const { createTestReactionHandler } = require("./features/test-reaction");
+const createMacHideController = require("./platform/mac/hide");
 const {
   getFocusableLocalHudSessionIds: selectFocusableLocalHudSessionIds,
   getSessionFocusTarget,
-} = require("./session-focus");
-const { focusCodexThreadTarget, focusDshDesktopTarget } = require("./session-focus-handoff");
-const { isSessionInProgress } = require("./state-session-snapshot");
-const { restoreSessionsFromRecoveryLeases } = require("./session-recovery-loader");
-const { createSessionHistoryRuntime } = require("./session-history-runtime");
-const { getAllAgents, getAgent } = require("../agents/registry");
-const { getAgentIconUrl } = require("./state-agent-icons");
+} = require("./runtime/focus/session-focus");
+const { focusCodexThreadTarget, focusDshDesktopTarget } = require("./runtime/focus/session-focus-handoff");
+const { isSessionInProgress } = require("./runtime/state/session-snapshot");
+const { restoreSessionsFromRecoveryLeases } = require("./runtime/session/recovery-loader");
+const { createSessionHistoryRuntime } = require("./runtime/session/history-runtime");
+const { getAllAgents, getAgent } = require("./agents/registry");
+const { getAgentIconUrl } = require("./runtime/state/agent-icons");
 // ── Autoplay policy: allow sound playback without user gesture ──
 // MUST be set before any BrowserWindow is created (before app.whenReady)
 app.commandLine.appendSwitch("autoplay-policy", "no-user-gesture-required");
@@ -237,7 +237,7 @@ if (isWin) {
 // ── Windows: foreground-fullscreen probe (suppress topmost over games) ──
 // Best-effort; degrades to "never fullscreen" if koffi/user32 is unavailable,
 // so a broken probe can never hide the pet.
-const { createForegroundFullscreenProbe } = require("./win-fullscreen-detect");
+const { createForegroundFullscreenProbe } = require("./platform/win/fullscreen-detect");
 const _isForegroundFullscreen = createForegroundFullscreenProbe({
   isWin,
   onError: (err) => console.warn("Clawd: win-fullscreen-detect not available:", err && err.message),
@@ -251,7 +251,7 @@ const _hitWindowActivationRuntime = createHitWindowActivationRuntime({
 // ── Windows: DWM cloak inspection + un-cloak (#525 self-heal) ──
 // Best-effort; degrades to "never cloaked / recovery no-op" when koffi/dwmapi
 // or the virtual-desktop COM manager is unavailable.
-const { createCloakInspector } = require("./win-cloak-recovery");
+const { createCloakInspector } = require("./platform/win/cloak-recovery");
 const _cloakInspector = createCloakInspector({
   isWin,
   log: (line) => console.warn(`Clawd: ${line}`),
@@ -263,7 +263,7 @@ const _cloakInspector = createCloakInspector({
 // unavailable, so a broken probe never blocks a /state POST — wt_hwnd just
 // falls back to the session's last-known value (state.js merge). Never spawns
 // a subprocess, so it cannot reproduce the console flash it exists to avoid.
-const { createForegroundWindowsTerminalProbe } = require("./win-foreground-terminal");
+const { createForegroundWindowsTerminalProbe } = require("./platform/win/foreground-terminal");
 const _captureForegroundWindowsTerminal = createForegroundWindowsTerminalProbe({
   isWin,
   onError: (err) => console.warn("Clawd: win-foreground-terminal not available:", err && err.message),
@@ -320,18 +320,18 @@ const SIZES = {
 // Module-level `lang`/`showTray`/etc. below are mirror caches kept in sync via
 // a subscriber wired after menu.js loads. The ctx setters route writes through
 // `_settingsController.applyUpdate()`, which auto-persists.
-const prefsModule = require("./prefs");
-const { createSettingsController } = require("./settings-controller");
-const { loadOrCreateInstallationIdentity } = require("./remote-ssh-identity");
-const { createTranslator, i18n, SUPPORTED_LANGS } = require("./i18n");
-const { setClaudeCollectionWithConsent } = require("./claude-statusline-consent");
+const prefsModule = require("./core/settings/prefs");
+const { createSettingsController } = require("./core/settings/controller");
+const { loadOrCreateInstallationIdentity } = require("./features/remote-ssh/identity");
+const { createTranslator, i18n, SUPPORTED_LANGS } = require("./core/i18n/i18n");
+const { setClaudeCollectionWithConsent } = require("./agents/claude-code/statusline-consent");
 const {
   getBubblePolicy,
   isAllBubblesHidden,
-} = require("./bubble-policy");
-const loginItemHelpers = require("./login-item");
+} = require("./runtime/permission/bubble-policy");
+const loginItemHelpers = require("./platform/login-item");
 const { writeCodexAutoStartGate } = require("../hooks/server-config");
-const { createCodexAutoStartGateEvaluator } = require("./agent-gate");
+const { createCodexAutoStartGateEvaluator } = require("./agents/gate");
 const PREFS_PATH = path.join(app.getPath("userData"), "clawd-prefs.json");
 const _initialPrefsLoad = prefsModule.load(PREFS_PATH);
 // Recovery from readable invalid contents is writable only after the original
@@ -540,11 +540,11 @@ const _settingsController = createSettingsController({
     uninstallIntegrationForAgent: (id) => agentRuntime ? agentRuntime.uninstallIntegrationForAgent(id) : false,
     writeCodexAutoStartGate: _persistCodexAutoStartGate,
     deployHooksToWsl: async (distro, agentId) => {
-      const { deployToWsl } = require("./wsl-deploy");
+      const { deployToWsl } = require("./features/wsl/deploy");
       return deployToWsl(distro, { agentId, isPackaged: app.isPackaged, resourcesPath: process.resourcesPath });
     },
     removeHooksFromWsl: async (distro, agentId) => {
-      const { removeFromWsl } = require("./wsl-deploy");
+      const { removeFromWsl } = require("./features/wsl/deploy");
       return removeFromWsl(distro, { agentId, isPackaged: app.isPackaged, resourcesPath: process.resourcesPath });
     },
     cleanupIntegrations: async (options = {}) => {
@@ -565,7 +565,7 @@ const _settingsController = createSettingsController({
       sessionAutomationCoordinator ? sessionAutomationCoordinator.clearAgent(id) : [],
     dismissPermissionsByAgent: (id, options) => agentRuntime ? agentRuntime.dismissPermissionsByAgent(id, options) : 0,
     clearRecentHookEvents: (id) => _server.clearRecentHookEvents(id),
-    identifyCustomApplication: (sourcePath) => require("./custom-applications").identifyCustomApplication(sourcePath),
+    identifyCustomApplication: (sourcePath) => require("./agents/custom-applications").identifyCustomApplication(sourcePath),
     resizePet: _deferredResizePet,
     rebaseSizeToRealizedPixels: () => rebaseSizeToRealizedPixels(),
     getActiveSessionAliasKeys: () =>
@@ -822,9 +822,9 @@ function safeConsoleError(...args) {
 }
 
 // ── Theme loader ──
-const themeLoader = require("./theme-loader");
-const createCodexPetMain = require("./codex-pet-main");
-const createOfficialThemeMain = require("./official-theme-main");
+const themeLoader = require("./features/themes/loader");
+const createCodexPetMain = require("./features/codex-pet/main");
+const createOfficialThemeMain = require("./features/themes/official/main");
 themeLoader.init(__dirname, app.getPath("userData"));
 themeRuntime = createThemeRuntime({
   themeLoader,
@@ -2164,7 +2164,7 @@ const {
 // ── Permission bubble — delegated to src/permission.js ──
 const {
   createRuntimeAgentGate,
-} = require("./agent-gate");
+} = require("./agents/gate");
 const _runtimeAgentGate = createRuntimeAgentGate({
   getSnapshot: () => _settingsController.getSnapshot(),
   // Both unreadable prefs and a writable recovered-defaults snapshot are
@@ -2387,7 +2387,7 @@ let notifyUpdaterSilentExit = () => {};
 // theme so reads never go stale across theme switches. Returns null when
 // unset/invalid — callers keep their existing fallback. The visible repaint
 // on a pref change is the refreshIdleVisual router hook's job, further down.
-const { resolveIdleVisualChoice } = require("./idle-visual");
+const { resolveIdleVisualChoice } = require("./runtime/visual/idle-visual");
 function getIdleVisualChoice() {
   return resolveIdleVisualChoice(getActiveTheme(), _settingsController.get("idleVisual"));
 }
@@ -2450,7 +2450,7 @@ const _stateCtx = {
   get win() { return win; },
   get hitWin() { return hitWin; },
   // Last-known account quota survives app restarts (state-account-quota.js).
-  accountQuotaPersistPath: require("./state-account-quota").DEFAULT_PERSIST_PATH,
+  accountQuotaPersistPath: require("./quota/account-store").DEFAULT_PERSIST_PATH,
   recapSink: recapRuntime,
   get claudeQuotaCollectionEnabled() { return claudeQuotaCollectionEnabled; },
   get kimiQuotaCollectionEnabled() { return kimiQuotaCollectionEnabled; },
@@ -2572,7 +2572,7 @@ const _stateCtx = {
   isAgentEnabled: (agentId) => _runtimeAgentGate.isAgentEnabled(agentId),
   hasAnyEnabledAgent: () => _runtimeAgentGate.hasAnyEnabledAgent(),
 };
-const _state = require("./state")(_stateCtx);
+const _state = require("./runtime/state/state")(_stateCtx);
 displayedVisualProjection = createDisplayedVisualProjection({
   projectActualFile: ({ actualFile, requested }) => {
     const activeTheme = getActiveTheme();
@@ -2805,12 +2805,12 @@ const _tickCtx = {
   getAssetPointerPayload,
   get roam() { return _roam; },
 };
-const _tick = require("./tick")(_tickCtx);
+const _tick = require("./ui/pet/tick")(_tickCtx);
 requestFastTick = (maxDelay) => _tick.scheduleSoon(maxDelay);
 const { startMainTick, resetIdleTimer } = _tick;
 
 // ── Terminal focus — delegated to src/focus.js ──
-const _focus = require("./focus")({ _allowSetForeground, focusLog });
+const _focus = require("./runtime/focus/focus")({ _allowSetForeground, focusLog });
 const {
   initFocusHelper,
   killFocusHelper,
@@ -2909,7 +2909,7 @@ const openDashboardSessionFolder = createSessionFolderOpener({
   openPath: (cwd) => shell.openPath(cwd),
 });
 
-const _dashboard = require("./dashboard")({
+const _dashboard = require("./ui/dashboard/dashboard")({
   get lang() { return lang; },
   t: (key) => translate(key),
   getSessionSnapshot: () => _state.buildSessionSnapshot(),
@@ -2961,9 +2961,9 @@ app.on("will-quit", () => _dashboard.quick.dispose());
 // a missing ~/.codex is not evidence that a Codex hook is stale), so this flag
 // only affects the active/install buckets.
 function buildTutorialAgentOnboardingState() {
-  const { detectAgentInstallations } = require("./agent-installation-detector");
-  const { INSTALLABLE_AGENT_IDS } = require("./settings-actions-agents");
-  const { bucketAgentsForTutorial } = require("./tutorial-agent-buckets");
+  const { detectAgentInstallations } = require("./agents/installation-detector");
+  const { INSTALLABLE_AGENT_IDS } = require("./agents/settings-actions");
+  const { bucketAgentsForTutorial } = require("./agents/tutorial-buckets");
   let detection = { agents: [] };
   try {
     detection = detectAgentInstallations({ skipDefaultIntegrations: false }) || detection;
@@ -2982,7 +2982,7 @@ function buildTutorialAgentOnboardingState() {
 // binding (null when they've unassigned it) and falls back to the shipped
 // default only when the key has never been touched.
 function buildTutorialShortcutsSummary() {
-  const { SHORTCUT_ACTIONS, SHORTCUT_ACTION_IDS } = require("./shortcut-actions");
+  const { SHORTCUT_ACTIONS, SHORTCUT_ACTION_IDS } = require("./core/shortcuts/actions");
   const userShortcuts = _settingsController.get("shortcuts") || {};
   return SHORTCUT_ACTION_IDS.filter((id) => {
     const action = SHORTCUT_ACTIONS[id] || {};
@@ -3032,7 +3032,7 @@ function getTutorialDoneHeroSvg() {
   return _tutorialDoneHeroSvgCache;
 }
 
-const _tutorial = require("./tutorial")({
+const _tutorial = require("./features/tutorial/tutorial")({
   t: (key) => translate(key),
   getI18n: () => getDashboardI18nPayload().translations,
   getLang: () => lang,
@@ -3069,10 +3069,10 @@ const _tutorial = require("./tutorial")({
 // Shared with session-hud.js on purpose: the Settings provider list has to be
 // built from the SAME provider table and draw rule that sizes the HUD's quota
 // section, or the list can offer a provider that never draws.
-const _ringGeom = require("./quota-ring-geometry");
-const { createQuotaTrayRefreshScheduler } = require("./quota-tray-lines");
+const _ringGeom = require("./quota/ring-geometry");
+const { createQuotaTrayRefreshScheduler } = require("./quota/tray-lines");
 
-const _sessionHud = require("./session-hud")({
+const _sessionHud = require("./ui/hud/session-hud")({
   get win() { return win; },
   get petHidden() { return petWindowRuntime.isPetEffectivelyHidden(); },
   get sessionHudEnabled() { return sessionHudEnabled; },
@@ -3141,7 +3141,7 @@ agentRuntime = createAgentRuntimeMain({
   clearCodexNotifyBubbles: (...args) => clearCodexNotifyBubbles(...args),
   showCodexUserInputBubble: (...args) => showCodexUserInputBubble(...args),
   clearCodexUserInputBubbles: (...args) => clearCodexUserInputBubbles(...args),
-  loadCodexArchiveTracker: () => require("./codex-archive-tracker"),
+  loadCodexArchiveTracker: () => require("./agents/codex/archive-tracker"),
   onCodexArchiveLifecycleEnd: (payload) => {
     if (sessionAutomationCoordinator) sessionAutomationCoordinator.onSessionLifecycleEnd(payload);
   },
@@ -3242,13 +3242,13 @@ const _serverCtx = {
     }
   },
 };
-const _server = require("./server")(_serverCtx);
+const _server = require("./core/server/server")(_serverCtx);
 const { startHttpServer, getHookServerPort } = _server;
 
 // ── LAN WebSocket bridge for PWA mobile clients (lazy-loaded) ──
 let _lanWss = null;
 if (_settingsController.get("mobilePreviewEnabled") === true) {
-  const { initMobilePreviewServer } = require("./network/mobile-preview-server");
+  const { initMobilePreviewServer } = require("./features/mobile/preview-server");
   _lanWss = initMobilePreviewServer({
     sessions,
     getSettingsSnapshot: () => _settingsController.getSnapshot(),
@@ -3258,13 +3258,13 @@ if (_settingsController.get("mobilePreviewEnabled") === true) {
 
 function updateLog(msg) {
   if (!updateDebugLog) return;
-  const { rotatedAppend } = require("./log-rotate");
+  const { rotatedAppend } = require("./core/log/log-rotate");
   rotatedAppend(updateDebugLog, `[${new Date().toISOString()}] ${msg}\n`);
 }
 
 function sessionLog(msg) {
   if (!sessionDebugLog) return;
-  const { rotatedAppend } = require("./log-rotate");
+  const { rotatedAppend } = require("./core/log/log-rotate");
   rotatedAppend(sessionDebugLog, `[${formatLocalTimestamp()}] ${msg}\n`);
 }
 
@@ -3280,7 +3280,7 @@ ipcMain.on("sound-playback-error", (_event, payload) => {
 
 function focusLog(msg) {
   if (!focusDebugLog) return;
-  const { rotatedAppend } = require("./log-rotate");
+  const { rotatedAppend } = require("./core/log/log-rotate");
   rotatedAppend(focusDebugLog, `[${new Date().toISOString()}] ${msg}\n`);
 }
 
@@ -4150,20 +4150,20 @@ async function initTelegramMigrationController() {
 
   // Native handle. The token remains in the canonical userData env file;
   // neither migration state nor Settings snapshots receive its value.
-  const { envFileTokenStore } = require("./telegram-token-store");
+  const { envFileTokenStore } = require("./features/telegram/token-store");
   const {
     createClipboardFallbackDeliveryAdapter,
     createTelegramDirectSend,
-  } = require("./telegram-direct-send");
-  const { createWindowsConsoleInputDeliveryAdapter } = require("./windows-console-input");
-  const { createCodexQueueDeliveryAdapter } = require("./codex-queue-delivery");
-  const { deriveCodexHomeFromTranscriptPath } = require("./codex-thread-id");
+  } = require("./features/telegram/direct-send");
+  const { createWindowsConsoleInputDeliveryAdapter } = require("./platform/win/console-input");
+  const { createCodexQueueDeliveryAdapter } = require("./agents/codex/queue-delivery");
+  const { deriveCodexHomeFromTranscriptPath } = require("./agents/codex/thread-id");
   const {
     isCodexCliOriginator,
     isCodexDesktopOriginator,
   } = require("../hooks/codex-originator");
-  const { createTelegramNativeRunner } = require("./telegram-native-runner");
-  const { createTelegramFetchTransport } = require("./telegram-fetch-transport");
+  const { createTelegramNativeRunner } = require("./features/telegram/native-runner");
+  const { createTelegramFetchTransport } = require("./features/telegram/fetch-transport");
   const tokenStore = envFileTokenStore({ filePath: paths.tokenEnvFilePath });
   const getTelegramDirectSendSnapshot = () => {
     const snapshot = _state && typeof _state.buildSessionSnapshot === "function"
@@ -4288,7 +4288,7 @@ async function initTelegramMigrationController() {
   // R1a: completion notifications ride the existing snapshot fanout. The
   // companion holds its own dedupe state (the snapshot carries no prev) and
   // only sends while native is the active owner + the user left the toggle on.
-  const { createTelegramCompanion } = require("./telegram-companion");
+  const { createTelegramCompanion } = require("./features/telegram/companion");
   telegramCompanion = createTelegramCompanion({
     getClient: () => getTelegramCompanionClient(),
     getLang: () => _settingsController.get("lang") || lang || "en",
@@ -4819,7 +4819,7 @@ const _menuCtx = {
   openSettingsWindow: (options) => settingsWindowRuntime.open(options),
   showTutorial: () => _tutorial.open(),
 };
-const _menu = require("./menu")(_menuCtx);
+const _menu = require("./ui/menu/menu")(_menuCtx);
 const { t, buildContextMenu, buildTrayMenu, rebuildAllMenus, createTray,
         destroyTray, showPetContextMenu, ensureContextMenuOwner,
         requestAppQuit, applyDockVisibility } = _menu;
@@ -5028,7 +5028,7 @@ _settingsController.subscribeKey("slackNotify", () => {
 _settingsController.subscribeKey("mobilePreviewEnabled", (enabled) => {
   if (enabled) {
     if (!_lanWss) {
-      const { initMobilePreviewServer } = require("./network/mobile-preview-server");
+      const { initMobilePreviewServer } = require("./features/mobile/preview-server");
       _lanWss = initMobilePreviewServer({
         sessions,
         getSettingsSnapshot: () => _settingsController.getSnapshot(),
@@ -5093,7 +5093,7 @@ const _updaterCtx = {
     try { _settingsController.applyUpdate(key, value); } catch {}
   },
 };
-const _updater = require("./updater")(_updaterCtx);
+const _updater = require("./features/updater/updater")(_updaterCtx);
 const {
   setupAutoUpdater,
   checkForUpdates,
@@ -5125,7 +5125,7 @@ try {
 }
 
 // ── Doctor tab IPC ──
-const { registerDoctorIpc } = require("./doctor-ipc");
+const { registerDoctorIpc } = require("./features/doctor/ipc");
 let _remoteSshRuntime = null;
 registerDoctorIpc({
   ipcMain,
@@ -5152,10 +5152,10 @@ registerDoctorIpc({
 // runtime state (Connect / Disconnect / Deploy / Authenticate / Open
 // Terminal) goes through `remote-ssh-ipc.js`. Cleanup on app quit kills
 // any spawned ssh / scp children.
-const { createRemoteSshRuntime } = require("./remote-ssh-runtime");
-const { registerRemoteSshIpc } = require("./remote-ssh-ipc");
-const { inspectEffectiveTransport } = require("./remote-ssh-transport");
-const { createRemoteSshTransportCoordinator } = require("./remote-ssh-transport-coordinator");
+const { createRemoteSshRuntime } = require("./features/remote-ssh/runtime");
+const { registerRemoteSshIpc } = require("./features/remote-ssh/ipc");
+const { inspectEffectiveTransport } = require("./features/remote-ssh/transport");
+const { createRemoteSshTransportCoordinator } = require("./features/remote-ssh/transport-coordinator");
 _remoteSshTransportCoordinator = createRemoteSshTransportCoordinator({
   inspectEffectiveTransport: (profile) => inspectEffectiveTransport(profile),
 });
@@ -5422,8 +5422,8 @@ function createWindow() {
     size,
     initialWindowBounds,
     initialVirtualBounds,
-    preloadPath: path.join(__dirname, "preload.js"),
-    loadFilePath: path.join(__dirname, "index.html"),
+    preloadPath: path.join(__dirname, "ui", "pet", "preload.js"),
+    loadFilePath: path.join(__dirname, "ui", "pet", "index.html"),
     themeConfig: buildRendererThemeConfig(initialAccessoryDelivery.snapshot),
     setRenderWindow: (createdWindow) => { win = createdWindow; },
     isQuitting: () => isQuitting,
@@ -5438,8 +5438,8 @@ function createWindow() {
   // ── Create input window (hitWin) — small rect over hitbox, receives all pointer events ──
   hitWin = petWindowRuntime.createHitWindow({
     BrowserWindow,
-    preloadPath: path.join(__dirname, "preload-hit.js"),
-    loadFilePath: path.join(__dirname, "hit.html"),
+    preloadPath: path.join(__dirname, "ui", "pet", "preload-hit.js"),
+    loadFilePath: path.join(__dirname, "ui", "pet", "hit.html"),
     hitThemeConfig: themeRuntime.getHitRendererConfig(),
     guardAlwaysOnTop,
     prepareActivation: (createdHitWin) => (
@@ -5792,7 +5792,7 @@ const _miniCtx = {
       : null;
   },
 };
-const _mini = require("./mini")(_miniCtx);
+const _mini = require("./ui/pet/mini")(_miniCtx);
 
 const handleTestResult = createTestReactionHandler({
   getEnabled: () => _settingsController.get("testReactionsEnabled") === true,
@@ -5857,7 +5857,7 @@ const _roamCtx = {
   // time and kicks refresh() when scheduling walks (see src/roam-fence.js).
   roamFence: roamFenceLoader,
 };
-const _roam = require("./roam")(_roamCtx);
+const _roam = require("./features/roam/roam")(_roamCtx);
 // #810: resolve the fence's initial status right away so the first roam
 // round doesn't have to hold on an UNKNOWN state (get() === null) when a
 // fence file exists — or confirm quickly that none does.
@@ -6022,7 +6022,7 @@ if (!gotTheLock) {
 
   function maybeNudgeCodexHookHealth() {
     try {
-      const { getCodexHookHealth, decideCodexHookNotification } = require("./codex-hook-health");
+      const { getCodexHookHealth, decideCodexHookNotification } = require("./agents/codex/hook-health");
       const snapshot = _settingsController.getSnapshot();
       const verdict = getCodexHookHealth({ prefs: snapshot });
       const prevSignature = _settingsController.get("codexHookHealthLastNotified") || "";
@@ -6111,7 +6111,7 @@ if (!gotTheLock) {
     updateDebugLog = path.join(app.getPath("userData"), "update-debug.log");
     sessionDebugLog = path.join(app.getPath("userData"), "session-debug.log");
     focusDebugLog = path.join(app.getPath("userData"), "focus-debug.log");
-    const { createWindowsProcessChainShadowLogger } = require("./windows-process-chain-shadow-log");
+    const { createWindowsProcessChainShadowLogger } = require("./platform/win/process-chain-shadow-log");
     recordWindowsProcessChainShadow = createWindowsProcessChainShadowLogger({
       filePath: path.join(app.getPath("userData"), "windows-process-chain-shadow.log"),
     });

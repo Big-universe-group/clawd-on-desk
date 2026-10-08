@@ -4,10 +4,11 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const { app, BrowserWindow } = require("electron");
-const { applyZoomToWindow } = require("../../src/text-scale");
+const { applyZoomToWindow } = require("../../src/core/util/text-scale");
 
 const SRC = path.resolve(__dirname, "../../src");
-const css = ["settings.css", "language-picker.css"].map(file => fs.readFileSync(path.join(SRC, file), "utf8")).join("\n");
+const css = ["ui/settings/settings.css", "ui/settings/language-picker.css"]
+  .map(file => fs.readFileSync(path.join(SRC, file), "utf8")).join("\n");
 const html = `<!doctype html><html><head><meta charset="utf-8"><style>${css}
   .language-picker-menu { transition: none !important; }
 </style></head><body><div class="app"><aside class="sidebar"><button id="outside">Outside</button></aside>
@@ -17,7 +18,7 @@ const html = `<!doctype html><html><head><meta charset="utf-8"><style>${css}
 <div style="height:1000px"></div></main></div></body></html>`;
 
 async function installPickers(win) {
-  await win.webContents.executeJavaScript(fs.readFileSync(path.join(SRC, "language-picker.js"), "utf8"));
+  await win.webContents.executeJavaScript(fs.readFileSync(path.join(SRC, "ui", "settings", "language-picker.js"), "utf8"));
   await win.webContents.executeJavaScript(`
     window.controls = {};
     window.settleLayout = () => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));

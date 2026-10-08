@@ -6,11 +6,11 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 
-const RENDERER = path.join(__dirname, "..", "src", "renderer.js");
-const ACCESSORY_LAYOUT = path.join(__dirname, "..", "src", "pet-accessory-layout.js");
-const ACCESSORY_MIRROR = path.join(__dirname, "..", "src", "pet-accessory-mirror.js");
-const ACCESSORY_DESCRIPTOR = path.join(__dirname, "..", "src", "pet-accessory-descriptor.js");
-const PRELOAD = path.join(__dirname, "..", "src", "preload.js");
+const RENDERER = path.join(__dirname, "..", "src", "ui", "pet", "renderer.js");
+const ACCESSORY_LAYOUT = path.join(__dirname, "..", "src", "features", "accessories", "layout.js");
+const ACCESSORY_MIRROR = path.join(__dirname, "..", "src", "features", "accessories", "mirror.js");
+const ACCESSORY_DESCRIPTOR = path.join(__dirname, "..", "src", "features", "accessories", "descriptor.js");
+const PRELOAD = path.join(__dirname, "..", "src", "ui", "pet", "preload.js");
 const MAIN = path.join(__dirname, "..", "src", "main.js");
 
 function readNormalized(filePath) {
@@ -33,7 +33,7 @@ function matchSource(source, pattern, message) {
 // wrapping at all, so it cannot prove anything about THIS boundary.
 function loadPreloadWithElectron() {
   const electronPath = require.resolve("electron");
-  const preloadPath = require.resolve("../src/preload");
+  const preloadPath = require.resolve("../src/ui/pet/preload");
   const previousElectron = Object.prototype.hasOwnProperty.call(require.cache, electronPath)
     ? require.cache[electronPath]
     : null;
@@ -60,7 +60,7 @@ function loadPreloadWithElectron() {
     },
   };
   delete require.cache[preloadPath];
-  require("../src/preload"); // runs preload.js's top-level contextBridge.exposeInMainWorld call
+  require("../src/ui/pet/preload"); // runs preload.js's top-level contextBridge.exposeInMainWorld call
 
   return {
     electronAPI: exposed.electronAPI,
@@ -1105,7 +1105,7 @@ describe("renderer test-result reactions", () => {
   });
 
   it("keeps mini mirroring and viewport translation independent from failure shake", () => {
-    const css = readNormalized(path.join(__dirname, "..", "src", "styles.css"));
+    const css = readNormalized(path.join(__dirname, "..", "src", "ui", "pet", "styles.css"));
     assert.match(css, /#pet-facing-stage\.clawd-test-shake\s*\{[^}]*animation:/);
     assert.match(css, /@keyframes clawd-test-shake\s*\{[\s\S]*translate:[\s\S]*rotate:/);
     assert.ok(!/#pet-container\.clawd-test-shake/.test(css));
@@ -1908,9 +1908,9 @@ describe("renderer pet accessory wardrobe", () => {
     assert.strictEqual(harness.accessory.style.filter, "none");
     assert.strictEqual(harness.mouthAccessory.style.filter, "none");
     assert.strictEqual(harness.accessory.tagName, "IMG");
-    assert.strictEqual(harness.accessory.src, "../assets/accessories/cowboy-hat.svg");
+    assert.strictEqual(harness.accessory.src, "../../../assets/accessories/cowboy-hat.svg");
     assert.strictEqual(harness.mouthAccessory.tagName, "OBJECT");
-    assert.strictEqual(harness.mouthAccessory.data, "../assets/accessories/cigarette.svg");
+    assert.strictEqual(harness.mouthAccessory.data, "../../../assets/accessories/cigarette.svg");
   });
 
   it("keeps a hot-selected mouth object mounted but invisible until its SVG loads", () => {
@@ -2044,7 +2044,7 @@ describe("renderer pet accessory wardrobe", () => {
       }),
     });
 
-    assert.strictEqual(harness.accessory.src, "../assets/accessories/cowboy-hat.svg");
+    assert.strictEqual(harness.accessory.src, "../../../assets/accessories/cowboy-hat.svg");
     assert.ok(harness.api.pendingNext, "initial media should be loading");
     assert.strictEqual(harness.api.pendingNext.style.filter, filter);
 
@@ -2354,7 +2354,7 @@ describe("renderer pet accessory wardrobe", () => {
       offsetY: 0.3,
     });
 
-    assert.strictEqual(harness.accessory.src, "../assets/accessories/wizard-hat.svg");
+    assert.strictEqual(harness.accessory.src, "../../../assets/accessories/wizard-hat.svg");
     assert.strictEqual(typeof harness.accessory.onload, "function");
     harness.accessory.onload();
     assert.strictEqual(harness.api.pendingNext, null);
@@ -2687,8 +2687,8 @@ describe("renderer pet accessory wardrobe", () => {
   });
 
   it("keeps the structural stages full-size and uses independent transform properties", () => {
-    const html = readNormalized(path.join(__dirname, "..", "src", "index.html"));
-    const css = readNormalized(path.join(__dirname, "..", "src", "styles.css"));
+    const html = readNormalized(path.join(__dirname, "..", "src", "ui", "pet", "index.html"));
+    const css = readNormalized(path.join(__dirname, "..", "src", "ui", "pet", "styles.css"));
     const renderer = readNormalized(RENDERER);
     const preload = readNormalized(PRELOAD);
 
@@ -2696,11 +2696,11 @@ describe("renderer pet accessory wardrobe", () => {
     assert.ok(html.indexOf('id="pet-accessory-layer"') < html.indexOf('id="pet-mouth-accessory-layer"'));
     assert.ok(html.includes('<div id="pet-effect-stage">'));
     assert.ok(html.includes('<div id="pet-particle-layer"></div>'));
-    assert.ok(html.indexOf('src="pet-accessory-layout.js"') < html.indexOf('src="renderer.js"'));
+    assert.ok(html.indexOf('src="../../features/accessories/layout.js"') < html.indexOf('src="renderer.js"'));
     for (const dependency of [
-      "pet-accessory-mirror.js",
-      "pet-accessory-descriptor.js",
-      "pet-visual-swap-policy.js",
+      "../../features/accessories/mirror.js",
+      "../../features/accessories/descriptor.js",
+      "../../runtime/visual/swap-policy.js",
     ]) {
       const dependencyIndex = html.indexOf(`src="${dependency}"`);
       assert.notStrictEqual(dependencyIndex, -1, `${dependency} must be loaded by index.html`);
@@ -3202,7 +3202,7 @@ describe("renderer viewport offset X (#690)", () => {
     assert.strictEqual(harness.container.id, "pet-container");
     assert.strictEqual(harness.container.style.translate, "30px 0");
     // #pet-facing-stage (mini-left's mirror layer) and #pet-effect-stage are
-    // both direct children of #pet-container in the real DOM (src/index.html)
+    // both direct children of #pet-container in the real DOM (src/ui/pet/index.html)
     // and in this harness (container.appendChild(facingStage) /
     // container.appendChild(effectStage)). Neither should receive its own
     // translate from this handler — the shift must come from the parent
@@ -3233,7 +3233,7 @@ describe("renderer viewport offset X (#690)", () => {
   it("restores the current offset through the same did-finish-load resend path as viewport-offset (Y)", () => {
     const preload = readNormalized(PRELOAD);
     const main = readNormalized(MAIN);
-    const runtime = readNormalized(path.join(__dirname, "..", "src", "pet-window-runtime.js"));
+    const runtime = readNormalized(path.join(__dirname, "..", "src", "ui", "pet", "pet-window-runtime.js"));
 
     // PR #751 Codex review #12 (rework batch B-8): preload's bridge now
     // normalizes a non-finite value to 0 (see the "§6.6" behavioral test
@@ -3265,7 +3265,7 @@ describe("renderer viewport offset X (#690)", () => {
   // receives viewport-offset-x at all, while a context with a genuine
   // non-zero X offset (Linux edge-virtualization) does.
   it("resendViewportOffsets() behaviorally sends Y unconditionally and X only when non-zero", () => {
-    const createPetWindowRuntime = require(path.join(__dirname, "..", "src", "pet-window-runtime.js"));
+    const createPetWindowRuntime = require(path.join(__dirname, "..", "src", "ui", "pet", "pet-window-runtime.js"));
     const sent = [];
     const runtime = createPetWindowRuntime({
       sendToRenderer: (...args) => sent.push(args),

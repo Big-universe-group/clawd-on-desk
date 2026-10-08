@@ -6,7 +6,7 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 
-const catalog = require("../src/official-theme-catalog");
+const catalog = require("../src/features/themes/official/catalog");
 const {
   SNAPSHOT_PATH,
   updateOfficialThemeCatalogSnapshot,

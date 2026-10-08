@@ -6,8 +6,8 @@ const assert = require("node:assert");
 const {
   shouldBypassCCBubble,
   shouldBypassFamilyBubble,
-} = require("../src/server").__test;
-const { classifyPermissionInteraction } = require("../src/permission-automation-policy");
+} = require("../src/core/server/server").__test;
+const { classifyPermissionInteraction } = require("../src/runtime/permission/automation-policy");
 
 function ccInteraction(toolName, agentId = "claude-code") {
   return classifyPermissionInteraction({ agentId, toolName });

@@ -10,12 +10,12 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 const { test } = require("node:test");
-const { i18n } = require("../src/i18n");
-const { createDashboardQuickMode } = require("../src/dashboard-quick-mode");
-const createOriginFocus = require("../src/quick-select-origin-focus");
+const { i18n } = require("../src/core/i18n/i18n");
+const { createDashboardQuickMode } = require("../src/ui/dashboard/quick-mode");
+const createOriginFocus = require("../src/platform/win/quick-select-origin-focus");
 
 const RENDERER_SOURCE = fs.readFileSync(
-  path.join(__dirname, "../src/dashboard-renderer.js"),
+  path.join(__dirname, "../src/ui/dashboard/renderer.js"),
   "utf8"
 );
 
@@ -224,7 +224,7 @@ async function renderer(options = {}) {
 
   const context = vm.createContext(sandbox);
   vm.runInContext(
-    fs.readFileSync(path.join(__dirname, "..", "src", "language-picker.js"), "utf8"),
+    fs.readFileSync(path.join(__dirname, "..", "src", "ui", "settings", "language-picker.js"), "utf8"),
     context
   );
   vm.runInContext(RENDERER_SOURCE, context);

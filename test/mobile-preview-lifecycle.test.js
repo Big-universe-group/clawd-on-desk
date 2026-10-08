@@ -7,7 +7,7 @@ const path = require("node:path");
 
 const {
   startMobilePreviewServerSafely,
-} = require("../src/network/mobile-preview-lifecycle");
+} = require("../src/features/mobile/preview-lifecycle");
 
 describe("mobile preview lifecycle", () => {
   it("converts a synchronous start failure into a logged null result", async () => {

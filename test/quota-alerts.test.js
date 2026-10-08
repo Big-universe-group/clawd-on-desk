@@ -7,8 +7,8 @@ const os = require("node:os");
 const path = require("node:path");
 const {
   createQuotaAlerts, normalizeQuotaAlertThresholds, QUOTA_ALERT_MAX_AGE_MS, MAX_HISTORY_RECORDS,
-} = require("../src/quota-alerts");
-const { createAccountQuotaStore } = require("../src/state-account-quota");
+} = require("../src/quota/alerts");
+const { createAccountQuotaStore } = require("../src/quota/account-store");
 
 const START = 1_800_000_001_000;
 const MINUTE = 60_000;

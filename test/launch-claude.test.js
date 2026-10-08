@@ -19,7 +19,7 @@ const {
   buildClaudeLaunchEnv,
   launchClaudeSession,
   findClaudeCmd,
-} = require("../src/launch-claude");
+} = require("../src/agents/claude-code/launch");
 
 const WIN_PATH = "C:\\Program Files\\nodejs\\node_modules\\@anthropic\\claude.cmd";
 

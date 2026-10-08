@@ -2,9 +2,9 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const { EventEmitter } = require("node:events");
-const { createSettingsController } = require("../src/settings-controller");
-const prefs = require("../src/prefs");
-const { createQuotaAlertsRuntime } = require("../src/quota-alerts-runtime");
+const { createSettingsController } = require("../src/core/settings/controller");
+const prefs = require("../src/core/settings/prefs");
+const { createQuotaAlertsRuntime } = require("../src/quota/alerts-runtime");
 
 function harness({ unreadable = false } = {}) {
   const controller = createSettingsController({ loadResult: {

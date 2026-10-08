@@ -7,17 +7,17 @@ const os = require("node:os");
 const path = require("node:path");
 const { EventEmitter } = require("node:events");
 const WebSocket = require("ws");
-const { handleStatePost } = require("../src/server-route-state");
-const createAgentRuntimeMain = require("../src/agent-runtime-main");
-const initState = require("../src/state");
-const themeLoader = require("../src/theme-loader");
-const { initMobilePreviewServer } = require("../src/network/mobile-preview-server");
-const { sessionAliasKey } = require("../src/session-alias");
+const { handleStatePost } = require("../src/core/server/route-state");
+const createAgentRuntimeMain = require("../src/agents/runtime-main");
+const initState = require("../src/runtime/state/state");
+const themeLoader = require("../src/features/themes/loader");
+const { initMobilePreviewServer } = require("../src/features/mobile/preview-server");
+const { sessionAliasKey } = require("../src/runtime/session/alias");
 const {
   createQoderSessionTitleTracker,
   normalizeQoderSessionId,
   normalizeQoderSessionTitle,
-} = require("../src/qoder-session-title");
+} = require("../src/agents/qoder/session-title");
 
 themeLoader.init(path.join(__dirname, "..", "src"));
 const integrationTheme = themeLoader.loadTheme("clawd");

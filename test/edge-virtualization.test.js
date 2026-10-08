@@ -13,8 +13,8 @@
 const { describe, it, beforeEach, afterEach, mock } = require("node:test");
 const assert = require("node:assert/strict");
 
-const createPetWindowRuntime = require("../src/pet-window-runtime");
-const { registerPetInteractionIpc } = require("../src/pet-interaction-ipc");
+const createPetWindowRuntime = require("../src/ui/pet/pet-window-runtime");
+const { registerPetInteractionIpc } = require("../src/ui/pet/pet-interaction-ipc");
 
 // ── makeWindow/FakeIpcMain — copied from test/pet-window-runtime.test.js and
 // test/pet-interaction-ipc.test.js. Test files in this codebase are
@@ -83,7 +83,7 @@ class FakeIpcMain {
 // undefined.
 function loadMiniWithElectron(screenExports) {
   const electronPath = require.resolve("electron");
-  const miniPath = require.resolve("../src/mini");
+  const miniPath = require.resolve("../src/ui/pet/mini");
   const previousElectron = Object.prototype.hasOwnProperty.call(require.cache, electronPath)
     ? require.cache[electronPath]
     : null;
@@ -102,7 +102,7 @@ function loadMiniWithElectron(screenExports) {
   delete require.cache[miniPath];
 
   return {
-    initMini: require("../src/mini"),
+    initMini: require("../src/ui/pet/mini"),
     restore() {
       if (previousElectron) require.cache[electronPath] = previousElectron;
       else delete require.cache[electronPath];

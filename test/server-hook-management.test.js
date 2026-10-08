@@ -4,12 +4,12 @@ const { afterEach, describe, it } = require("node:test");
 const assert = require("node:assert");
 const { EventEmitter } = require("node:events");
 
-const initServer = require("../src/server");
+const initServer = require("../src/core/server/server");
 const {
   MAX_CODEX_OFFICIAL_TURNS,
   resolveCodexOfficialHookState,
-} = require("../src/server-codex-official-turns");
-const { makeSessionKey } = require("../src/session-key");
+} = require("../src/agents/codex/server-official-turns");
+const { makeSessionKey } = require("../src/core/util/session-key");
 const { getClaudeHookScriptPath, getClaudeAutoStartScriptPath } = require("../hooks/install");
 
 const EXPECTED_HOOK_SCRIPT_PATH = getClaudeHookScriptPath();
@@ -32,7 +32,7 @@ function integrationSyncSeamNames() {
   const fs = require("node:fs");
   const path = require("node:path");
   const source = fs.readFileSync(
-    path.join(__dirname, "..", "src", "integration-sync.js"),
+    path.join(__dirname, "..", "src", "agents", "integration-sync.js"),
     "utf8"
   );
   const names = new Set();

@@ -25,7 +25,7 @@ const {
   isValidSshTransportMode,
   sanitizeSshTransportHint,
   remoteOwnershipDomainKey,
-} = require("../src/remote-ssh-profile");
+} = require("../src/features/remote-ssh/profile");
 
 test("SSH transport mode defaults to auto and validates serialized override", () => {
   assert.equal(isValidSshTransportMode("auto"), true);
@@ -671,7 +671,7 @@ test("normalizeRemoteSsh returns defaults for non-object", () => {
 
 // ── settings-actions: command registry ──
 
-const { commandRegistry, updateRegistry } = require("../src/settings-actions");
+const { commandRegistry, updateRegistry } = require("../src/core/settings/actions");
 
 test("settings-actions: remoteSsh validator accepts empty profiles list", () => {
   const r = updateRegistry.remoteSsh({ profiles: [] });
@@ -752,7 +752,7 @@ const {
   deployTargetFingerprint,
   deployTargetDrift,
   DEPLOY_TARGET_FIELDS,
-} = require("../src/remote-ssh-profile");
+} = require("../src/features/remote-ssh/profile");
 
 test("deployTargetFingerprint normalizes port 22 to undefined (matches UI omit-default)", () => {
   const a = deployTargetFingerprint({ host: "pi", port: 22, remoteForwardPort: 23333 });
@@ -1339,7 +1339,7 @@ test("settings-actions: remoteSsh.delete rejects an active identity transaction"
 // ── prefs.js: schema integration ──
 
 test("prefs.getDefaults includes remoteSsh.profiles=[]", () => {
-  const { getDefaults: prefsDefaults } = require("../src/prefs");
+  const { getDefaults: prefsDefaults } = require("../src/core/settings/prefs");
   const d = prefsDefaults();
   assert.ok(d.remoteSsh, "remoteSsh field must be in defaults");
   assert.ok(Array.isArray(d.remoteSsh.profiles));
@@ -1347,14 +1347,14 @@ test("prefs.getDefaults includes remoteSsh.profiles=[]", () => {
 });
 
 test("prefs.validate normalizes invalid remoteSsh into defaults", () => {
-  const { validate } = require("../src/prefs");
+  const { validate } = require("../src/core/settings/prefs");
   const out = validate({ remoteSsh: { profiles: "no" } });
   // schema validate runs normalize first → drops bad profiles → empty list.
   assert.deepEqual(out.remoteSsh, { profiles: [] });
 });
 
 test("prefs.validate keeps valid remoteSsh profiles", () => {
-  const { validate } = require("../src/prefs");
+  const { validate } = require("../src/core/settings/prefs");
   const profile = basicProfile();
   const out = validate({ remoteSsh: { profiles: [profile] } });
   assert.equal(out.remoteSsh.profiles.length, 1);
@@ -1362,8 +1362,8 @@ test("prefs.validate keeps valid remoteSsh profiles", () => {
 });
 
 test("real controller: remoteSsh.forceRevoke all persists a schema-valid C transaction", async () => {
-  const { createSettingsController } = require("../src/settings-controller");
-  const prefs = require("../src/prefs");
+  const { createSettingsController } = require("../src/core/settings/controller");
+  const prefs = require("../src/core/settings/prefs");
   const ctrl = createSettingsController({
     loadResult: {
       snapshot: {
@@ -1396,7 +1396,7 @@ test("real controller: remoteSsh.forceRevoke all persists a schema-valid C trans
 // markDeployed can race and the later-committing one would stomp.
 
 test("real controller: update + markDeployed serialize via shared lockKey", async () => {
-  const { createSettingsController } = require("../src/settings-controller");
+  const { createSettingsController } = require("../src/core/settings/controller");
   const path = require("path");
   const fs = require("fs");
   const os = require("os");
@@ -1407,7 +1407,7 @@ test("real controller: update + markDeployed serialize via shared lockKey", asyn
       prefsPath: tmp,
       loadResult: {
         snapshot: {
-          ...require("../src/prefs").getDefaults(),
+          ...require("../src/core/settings/prefs").getDefaults(),
           remoteSsh: { profiles: [startProfile] },
         },
         locked: false,
@@ -1436,7 +1436,7 @@ test("real controller: update + markDeployed serialize via shared lockKey", asyn
 });
 
 test("real controller: delete + markDeployed serialize (no resurrected profile)", async () => {
-  const { createSettingsController } = require("../src/settings-controller");
+  const { createSettingsController } = require("../src/core/settings/controller");
   const path = require("path");
   const fs = require("fs");
   const os = require("os");
@@ -1447,7 +1447,7 @@ test("real controller: delete + markDeployed serialize (no resurrected profile)"
       prefsPath: tmp,
       loadResult: {
         snapshot: {
-          ...require("../src/prefs").getDefaults(),
+          ...require("../src/core/settings/prefs").getDefaults(),
           remoteSsh: { profiles: [startProfile] },
         },
         locked: false,

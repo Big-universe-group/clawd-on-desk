@@ -20,7 +20,7 @@ const {
   OP,
   STATE_GIF,
   SVG_GIF,
-} = require("../src/discord-presence-rpc");
+} = require("../src/features/discord/rpc");
 
 // Stand-in for a Discord IPC pipe socket: captures writes, driven by emit().
 class FakeIpcSocket extends EventEmitter {

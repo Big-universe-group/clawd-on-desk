@@ -7,7 +7,7 @@ const {
   buildCodexMonitorSessionOptions,
   normalizeCodexMonitorAccountQuotas,
   isCodexMonitorMetadataOnlyEvent,
-} = require("../src/codex-monitor-callback");
+} = require("../src/agents/codex/monitor-callback");
 
 describe("Codex monitor callback helpers", () => {
   it("keeps title refreshes metadata-only even when their payload is missing", () => {

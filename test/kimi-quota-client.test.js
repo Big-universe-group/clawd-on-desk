@@ -10,7 +10,7 @@ const {
   classifyHttpResponse,
   createKimiQuotaClient,
   parseRetryAfter,
-} = require("../src/kimi-quota-client");
+} = require("../src/agents/kimi-cli/quota/client");
 
 function createRequestMock(routes) {
   const calls = [];

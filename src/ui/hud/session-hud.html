@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'self'; img-src 'self' data: file:;">
+<title>Session HUD</title>
+<style>
+* { box-sizing: border-box; }
+
+:root {
+  --hud-bg: rgba(255, 255, 255, 0.88);
+  --hud-border: rgba(0, 0, 0, 0.12);
+  /* Sessions/quota rule: heavier than the box border so the two sections read
+     as separate blocks, plus a faint tint on the quota block. */
+  --hud-divider: rgba(0, 0, 0, 0.22);
+  --hud-quota-tint: rgba(0, 0, 0, 0.035);
+  --text: #242427;
+  --text-muted: #6b6b70;
+  --shadow: rgba(0, 0, 0, 0.16);
+  --running: #16a34a;
+  --done: #2563eb;
+  --interrupted: #d97706;
+  --idle: #9ca3af;
+  /* Quota section palette. dashboard.html mirrors these provider identity and
+     severity hues (test/quota-palette.test.js), so a HUD value and a Dashboard
+     bar name the same provider/window/state with the same color. */
+  --sev-warn: #fbbf24;
+  --sev-hot: #f87171;
+  --sev-reset: #9096a1;
+  --id-outer: #2dd4bf;
+  --id-inner: #6489f7;
+  --id-claude-outer: #2dd4bf;
+  --id-claude-inner: #6489f7;
+  --id-codex-outer: #a78bfa;
+  --id-codex-inner: #22d3ee;
+  --id-antigravity-outer: #38bdf8;
+  --id-antigravity-inner: #6366f1;
+  --id-kimi-outer: #3b93f7;
+  --id-kimi-inner: #e27aeb;
+  --id-extra-outer: #c084fc;
+  --id-extra-inner: #6ee7b7;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --hud-bg: rgba(32, 32, 36, 0.88);
+    --hud-border: rgba(255, 255, 255, 0.12);
+    --hud-divider: rgba(255, 255, 255, 0.24);
+    --hud-quota-tint: rgba(255, 255, 255, 0.045);
+    --text: #f4f4f5;
+    --text-muted: #a1a1aa;
+    --shadow: rgba(0, 0, 0, 0.34);
+    --done: #60a5fa;
+    --idle: #71717a;
+  }
+}
+
+html, body {
+  width: 100%;
+  margin: 0;
+  background: transparent;
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 12px;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+html, body { height: 100%; overflow: hidden; }
+body { padding: 2px 3px 8px; }
+
+.hud {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--hud-border);
+  border-radius: 8px;
+  background: var(--hud-bg);
+  box-shadow: 0 8px 18px -12px var(--shadow), 0 2px 4px rgba(0, 0, 0, 0.10);
+  overflow: hidden;
+  position: relative;
+}
+
+.hud-section {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.hud-section:empty { display: none; }
+
+/* 2px rule between the sessions and quota sections; session-hud.js counts it
+   (HUD_SECTION_DIVIDER) only when both sections have rows. */
+.hud-sessions:not(:empty) + .hud-quota:not(:empty) {
+  border-top: 2px solid var(--hud-divider);
+  background: var(--hud-quota-tint);
+}
+
+.hud.has-pin .row {
+  padding-right: 28px;
+}
+
+.pin-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  z-index: 2;
+  opacity: 0.55;
+  transition: opacity 100ms ease, background 100ms ease, color 100ms ease;
+}
+
+.pin-btn:hover {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.pin-btn.pinned {
+  opacity: 1;
+  color: #f59e0b;
+}
+
+@media (prefers-color-scheme: dark) {
+  .pin-btn:hover {
+    background: rgba(255, 255, 255, 0.10);
+  }
+}
+
+.row {
+  height: 28px;
+  flex: 0 0 28px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  cursor: pointer;
+  transition: background 80ms ease;
+}
+
+.row-unfocusable {
+  cursor: default;
+}
+
+.row:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+@media (prefers-color-scheme: dark) {
+  .row:hover {
+    background: rgba(255, 255, 255, 0.08);
+  }
+}
+
+.row:active {
+  background: rgba(0, 0, 0, 0.10);
+}
+
+@media (prefers-color-scheme: dark) {
+  .row:active {
+    background: rgba(255, 255, 255, 0.12);
+  }
+}
+
+.row .left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  background: var(--idle);
+}
+
+/* Compact source marker (🐧 WSL / 🔗 SSH) before the session title */
+.hud-source {
+  font-size: 11px;
+  line-height: 1;
+  flex: 0 0 auto;
+}
+
+.dot-running { background: var(--running); animation: dot-pulse 1.6s ease-in-out infinite; }
+.dot-done { background: var(--done); }
+.dot-interrupted { background: var(--interrupted); }
+.dot-idle { background: var(--idle); }
+
+@keyframes dot-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.55; transform: scale(0.8); }
+}
+
+.agent-icon {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  object-fit: contain;
+}
+
+.title {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--text);
+}
+
+.session-inline-feedback {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.chip-recovered {
+  border: 1px dashed currentColor;
+}
+
+.row-folded .title {
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.right {
+  flex: 0 1 auto;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 400;
+  line-height: 1;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  max-width: 58%;
+  /* Flexbox quirk: overflow:hidden makes a flex item's AUTOMATIC minimum
+     size 0, so under squeeze .right shrinks below its chips and its own
+     overflow clipping cuts them mid-glyph. min-content restores a real
+     floor: it equals bell+chips+gaps exactly, because the elapsed span
+     carries its own zero floor and contributes nothing. Squeeze order:
+     title first, then elapsed, chips never clip. */
+  min-width: min-content;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.elapsed {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.state-chip {
+  flex: 0 0 auto;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1;
+  padding: 2px 5px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+.chip-thinking { background: rgba(99, 102, 241, 0.13); color: #6366f1; }
+.chip-working { background: rgba(22, 163, 74, 0.13); color: #16a34a; }
+.chip-juggling { background: rgba(245, 158, 11, 0.15); color: #b45309; }
+.chip-sweeping { background: rgba(107, 114, 128, 0.13); color: #52525b; }
+.chip-notification { background: rgba(245, 158, 11, 0.15); color: #b45309; }
+.chip-worktree { background: rgba(59, 130, 246, 0.13); color: #2563eb; }
+.chip-interrupted { background: rgba(239, 68, 68, 0.10); color: #dc2626; }
+
+.usage-chip {
+  flex: 0 0 auto;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 2px 5px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+.usage-neutral { background: rgba(107, 114, 128, 0.13); color: #52525b; }
+.usage-warm { background: rgba(245, 158, 11, 0.15); color: #b45309; }
+.usage-hot { background: rgba(239, 68, 68, 0.10); color: #dc2626; }
+
+@media (prefers-color-scheme: dark) {
+  .chip-thinking { background: rgba(99, 102, 241, 0.20); color: #818cf8; }
+  .chip-working { background: rgba(22, 163, 74, 0.20); color: #4ade80; }
+  .chip-juggling { background: rgba(245, 158, 11, 0.20); color: #fbbf24; }
+  .chip-sweeping { background: rgba(107, 114, 128, 0.20); color: #a1a1aa; }
+  .chip-notification { background: rgba(245, 158, 11, 0.20); color: #fbbf24; }
+  .chip-worktree { background: rgba(59, 130, 246, 0.20); color: #60a5fa; }
+  .chip-interrupted { background: rgba(239, 68, 68, 0.15); color: #f87171; }
+  .usage-neutral { background: rgba(107, 114, 128, 0.20); color: #a1a1aa; }
+  .usage-warm { background: rgba(245, 158, 11, 0.20); color: #fbbf24; }
+  .usage-hot { background: rgba(239, 68, 68, 0.15); color: #f87171; }
+}
+
+.completion-bell {
+  flex: 0 0 auto;
+  color: #f59e0b;
+  display: flex;
+  align-items: center;
+}
+
+.focus-unavailable {
+  width: 13px;
+  height: 13px;
+  flex: 0 0 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  opacity: 0.72;
+}
+
+.focus-unavailable svg {
+  width: 11px;
+  height: 11px;
+}
+
+.open-folder-button {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  border: 0;
+  border-radius: 4px;
+  padding: 0;
+  background: rgba(59, 130, 246, 0.14);
+  color: var(--text);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.open-folder-button:disabled { opacity: 0.55; }
+
+@keyframes bell-ring {
+  0%   { transform: rotate(0deg); }
+  10%  { transform: rotate(12deg); }
+  20%  { transform: rotate(-10deg); }
+  30%  { transform: rotate(8deg); }
+  40%  { transform: rotate(-6deg); }
+  50%  { transform: rotate(0deg); }
+  100% { transform: rotate(0deg); }
+}
+
+.unread-bell svg {
+  animation: bell-ring 1.8s ease-in-out infinite;
+  transform-origin: 50% 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dot-running {
+    animation: none;
+  }
+
+  .unread-bell svg {
+    animation: none;
+  }
+}
+
+/* The quota section is a table. Tracks: 10px edge, 16px glyph, identity
+   (takes the slack and ellipsizes), then one `auto` column each for the
+   long (month/balance), week and short windows, and a 4px edge. Spacing is
+   item margin/padding rather than column-gap, so a column no row uses
+   collapses to nothing. Each row is a subgrid of these tracks, keeping its
+   own hover background and click target while its values share the
+   columns. */
+.hud-quota {
+  position: relative;
+  display: grid;
+  grid-template-columns: 10px 16px minmax(0, 1fr) auto auto auto 4px;
+  grid-auto-rows: 26px;
+}
+
+.quota-row {
+  grid-column: 1 / -1;
+  min-width: 0;
+  height: 26px;
+  display: grid;
+  grid-template-columns: subgrid;
+  align-items: center;
+  cursor: pointer;
+  transition: background 80ms ease;
+}
+/* Horizontal rule between quota rows (and above "+N"), completing the
+   table grid with the column rules. It sits inside the row's fixed 26px
+   (border-box), so the section height main computes is unchanged. */
+.quota-row + .quota-row { border-top: 1px solid var(--hud-border); }
+
+.quota-row:hover { background: rgba(0, 0, 0, 0.06); }
+.quota-row:active { background: rgba(0, 0, 0, 0.10); }
+@media (prefers-color-scheme: dark) {
+  .quota-row:hover { background: rgba(255, 255, 255, 0.08); }
+  .quota-row:active { background: rgba(255, 255, 255, 0.12); }
+}
+
+/* Dim the row's content rather than the row, so its top rule keeps the same
+   weight as every other rule in the table. .quota-values is display:contents
+   and cannot carry opacity itself. */
+.quota-row.is-stale .provider-glyph,
+.quota-row.is-stale .provider-identity,
+.quota-row.is-stale .quota-value { opacity: 0.6; }
+.provider-glyph {
+  grid-column: 2;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  display: block;
+  object-fit: contain;
+  overflow: hidden;
+  border-radius: 50%;
+  background: #f4f4f6;
+}
+.extra-glyph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #3a3d46;
+  font-size: 10px;
+  font-weight: 700;
+}
+.provider-identity {
+  grid-column: 3;
+  margin-left: 8px;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  overflow: hidden;
+  white-space: nowrap;
+  line-height: 1;
+}
+.provider-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.provider-host {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-muted);
+  font-weight: 400;
+}
+/* Wrapper only: its values become cells of the row's subgrid while still
+   inheriting the value typography. */
+.quota-values {
+  display: contents;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+/* 6px on both sides, so a column rule at the cell's left edge sits midway
+   between two columns' values. */
+.quota-value {
+  padding: 0 6px;
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  color: var(--quota-hue, var(--id-outer));
+}
+.quota-col-long { grid-column: 4; }
+.quota-col-week { grid-column: 5; }
+.quota-col-short { grid-column: 6; }
+/* Vertical rule at the start of a value column. Absolutely positioned with
+   auto grid rows, it spans the section's full height, so it stays one
+   unbroken line across rows that leave this column empty; it stops above
+   a "+N" row. */
+.quota-col-rule {
+  position: absolute;
+  top: 5px;
+  bottom: 5px;
+  left: 0;
+  width: 0;
+  border-left: 1px solid var(--hud-border);
+  pointer-events: none;
+}
+.quota-col-rule.above-overflow { bottom: 31px; }
+/* Label and countdown stay left; the percentage rides the cell's right edge
+   so a column's percentages align (a balance-only cell is right-aligned). */
+.quota-window-pct {
+  margin-left: auto;
+  padding-left: 4px;
+}
+.quota-value.sev-warn { color: var(--sev-warn); }
+.quota-value.sev-hot { color: var(--sev-hot); }
+.quota-value.sev-reset { color: var(--sev-reset); }
+/* "7d(2d2h) 29%": the time to reset rides in parentheses right after the
+   window label, a size smaller and lighter than the label/percentage so the
+   percentage stays the primary signal; it keeps the window's hue. */
+.quota-reset-in {
+  font-size: 10px;
+  font-weight: 600;
+  opacity: 0.78;
+}
+
+.pv-claudeQuota.rg-outer { --quota-hue: var(--id-claude-outer); }
+.pv-claudeQuota.rg-inner { --quota-hue: var(--id-claude-inner); }
+.pv-codexQuota.rg-outer { --quota-hue: var(--id-codex-outer); }
+.pv-codexQuota.rg-inner { --quota-hue: var(--id-codex-inner); }
+.pv-antigravityQuota.rg-outer { --quota-hue: var(--id-antigravity-outer); }
+.pv-antigravityQuota.rg-inner { --quota-hue: var(--id-antigravity-inner); }
+.pv-kimiQuota.rg-outer { --quota-hue: var(--id-kimi-outer); }
+.pv-kimiQuota.rg-inner { --quota-hue: var(--id-kimi-inner); }
+.pv-extraQuota.rg-outer { --quota-hue: var(--id-extra-outer); }
+.pv-extraQuota.rg-inner { --quota-hue: var(--id-extra-inner); }
+
+@media (prefers-color-scheme: light) {
+  .quota-value {
+    color: var(--quota-hue, var(--id-outer));
+    color: color-mix(in oklab, var(--quota-hue, var(--id-outer)) 60%, #0b1220);
+  }
+  .quota-value.sev-warn {
+    color: var(--sev-warn);
+    color: color-mix(in oklab, var(--sev-warn) 60%, #0b1220);
+  }
+  .quota-value.sev-hot {
+    color: var(--sev-hot);
+    color: color-mix(in oklab, var(--sev-hot) 60%, #0b1220);
+  }
+  .quota-value.sev-reset {
+    color: var(--sev-reset);
+    color: color-mix(in oklab, var(--sev-reset) 60%, #0b1220);
+  }
+}
+
+.quota-overflow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+</style>
+</head>
+<body>
+  <div id="hud" class="hud">
+    <div id="hud-sessions" class="hud-section hud-sessions"></div>
+    <div id="hud-quota" class="hud-section hud-quota" aria-label="Quota"></div>
+  </div>
+  <script src="../../runtime/focus/session-focus-unavailable.js"></script>
+  <script src="../../quota/ring-renderer.js"></script>
+  <script src="./session-hud-renderer.js"></script>
+</body>
+</html>

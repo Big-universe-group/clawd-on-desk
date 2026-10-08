@@ -9,7 +9,7 @@ const {
   dedupeKey,
   classifyHttpStatus,
   classifySlackApiError,
-} = require("../src/slack-notify-client");
+} = require("../src/features/slack/notify-client");
 
 const WEBHOOK = "https://hooks.slack.com/services/T/B/xxx";
 

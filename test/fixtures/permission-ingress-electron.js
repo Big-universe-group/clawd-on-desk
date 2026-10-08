@@ -6,7 +6,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const assert = require("node:assert/strict");
 const { once } = require("node:events");
-const { registerPermissionIpc } = require("../../src/permission");
+const { registerPermissionIpc } = require("../../src/runtime/permission/permission");
 const { createPermissionIngressHarness, postPermission, dummyPermission, waitUntil } = require("../helpers/permission-ingress-harness");
 
 // Run with Electron, never with the application main: no real profile, hooks,

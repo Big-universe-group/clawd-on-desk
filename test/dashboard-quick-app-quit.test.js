@@ -22,7 +22,7 @@ const Module = require("node:module");
 const path = require("node:path");
 const { test } = require("node:test");
 
-const DASHBOARD_MODULE_PATH = require.resolve("../src/dashboard");
+const DASHBOARD_MODULE_PATH = require.resolve("../src/ui/dashboard/dashboard");
 const MAIN_SOURCE = fs.readFileSync(path.join(__dirname, "..", "src", "main.js"), "utf8");
 
 // Which app lifecycle events main.js really hangs the quick-host teardown on.
@@ -41,15 +41,15 @@ function quickDisposeQuitEvents() {
 
 function loadDashboardWithElectron(fakeElectron, originFocus) {
   delete require.cache[DASHBOARD_MODULE_PATH];
-  delete require.cache[require.resolve("../src/dashboard-quick-mode")];
+  delete require.cache[require.resolve("../src/ui/dashboard/quick-mode")];
   const originalLoad = Module._load;
   Module._load = function patchedLoad(request) {
     if (request === "electron") return fakeElectron;
-    if (request === "./quick-select-origin-focus" && originFocus) return () => originFocus;
+    if (request === "../../platform/win/quick-select-origin-focus" && originFocus) return () => originFocus;
     return originalLoad.apply(this, arguments);
   };
   try {
-    return require("../src/dashboard");
+    return require("../src/ui/dashboard/dashboard");
   } finally {
     Module._load = originalLoad;
   }

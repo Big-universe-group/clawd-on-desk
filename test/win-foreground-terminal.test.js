@@ -5,7 +5,7 @@
 const { describe, it } = require("node:test");
 const assert = require("node:assert");
 
-const { createForegroundWindowsTerminalProbe } = require("../src/win-foreground-terminal");
+const { createForegroundWindowsTerminalProbe } = require("../src/platform/win/foreground-terminal");
 const {
   WINDOWS_TERMINAL_WINDOW_CLASS,
   WINDOWS_TERMINAL_PROCESS_NAMES,

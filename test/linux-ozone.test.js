@@ -6,7 +6,7 @@ const {
   resolveLinuxOzonePlatform,
   parseOzonePlatformFromArgv,
   planXWaylandRelaunch,
-} = require("../src/linux-ozone");
+} = require("../src/platform/linux/linux-ozone");
 
 // resolve(platform, env, userOzonePlatform)
 const resolve = (platform, env, user) =>

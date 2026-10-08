@@ -92,7 +92,7 @@ const VERIFIED_GITHUB_CONTRIBUTORS = [
 ];
 
 function loadSettingsContributors() {
-  const source = fs.readFileSync(path.join(ROOT, "src", "settings-i18n.js"), "utf8");
+  const source = fs.readFileSync(path.join(ROOT, "src", "core", "i18n", "settings-i18n.js"), "utf8");
   const context = {};
   context.globalThis = context;
   vm.runInNewContext(source, context, { filename: "settings-i18n.js" });

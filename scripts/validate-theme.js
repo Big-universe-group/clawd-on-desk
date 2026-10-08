@@ -18,9 +18,9 @@
 
 const fs = require("fs");
 const path = require("path");
-const themeLoader = require("../src/theme-loader");
-const themeSchema = require("../src/theme-schema");
-const { VARIANT_ALLOWED_KEYS } = require("../src/theme-variants");
+const themeLoader = require("../src/features/themes/loader");
+const themeSchema = require("../src/features/themes/schema");
+const { VARIANT_ALLOWED_KEYS } = require("../src/features/themes/variants");
 
 // ── Colors (ANSI) ──
 const R = "\x1b[31m";  // red

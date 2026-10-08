@@ -8,9 +8,9 @@
 const assert = require("node:assert");
 const Module = require("node:module");
 const { afterEach, test } = require("node:test");
-const { classifyPermissionInteraction } = require("../src/permission-automation-policy");
+const { classifyPermissionInteraction } = require("../src/runtime/permission/automation-policy");
 
-const PERMISSION_MODULE_PATH = require.resolve("../src/permission");
+const PERMISSION_MODULE_PATH = require.resolve("../src/runtime/permission/permission");
 
 const ALLOW_ACCEL = "CommandOrControl+Shift+Y";
 const DENY_ACCEL = "CommandOrControl+Shift+N";
@@ -33,7 +33,7 @@ function loadPermissionWithMocks({ electron, platform = "win32" }) {
   };
 
   try {
-    return require("../src/permission");
+    return require("../src/runtime/permission/permission");
   } finally {
     Module._load = originalLoad;
     Object.defineProperty(process, "platform", originalPlatform);

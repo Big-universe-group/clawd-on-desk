@@ -12,7 +12,7 @@ const {
   createClaudeSettingsWatcher,
   isSuspiciousShrink,
   takeSnapshot,
-} = require("../src/claude-settings-watcher");
+} = require("../src/agents/claude-code/settings-watcher");
 const {
   CLAUDE_CORE_HOOK_EVENTS,
   registerHooksAsync,

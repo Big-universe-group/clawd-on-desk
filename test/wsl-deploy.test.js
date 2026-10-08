@@ -28,7 +28,7 @@ const {
   removeFromWsl,
   resolveHooksDir,
   validateDeployRelativePath,
-} = require("../src/wsl-deploy");
+} = require("../src/features/wsl/deploy");
 
 const HOOKS_DIR = path.join(__dirname, "..", "hooks");
 
@@ -83,7 +83,7 @@ describe("wsl-deploy", () => {
       // writes ~/.QwenWorkCN/settings.json inside the distro HOME, which the
       // Windows QwenWork desktop app never reads: hooks that can never fire,
       // and an Unpair the user has to discover on their own.
-      const { getAgentUninstallCommand } = require("../src/wsl-deploy");
+      const { getAgentUninstallCommand } = require("../src/features/wsl/deploy");
       assert.strictEqual(getAgentInstallScriptName("qwenwork"), null);
       assert.strictEqual(getAgentUninstallCommand("qwenwork"), null);
       // QoderWork (the integration this one was modeled on) stays supported —
@@ -104,7 +104,7 @@ describe("wsl-deploy", () => {
   });
 
   describe("getAgentUninstallCommand", () => {
-    const { getAgentUninstallCommand } = require("../src/wsl-deploy");
+    const { getAgentUninstallCommand } = require("../src/features/wsl/deploy");
 
     it("uses uninstall.js for claude-code (install.js has no --uninstall flag)", () => {
       assert.strictEqual(getAgentUninstallCommand("claude-code"), "uninstall.js");
@@ -123,7 +123,7 @@ describe("wsl-deploy", () => {
   });
 
   describe("parseConnectivityProbe", () => {
-    const { parseConnectivityProbe } = require("../src/wsl-deploy");
+    const { parseConnectivityProbe } = require("../src/features/wsl/deploy");
 
     it("parses REACHABLE with port", () => {
       assert.deepStrictEqual(

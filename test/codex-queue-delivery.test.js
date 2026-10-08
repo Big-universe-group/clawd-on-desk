@@ -3,11 +3,11 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 
-const { makeSessionKey } = require("../src/session-key");
+const { makeSessionKey } = require("../src/core/util/session-key");
 const {
   deriveCodexHomeFromTranscriptPath,
   normalizeCodexHome,
-} = require("../src/codex-thread-id");
+} = require("../src/agents/codex/thread-id");
 const {
   classifyQueueError,
   createCodexQueueDeliveryAdapter,
@@ -16,7 +16,7 @@ const {
   normalizeCodexThreadId,
   resolveNpmCodexShimInvocation,
   resolveCodexQueueExecutableCandidates,
-} = require("../src/codex-queue-delivery");
+} = require("../src/agents/codex/queue-delivery");
 
 const THREAD_ID = "019e115a-4df2-7ed0-b90e-8e6345aca777";
 

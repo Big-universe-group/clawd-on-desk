@@ -6,8 +6,8 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 
-const { bucketAgentsForTutorial } = require("../src/tutorial-agent-buckets");
-const { detectAgentInstallations } = require("../src/agent-installation-detector");
+const { bucketAgentsForTutorial } = require("../src/agents/tutorial-buckets");
+const { detectAgentInstallations } = require("../src/agents/installation-detector");
 
 const tempDirs = [];
 after(() => {

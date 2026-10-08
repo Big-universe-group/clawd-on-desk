@@ -5,7 +5,7 @@ const { withCommandEnv } = require("../hooks/codex-install-utils");
 const {
   validateHookCommand,
   validateHookTarget,
-} = require("../src/doctor-detectors/agent-node-bin-parser");
+} = require("../src/agents/doctor/node-bin-parser");
 const { __test: antigravityInstallTest } = require("../hooks/antigravity-install");
 
 function fakeFs(existingPaths) {

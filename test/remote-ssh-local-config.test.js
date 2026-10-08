@@ -8,9 +8,9 @@ const {
   REMOTE_SSH_CONFIG_ENV,
   getRemoteSshConfigFile,
   appendRemoteSshConfigArgs,
-} = require("../src/remote-ssh-local-config");
-const { buildSshArgs, buildScpArgs } = require("../src/remote-ssh-runtime");
-const { buildSshConfigArgs } = require("../src/remote-ssh-transport");
+} = require("../src/features/remote-ssh/local-config");
+const { buildSshArgs, buildScpArgs } = require("../src/features/remote-ssh/runtime");
+const { buildSshConfigArgs } = require("../src/features/remote-ssh/transport");
 
 test("remote SSH config override is absent by default and validates explicit paths", () => {
   assert.equal(getRemoteSshConfigFile({}), null);

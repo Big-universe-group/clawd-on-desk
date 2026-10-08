@@ -29,7 +29,7 @@ const {
 const {
   inspectClaudeHookHealth,
   buildClaudeRepairSignature,
-} = require("../src/claude-hook-health");
+} = require("../src/agents/claude-code/hook-health");
 const {
   parseClaudeVersion,
   getWindowsClaudePathSuffixes,

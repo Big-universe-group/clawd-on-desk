@@ -6,17 +6,17 @@ const os = require("node:os");
 const path = require("node:path");
 
 // Load default theme for test ctx
-const themeLoader = require("../src/theme-loader");
+const themeLoader = require("../src/features/themes/loader");
 themeLoader.init(path.join(__dirname, "..", "src"));
 const _defaultTheme = themeLoader.loadTheme("clawd");
 const _calicoTheme = themeLoader.loadTheme("calico");
 const _cloudlingTheme = themeLoader.loadTheme("cloudling");
-const { createTranslator } = require("../src/i18n");
-const { makeSessionKey, resolveSessionIdentity } = require("../src/session-key");
-const { isSessionInProgress, sessionSnapshotSignature } = require("../src/state-session-snapshot");
-const { isFocusableLocalHudSession } = require("../src/session-focus");
-const { countLiveSubagents } = require("../src/state-visual-resolver");
-const { resolveIdleVisualChoice } = require("../src/idle-visual");
+const { createTranslator } = require("../src/core/i18n/i18n");
+const { makeSessionKey, resolveSessionIdentity } = require("../src/core/util/session-key");
+const { isSessionInProgress, sessionSnapshotSignature } = require("../src/runtime/state/session-snapshot");
+const { isFocusableLocalHudSession } = require("../src/runtime/focus/session-focus");
+const { countLiveSubagents } = require("../src/runtime/state/visual-resolver");
+const { resolveIdleVisualChoice } = require("../src/runtime/visual/idle-visual");
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -73,7 +73,7 @@ function cloneTheme(theme) {
 describe("Claude correlated batch phase", () => {
   let api;
   let ctx;
-  beforeEach(() => { ctx = makeCtx(); api = require("../src/state")(ctx); });
+  beforeEach(() => { ctx = makeCtx(); api = require("../src/runtime/state/state")(ctx); });
   afterEach(() => api.cleanup());
   const sid = "batch-session";
   function event(name, state, extra = {}) {
@@ -189,7 +189,7 @@ describe("optional mini peek states", () => {
     const theme = cloneTheme(_defaultTheme);
     theme.timings.autoReturn["mini-peek"] = 80;
     const ctx = makeCtx({ theme, miniMode: true, mouseOverPet: true });
-    api = require("../src/state")(ctx);
+    api = require("../src/runtime/state/state")(ctx);
     api.applyState("mini-peek");
     mock.timers.tick(80);
     assert.equal(api.getCurrentState(), "mini-idle");
@@ -203,7 +203,7 @@ describe("optional mini peek states", () => {
     theme.timings.autoReturn["mini-peek-hold"] = 40;
     let slides = 0;
     const ctx = makeCtx({ theme, miniMode: true, mouseOverPet: true, miniPeekIn: () => { slides++; } });
-    api = require("../src/state")(ctx);
+    api = require("../src/runtime/state/state")(ctx);
     api.applyState("mini-peek");
     mock.timers.tick(80);
     assert.equal(api.getCurrentState(), "mini-peek-hold");
@@ -219,7 +219,7 @@ describe("optional mini peek states", () => {
     let outs = 0;
     const ctx = makeCtx({ theme, miniMode: true, doNotDisturb: true,
       miniSleepPeeked: true, miniPeekOut: () => { outs++; } });
-    api = require("../src/state")(ctx);
+    api = require("../src/runtime/state/state")(ctx);
     api.applyState("mini-sleep-peek");
     api.disableDoNotDisturb();
     assert.equal(outs, 1);
@@ -293,7 +293,7 @@ describe("remote profile session namespace", () => {
   afterEach(() => { if (api) api.cleanup(); });
 
   it("keeps identical raw ids independent through update, permission, stale cleanup, ack, and end", () => {
-    api = require("../src/state")(makeCtx());
+    api = require("../src/runtime/state/state")(makeCtx());
     const rawSessionId = "same-raw-session";
     const aId = makeSessionKey({ profileId: "profile-a", rawSessionId });
     const bId = makeSessionKey({ profileId: "profile-b", rawSessionId });
@@ -430,7 +430,7 @@ describe("restoreSessionFromLease()", () => {
   it("restores the real session without replaying sounds, events, or broadcasts", () => {
     const sounds = [];
     const broadcasts = [];
-    api = require("../src/state")(makeCtx({
+    api = require("../src/runtime/state/state")(makeCtx({
       processKill: () => true,
       playSound: (name) => sounds.push(name),
       broadcastSessionSnapshot: (snapshot) => broadcasts.push(snapshot),
@@ -459,7 +459,7 @@ describe("restoreSessionFromLease()", () => {
   });
 
   it("lets the next real hook update the same canonical id, then SessionEnd removes it", () => {
-    api = require("../src/state")(makeCtx({ processKill: () => true }));
+    api = require("../src/runtime/state/state")(makeCtx({ processKill: () => true }));
     assert.strictEqual(api.restoreSessionFromLease(lease()), true);
     assert.strictEqual(api.restoreSessionFromLease(lease({ sessionId: "other-session", state: "thinking" })), true);
     const sessionId = makeSessionKey({ profileId: "local", rawSessionId: "claude-real-session" });
@@ -488,7 +488,7 @@ describe("restoreSessionFromLease()", () => {
   });
 
   it("uses a recovered juggling lease as a visual floor and replaces it on fresh identity", () => {
-    api = require("../src/state")(makeCtx({ processKill: () => true }));
+    api = require("../src/runtime/state/state")(makeCtx({ processKill: () => true }));
     assert.strictEqual(api.restoreSessionFromLease(lease({ state: "juggling" })), true);
     const sessionId = makeSessionKey({ profileId: "local", rawSessionId: "claude-real-session" });
     assert.strictEqual(api.sessions.get(sessionId).subagentTracker.recoveredFloor, true);
@@ -512,7 +512,7 @@ describe("restoreSessionFromLease()", () => {
   });
 
   it("never overwrites a session that arrived from a real hook first", () => {
-    api = require("../src/state")(makeCtx({ processKill: () => true }));
+    api = require("../src/runtime/state/state")(makeCtx({ processKill: () => true }));
     const sessionId = makeSessionKey({ profileId: "local", rawSessionId: "claude-real-session" });
     update(api, {
       id: sessionId,
@@ -529,7 +529,7 @@ describe("restoreSessionFromLease()", () => {
 
 describe("resolveDisplayState()", () => {
   let api;
-  beforeEach(() => { api = require("../src/state")(makeCtx()); });
+  beforeEach(() => { api = require("../src/runtime/state/state")(makeCtx()); });
   afterEach(() => { api.cleanup(); });
 
   it("no sessions → idle", () => {
@@ -592,7 +592,7 @@ describe("resolveDisplayState()", () => {
 
   it("checking overlay falls back to the theme thinking visual when no update override is declared", () => {
     api.cleanup();
-    api = require("../src/state")(makeCtx({ theme: _calicoTheme }));
+    api = require("../src/runtime/state/state")(makeCtx({ theme: _calicoTheme }));
 
     api.setUpdateVisualState("checking");
     assert.strictEqual(api.resolveDisplayState(), "thinking");
@@ -609,7 +609,7 @@ describe("resolveDisplayState()", () => {
   it("refreshes the active checking update visual override when the theme changes", () => {
     const ctx = makeCtx();
     api.cleanup();
-    api = require("../src/state")(ctx);
+    api = require("../src/runtime/state/state")(ctx);
 
     api.setUpdateVisualState("checking");
     assert.strictEqual(api.getSvgOverride("thinking"), "clawd-working-debugger.svg");
@@ -652,7 +652,7 @@ describe("resolveDisplayState()", () => {
       showKimiNotifyBubble: () => {},
       clearKimiNotifyBubbles: () => {},
     });
-    api = require("../src/state")(ctx);
+    api = require("../src/runtime/state/state")(ctx);
 
     update(api, {
       id: "kimi-perm",
@@ -685,7 +685,7 @@ describe("setState() debounce", () => {
   beforeEach(() => {
     mock.timers.enable({ apis: ["setTimeout", "setInterval", "Date"] });
     ctx = makeCtx();
-    api = require("../src/state")(ctx);
+    api = require("../src/runtime/state/state")(ctx);
   });
   afterEach(() => {
     api.cleanup();
@@ -725,7 +725,7 @@ describe("setState() debounce", () => {
         if (channel === "state-change") stateChanges.push(state);
       },
     });
-    api = require("../src/state")(ctx);
+    api = require("../src/runtime/state/state")(ctx);
 
     api.applyState("roam");
     stateChanges.length = 0;
@@ -788,7 +788,7 @@ describe("setState() debounce", () => {
 
 describe("working sub-animations", () => {
   let api;
-  beforeEach(() => { api = require("../src/state")(makeCtx()); });
+  beforeEach(() => { api = require("../src/runtime/state/state")(makeCtx()); });
   afterEach(() => { api.cleanup(); });
 
   it("1 working session → typing SVG", () => {
@@ -831,7 +831,7 @@ describe("working sub-animations", () => {
 // api.sessions directly.
 describe("#862 juggling tier counts subagents, not sessions", () => {
   let api;
-  beforeEach(() => { api = require("../src/state")(makeCtx()); });
+  beforeEach(() => { api = require("../src/runtime/state/state")(makeCtx()); });
   afterEach(() => { api.cleanup(); });
 
   const GROOVE = "clawd-headphones-groove.svg";
@@ -1195,7 +1195,7 @@ describe("#862 renderer tier timing", () => {
   beforeEach(() => {
     mock.timers.enable({ apis: ["setTimeout", "setInterval", "Date"] });
     changes = [];
-    api = require("../src/state")(makeCtx({
+    api = require("../src/runtime/state/state")(makeCtx({
       sendToRenderer: (channel, state, svg) => {
         if (channel === "state-change") changes.push([state, svg]);
       },
@@ -1267,7 +1267,7 @@ describe("hitbox selection", () => {
     const theme = cloneTheme(_defaultTheme);
     const fileBox = { x: 10, y: 11, w: 12, h: 13 };
     theme.fileHitBoxes = { "clawd-working-typing.svg": fileBox };
-    api = require("../src/state")(makeCtx({ theme }));
+    api = require("../src/runtime/state/state")(makeCtx({ theme }));
 
     api.applyState("working", "clawd-working-typing.svg");
 
@@ -1277,7 +1277,7 @@ describe("hitbox selection", () => {
   it("keeps wide/default fallback when no file-specific hitbox exists", () => {
     const theme = cloneTheme(_defaultTheme);
     theme.fileHitBoxes = {};
-    api = require("../src/state")(makeCtx({ theme }));
+    api = require("../src/runtime/state/state")(makeCtx({ theme }));
 
     api.applyState("error", "clawd-error.svg");
     assert.deepStrictEqual(api.getCurrentHitBox(), theme.hitBoxes.wide);
@@ -1295,7 +1295,7 @@ describe("visual fallback resolution", () => {
     const theme = cloneTheme(_defaultTheme);
     theme.states.error = [];
     theme._stateBindings.error = { files: [], fallbackTo: "attention" };
-    api = require("../src/state")(makeCtx({ theme }));
+    api = require("../src/runtime/state/state")(makeCtx({ theme }));
   });
 
   afterEach(() => {
@@ -1327,7 +1327,7 @@ describe("mini mode working routing", () => {
 
   it("theme defines mini-working → working routes to mini-working", () => {
     ctx = makeCtx({ miniMode: true });
-    api = require("../src/state")(ctx);
+    api = require("../src/runtime/state/state")(ctx);
     api.applyState("mini-idle");
     api.applyState("working");
     assert.strictEqual(api.getCurrentState(), "mini-working");
@@ -1338,7 +1338,7 @@ describe("mini mode working routing", () => {
     delete theme.miniMode.states["mini-working"];
     delete theme._stateBindings["mini-working"];
     ctx = makeCtx({ miniMode: true, theme });
-    api = require("../src/state")(ctx);
+    api = require("../src/runtime/state/state")(ctx);
     api.applyState("mini-idle");
     api.applyState("working");
     assert.strictEqual(api.getCurrentState(), "mini-idle");
@@ -1355,7 +1355,7 @@ describe("sleep sequence", () => {
   beforeEach(() => {
     mock.timers.enable({ apis: ["setTimeout", "setInterval", "Date"] });
     ctx = makeCtx();
-    api = require("../src/state")(ctx);
+    api = require("../src/runtime/state/state")(ctx);
   });
   afterEach(() => {
     api.cleanup();
@@ -1406,7 +1406,7 @@ describe("wake poll behavior", () => {
     mock.timers.enable({ apis: ["setTimeout", "setInterval", "Date"] });
     fakeCursor = { x: 100, y: 100 };
     ctx = makeCtx({ getCursorScreenPoint: () => ({ ...fakeCursor }) });
-    api = require("../src/state")(ctx);
+    api = require("../src/runtime/state/state")(ctx);
   });
   afterEach(() => {
     api.cleanup();
@@ -1435,7 +1435,7 @@ describe("wake poll behavior", () => {
     });
     const changes = [];
     ctx.sendToRenderer = (ev, ...args) => { if (ev === "state-change") changes.push(args); };
-    api = require("../src/state")(ctx);
+    api = require("../src/runtime/state/state")(ctx);
 
     api.applyState("dozing");
     mock.timers.tick(500);
@@ -1470,7 +1470,7 @@ describe("wake poll behavior", () => {
 
     api.cleanup();
     ctx = makeCtx({ theme, getCursorScreenPoint: () => ({ ...fakeCursor }) });
-    api = require("../src/state")(ctx);
+    api = require("../src/runtime/state/state")(ctx);
 
     api.applyState("sleeping");
     mock.timers.tick(500);
@@ -1505,7 +1505,7 @@ describe("wake poll behavior", () => {
     ctx = makeCtx({
       getCursorScreenPoint: () => { cursorCalls += 1; return { ...fakeCursor }; },
     });
-    api = require("../src/state")(ctx);
+    api = require("../src/runtime/state/state")(ctx);
 
     api.applyState("dozing"); // schedules the 500ms wake-poll start
     api.cleanup();            // must cancel the pending start timer
@@ -1520,7 +1520,7 @@ describe("wake poll behavior", () => {
     ctx = makeCtx({
       getCursorScreenPoint: () => { cursorCalls += 1; return { ...fakeCursor }; },
     });
-    api = require("../src/state")(ctx);
+    api = require("../src/runtime/state/state")(ctx);
 
     api.applyState("dozing");
     api.enableDoNotDisturb(); // leaving the wake-poll states must cancel the pending start
@@ -1540,7 +1540,7 @@ describe("cleanStaleSessions()", () => {
   afterEach(() => { api.cleanup(); });
 
   it("agentPid dead → delete session", () => {
-    api = require("../src/state")(makeCtx({ processKill: makePidKill(new Set()) }));
+    api = require("../src/runtime/state/state")(makeCtx({ processKill: makePidKill(new Set()) }));
     const session = rawSession("working", { agentPid: 9999, pidReachable: true });
     session.claudeBackgroundSubagentHoldAt = Date.now();
     api.sessions.set("s1", session);
@@ -1550,7 +1550,7 @@ describe("cleanStaleSessions()", () => {
 
   it("clears the exact session automation identity before stale deletion", () => {
     const lifecycle = [];
-    api = require("../src/state")(makeCtx({
+    api = require("../src/runtime/state/state")(makeCtx({
       processKill: makePidKill(new Set()),
       onSessionAutomationLifecycleEnd: (payload) => lifecycle.push(payload),
     }));
@@ -1570,7 +1570,7 @@ describe("cleanStaleSessions()", () => {
 
   it("empty-session return rests on the user-selected idle visual", () => {
     const changes = [];
-    api = require("../src/state")(makeCtx({
+    api = require("../src/runtime/state/state")(makeCtx({
       processKill: makePidKill(new Set()),
       getIdleVisualChoice: () => "clawd-idle-reading.svg",
       sendToRenderer: (ev, ...args) => { if (ev === "state-change") changes.push(args); },
@@ -1585,7 +1585,7 @@ describe("cleanStaleSessions()", () => {
     const theme = cloneTheme(_defaultTheme);
     theme.idleVisualOptions = [{ file: "pool.apng" }];
     const changes = [];
-    api = require("../src/state")(makeCtx({
+    api = require("../src/runtime/state/state")(makeCtx({
       theme,
       getIdleVisualChoice: () => resolveIdleVisualChoice(theme, { clawd: "pool.apng" }),
       sendToRenderer: (ev, ...args) => { if (ev === "state-change") changes.push(args); },
@@ -1595,7 +1595,7 @@ describe("cleanStaleSessions()", () => {
   });
 
   it("agentPid alive + sourcePid dead + stale idle → retain", () => {
-    api = require("../src/state")(makeCtx({ processKill: makePidKill(new Set([1000])) }));
+    api = require("../src/runtime/state/state")(makeCtx({ processKill: makePidKill(new Set([1000])) }));
     api.sessions.set("s1", rawSession("idle", {
       agentPid: 1000, sourcePid: 2000, pidReachable: true,
       updatedAt: Date.now() - 700000,
@@ -1606,7 +1606,7 @@ describe("cleanStaleSessions()", () => {
   });
 
   it("agentPid alive + sourcePid alive + working > WORKING_STALE_MS → downgrade to idle", () => {
-    api = require("../src/state")(makeCtx({ processKill: makePidKill(new Set([1000, 2000])) }));
+    api = require("../src/runtime/state/state")(makeCtx({ processKill: makePidKill(new Set([1000, 2000])) }));
     const staleSession = rawSession("working", {
       agentPid: 1000, sourcePid: 2000, pidReachable: true,
       updatedAt: Date.now() - 310000,
@@ -1628,7 +1628,7 @@ describe("cleanStaleSessions()", () => {
   });
 
   it("parent progress postpones the configured silence fallback without clearing the typed marker", () => {
-    api = require("../src/state")(makeCtx({
+    api = require("../src/runtime/state/state")(makeCtx({
       processKill: makePidKill(new Set([1000, 2000])),
       getStaleConfig: () => ({ sessionStaleMs: 1000, workingStaleMs: 100 }),
     }));
@@ -1654,7 +1654,7 @@ describe("cleanStaleSessions()", () => {
   });
 
   it("keeps local OpenCode blocker-facing work active past the generic session cutoff", () => {
-    api = require("../src/state")(makeCtx({
+    api = require("../src/runtime/state/state")(makeCtx({
       processKill: makePidKill(new Set([1000, 2000])),
       getStaleConfig: () => ({
         sessionStaleMs: 600_000,
@@ -1677,7 +1677,7 @@ describe("cleanStaleSessions()", () => {
   });
 
   it("genuine OpenCode session.idle completion still records normal Stop semantics", () => {
-    api = require("../src/state")(makeCtx({
+    api = require("../src/runtime/state/state")(makeCtx({
       processKill: makePidKill(new Set([1000, 2000])),
     }));
     api.updateSession("opencode:s1", "working", "PreToolUse", {
@@ -1700,7 +1700,7 @@ describe("cleanStaleSessions()", () => {
   });
 
   it("pidReachable false + stale work idles first, then expires through idle retention", () => {
-    api = require("../src/state")(makeCtx());
+    api = require("../src/runtime/state/state")(makeCtx());
     api.sessions.set("s1", rawSession("working", {
       pidReachable: false,
       updatedAt: Date.now() - 700000,
@@ -1713,7 +1713,7 @@ describe("cleanStaleSessions()", () => {
   });
 
   it("detached ended idle session expires quickly when auto-clear is enabled", () => {
-    api = require("../src/state")(makeCtx({
+    api = require("../src/runtime/state/state")(makeCtx({
       processKill: makePidKill(new Set()),
       sessionHudCleanupDetached: true,
     }));
@@ -1729,7 +1729,7 @@ describe("cleanStaleSessions()", () => {
   });
 
   it("detached idle session stays by default before normal stale cleanup", () => {
-    api = require("../src/state")(makeCtx({ processKill: makePidKill(new Set()) }));
+    api = require("../src/runtime/state/state")(makeCtx({ processKill: makePidKill(new Set()) }));
     api.sessions.set("s1", rawSession("idle", {
       agentId: "claude-code",
       sourcePid: 9999,
@@ -1744,7 +1744,7 @@ describe("cleanStaleSessions()", () => {
   it("broadcasts HUD-hidden state before deleting detached ended session", () => {
     const alivePids = new Set([9999]);
     const broadcasts = [];
-    api = require("../src/state")(makeCtx({
+    api = require("../src/runtime/state/state")(makeCtx({
       processKill: makePidKill(alivePids),
       sessionHudCleanupDetached: true,
       broadcastSessionSnapshot: (snapshot) => broadcasts.push(snapshot),
@@ -1768,7 +1768,7 @@ describe("cleanStaleSessions()", () => {
   });
 
   it("detached idle session without an ended badge does not auto-clear", () => {
-    api = require("../src/state")(makeCtx({
+    api = require("../src/runtime/state/state")(makeCtx({
       processKill: makePidKill(new Set()),
       sessionHudCleanupDetached: true,
     }));
@@ -1784,7 +1784,7 @@ describe("cleanStaleSessions()", () => {
   });
 
   it("detached ended session does not auto-clear when pid reachability was never confirmed", () => {
-    api = require("../src/state")(makeCtx({
+    api = require("../src/runtime/state/state")(makeCtx({
       processKill: makePidKill(new Set()),
       sessionHudCleanupDetached: true,
     }));
@@ -1801,7 +1801,7 @@ describe("cleanStaleSessions()", () => {
 
   it("detached ended Kimi auto-clear disposes notification state", () => {
     const cleared = [];
-    api = require("../src/state")(makeCtx({
+    api = require("../src/runtime/state/state")(makeCtx({
       processKill: makePidKill(new Set()),
       sessionHudCleanupDetached: true,
       clearKimiNotifyBubbles: (id, reason) => cleared.push({ id, reason }),
@@ -1820,14 +1820,14 @@ describe("cleanStaleSessions()", () => {
   });
 
   it("last non-headless deleted → returns to idle", () => {
-    api = require("../src/state")(makeCtx({ processKill: makePidKill(new Set()) }));
+    api = require("../src/runtime/state/state")(makeCtx({ processKill: makePidKill(new Set()) }));
     api.sessions.set("s1", rawSession("working", { agentPid: 9999, pidReachable: true }));
     api.cleanStaleSessions();
     assert.strictEqual(api.getCurrentState(), "idle");
   });
 
   it("all headless deleted → idle (not yawning)", () => {
-    api = require("../src/state")(makeCtx({ processKill: makePidKill(new Set()) }));
+    api = require("../src/runtime/state/state")(makeCtx({ processKill: makePidKill(new Set()) }));
     api.sessions.set("s1", rawSession("working", { agentPid: 9999, pidReachable: true, headless: true }));
     api.cleanStaleSessions();
     assert.strictEqual(api.sessions.size, 0);
@@ -1836,7 +1836,7 @@ describe("cleanStaleSessions()", () => {
 
   it("headless session deleted does not trigger yawning", () => {
     const alive = new Set([1000]);
-    api = require("../src/state")(makeCtx({ processKill: makePidKill(alive) }));
+    api = require("../src/runtime/state/state")(makeCtx({ processKill: makePidKill(alive) }));
     // One alive non-headless + one dead headless
     api.sessions.set("s1", rawSession("working", { agentPid: 1000, pidReachable: true }));
     api.sessions.set("s2", rawSession("working", { agentPid: 9999, pidReachable: true, headless: true }));
@@ -1856,7 +1856,7 @@ describe("updateSession()", () => {
   beforeEach(() => {
     mock.timers.enable({ apis: ["setTimeout", "setInterval", "Date"] });
     ctx = makeCtx({ processKill: () => true }); // all pids alive
-    api = require("../src/state")(ctx);
+    api = require("../src/runtime/state/state")(ctx);
   });
   afterEach(() => {
     api.cleanup();
@@ -2129,7 +2129,7 @@ describe("updateSession()", () => {
   it("clears session automation before a main SessionEnd but not a subagent lifecycle event", () => {
     api.cleanup();
     const lifecycle = [];
-    api = require("../src/state")(makeCtx({
+    api = require("../src/runtime/state/state")(makeCtx({
       onSessionAutomationLifecycleEnd: (payload) => lifecycle.push(payload),
     }));
     update(api, { id: "main", agentId: "claude-code", state: "working" });
@@ -2300,7 +2300,7 @@ describe("updateSession()", () => {
   });
 
   it("Codex Desktop focus metadata uses thread targets on Windows", () => {
-    api = require("../src/state")(makeCtx({ focusHostPlatform: "win32" }));
+    api = require("../src/runtime/state/state")(makeCtx({ focusHostPlatform: "win32" }));
 
     update(api, {
       id: "codex:019e115a-4df2-7ed0-b90e-8e6345aca777",
@@ -2740,7 +2740,7 @@ describe("updateSession()", () => {
       processKill: makePidKill(alive),
       debugLog: (msg) => logs.push(msg),
     });
-    api = require("../src/state")(ctx);
+    api = require("../src/runtime/state/state")(ctx);
 
     api.updateSession("c1", "thinking", "UserPromptSubmit", {
       agentId: "codex",
@@ -2775,7 +2775,7 @@ describe("updateSession()", () => {
       processKill: makePidKill(alive),
       debugLog: (msg) => logs.push(msg),
     });
-    api = require("../src/state")(ctx);
+    api = require("../src/runtime/state/state")(ctx);
 
     api.updateSession("c1", "idle", "Stop", {
       agentId: "codex",
@@ -2798,7 +2798,7 @@ describe("updateSession()", () => {
       processKill: makePidKill(alive),
       debugLog: (msg) => logs.push(msg),
     });
-    api = require("../src/state")(ctx);
+    api = require("../src/runtime/state/state")(ctx);
 
     api.updateSession("c1", "idle", "Stop", {
       agentId: "codex",
@@ -2826,7 +2826,7 @@ describe("updateSession()", () => {
     api.cleanup();
     const alive = new Set([1000, 2000]);
     ctx = makeCtx({ processKill: makePidKill(alive) });
-    api = require("../src/state")(ctx);
+    api = require("../src/runtime/state/state")(ctx);
 
     api.updateSession("c1", "thinking", "event_msg:task_started", {
       agentId: "codex",
@@ -2858,7 +2858,7 @@ describe("updateSession()", () => {
   it("advances the display revision even when the same state is applied again", () => {
     api.cleanup();
     ctx = makeCtx({});
-    api = require("../src/state")(ctx);
+    api = require("../src/runtime/state/state")(ctx);
 
     const start = api.getDisplayRevision();
     api.applyState("working");
@@ -2880,7 +2880,7 @@ describe("updateSession()", () => {
       playSound: (name) => soundsPlayed.push(name),
       flashTaskbar: () => flashes.push("flash"),
     });
-    api = require("../src/state")(ctx);
+    api = require("../src/runtime/state/state")(ctx);
 
     api.applyState("attention");
     assert.deepStrictEqual(soundsPlayed, ["complete"]);
@@ -2902,7 +2902,7 @@ describe("updateSession()", () => {
       playSound: (name) => soundsPlayed.push(name),
       flashTaskbar: () => flashes.push("flash"),
     });
-    api = require("../src/state")(ctx);
+    api = require("../src/runtime/state/state")(ctx);
 
     update(api, { id: "s1", state: "working" });
     mock.timers.tick(1000);
@@ -2949,7 +2949,7 @@ describe("updateSession()", () => {
       processKill: () => true,
       playSound: (name) => soundsPlayed.push(name),
     });
-    api = require("../src/state")(ctx);
+    api = require("../src/runtime/state/state")(ctx);
 
     update(api, { id: "n1", state: "notification", event: "Notification" });
     assert.strictEqual(api.getCurrentState(), "notification");
@@ -2975,7 +2975,7 @@ describe("updateSession()", () => {
       playSound: (name) => soundsPlayed.push(name),
       flashTaskbar: () => {},
     });
-    api = require("../src/state")(ctx);
+    api = require("../src/runtime/state/state")(ctx);
 
     api.applyState("attention");
     assert.deepStrictEqual(soundsPlayed, ["complete"]);
@@ -2992,7 +2992,7 @@ describe("updateSession()", () => {
     api.cleanup();
     ctx = makeCtx({ processKill: () => true });
     ctx.miniMode = true;
-    api = require("../src/state")(ctx);
+    api = require("../src/runtime/state/state")(ctx);
 
     api.applyState("notification", "settings-preview.svg", { settingsPreview: true });
     assert.strictEqual(api.getCurrentState(), "mini-alert");
@@ -3008,7 +3008,7 @@ describe("updateSession()", () => {
   it("keeps settings-preview ownership through the mini-working remap", () => {
     api.cleanup();
     ctx = makeCtx({ theme: _cloudlingTheme, miniMode: true, processKill: () => true });
-    api = require("../src/state")(ctx);
+    api = require("../src/runtime/state/state")(ctx);
 
     // Cloudling has a real mini-working binding, so working lands on it rather
     // than on the preview file. The remap must forward the preview marker or
@@ -3022,7 +3022,7 @@ describe("updateSession()", () => {
   it("releases settings-preview ownership when the preview is handed back", () => {
     api.cleanup();
     ctx = makeCtx({ playSound: () => {}, flashTaskbar: () => {} });
-    api = require("../src/state")(ctx);
+    api = require("../src/runtime/state/state")(ctx);
 
     api.applyState("attention", "settings-preview.svg", { settingsPreview: true });
     assert.strictEqual(api.isSettingsPreviewVisual(), true);
@@ -3049,7 +3049,7 @@ describe("updateSession()", () => {
         if (channel === "state-change") stateChanges.push(state);
       },
     });
-    api = require("../src/state")(ctx);
+    api = require("../src/runtime/state/state")(ctx);
 
     update(api, { id: "s1", state: "working" });
     mock.timers.tick(1000);
@@ -3083,7 +3083,7 @@ describe("updateSession()", () => {
         if (channel === "state-change") stateChanges.push(state);
       },
     });
-    api = require("../src/state")(ctx);
+    api = require("../src/runtime/state/state")(ctx);
 
     update(api, {
       id: "codex:s1",
@@ -3144,7 +3144,7 @@ describe("updateSession()", () => {
         if (channel === "state-change") stateChanges.push(state);
       },
     });
-    api = require("../src/state")(ctx);
+    api = require("../src/runtime/state/state")(ctx);
 
     api.updateSession("codex:s1", "working", "PreToolUse", {
       agentId: "codex",
@@ -3196,7 +3196,7 @@ describe("updateSession()", () => {
         if (channel === "state-change") stateChanges.push(state);
       },
     });
-    api = require("../src/state")(ctx);
+    api = require("../src/runtime/state/state")(ctx);
 
     update(api, {
       id: "codex:remote",
@@ -3241,7 +3241,7 @@ describe("updateSession()", () => {
         if (channel === "state-change") stateChanges.push(state);
       },
     });
-    api = require("../src/state")(ctx);
+    api = require("../src/runtime/state/state")(ctx);
 
     api.updateSession("codex:s2", "working", "PreToolUse", {
       agentId: "codex",
@@ -3288,7 +3288,7 @@ describe("updateSession()", () => {
         if (channel === "state-change") stateChanges.push(state);
       },
     });
-    api = require("../src/state")(ctx);
+    api = require("../src/runtime/state/state")(ctx);
 
     update(api, { id: "s1", state: "working", event: "PreToolUse" });
     mock.timers.tick(1000);
@@ -3606,7 +3606,7 @@ describe("updateSession()", () => {
         if (channel === "state-change") stateChanges.push(state);
       },
     });
-    api = require("../src/state")(ctx);
+    api = require("../src/runtime/state/state")(ctx);
 
     // Turn is long over; pet is back to idle. This is what Codex Desktop's
     // focus-triggered token_count refresh actually lands on.
@@ -3729,7 +3729,7 @@ describe("updateSession()", () => {
 
   it("clearLocalClaudeQuota removes local + WSL Claude only and broadcasts once", () => {
     const broadcasts = [];
-    const localApi = require("../src/state")(makeCtx({
+    const localApi = require("../src/runtime/state/state")(makeCtx({
       broadcastSessionSnapshot: (snapshot) => broadcasts.push(snapshot),
     }));
     const resetAt = Date.now() + 3600000;
@@ -3767,7 +3767,7 @@ describe("updateSession()", () => {
 
   it("cleans persisted local Claude quota on startup when collection is disabled", () => {
     const persistPath = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "clawd-aq-optout-")), "account-quota.json");
-    const { createAccountQuotaStore } = require("../src/state-account-quota");
+    const { createAccountQuotaStore } = require("../src/quota/account-store");
     const seed = createAccountQuotaStore({ persistPath });
     const resetAt = Date.now() + 3600000;
     seed.update(null, {
@@ -3780,7 +3780,7 @@ describe("updateSession()", () => {
     });
     seed.flush();
 
-    const localApi = require("../src/state")(makeCtx({
+    const localApi = require("../src/runtime/state/state")(makeCtx({
       accountQuotaPersistPath: persistPath,
       claudeQuotaCollectionEnabled: false,
     }));
@@ -3798,7 +3798,7 @@ describe("updateSession()", () => {
 
   it("commits, flushes, and clears only local Kimi quota", () => {
     const persistPath = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "clawd-kimi-state-")), "account-quota.json");
-    const localApi = require("../src/state")(makeCtx({
+    const localApi = require("../src/runtime/state/state")(makeCtx({
       accountQuotaPersistPath: persistPath,
       kimiQuotaCollectionEnabled: true,
     }));
@@ -3815,7 +3815,7 @@ describe("updateSession()", () => {
     assert.strictEqual(localApi.buildSessionSnapshot().accountQuota.length, 0);
     localApi.cleanup();
     assert.strictEqual(
-      require("../src/state-account-quota").createAccountQuotaStore({ persistPath }).snapshot().length,
+      require("../src/quota/account-store").createAccountQuotaStore({ persistPath }).snapshot().length,
       0,
       "the explicit disconnect boundary must survive restart"
     );
@@ -3823,7 +3823,7 @@ describe("updateSession()", () => {
 
   it("cleans a persisted local Kimi cache on startup when collection is disabled", () => {
     const persistPath = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "clawd-kimi-optout-")), "account-quota.json");
-    const { createAccountQuotaStore } = require("../src/state-account-quota");
+    const { createAccountQuotaStore } = require("../src/quota/account-store");
     const seed = createAccountQuotaStore({ persistPath });
     const resetAt = Date.now() + 3600000;
     seed.update(null, {
@@ -3832,7 +3832,7 @@ describe("updateSession()", () => {
     });
     seed.flush();
 
-    const localApi = require("../src/state")(makeCtx({
+    const localApi = require("../src/runtime/state/state")(makeCtx({
       accountQuotaPersistPath: persistPath,
       kimiQuotaCollectionEnabled: false,
     }));
@@ -3848,7 +3848,7 @@ describe("updateSession()", () => {
 
   it("updateAccountQuota change-detects identical refreshes (no re-broadcast, no re-stamp)", () => {
     const broadcasts = [];
-    const localApi = require("../src/state")(makeCtx({
+    const localApi = require("../src/runtime/state/state")(makeCtx({
       broadcastSessionSnapshot: (snapshot) => broadcasts.push(snapshot),
     }));
     const resetAt = Date.now() + 3600000;
@@ -3872,7 +3872,7 @@ describe("updateSession()", () => {
 
   it("broadcasts consecutive Spark-only quota changes for the same source", () => {
     const broadcasts = [];
-    const localApi = require("../src/state")(makeCtx({
+    const localApi = require("../src/runtime/state/state")(makeCtx({
       broadcastSessionSnapshot: (snapshot) => broadcasts.push(snapshot),
     }));
     const resetAt = Date.now() + 3600000;
@@ -3909,7 +3909,7 @@ describe("updateSession()", () => {
 
   it("cleanup flushes pending account-quota writes to disk (before-quit path)", () => {
     const persistPath = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "clawd-aq-")), "account-quota.json");
-    const localApi = require("../src/state")(makeCtx({ accountQuotaPersistPath: persistPath }));
+    const localApi = require("../src/runtime/state/state")(makeCtx({ accountQuotaPersistPath: persistPath }));
     localApi.updateAccountQuota("pi", {
       claudeQuota: { claudeWeekly: { usedPercent: 41, resetAt: Date.now() + 3600000 } },
     });
@@ -4417,7 +4417,7 @@ describe("updateSession()", () => {
 
 describe("recentEvents tracking", () => {
   let api;
-  beforeEach(() => { api = require("../src/state")(makeCtx()); });
+  beforeEach(() => { api = require("../src/runtime/state/state")(makeCtx()); });
   afterEach(() => { api.cleanup(); });
 
   it("pushes events in order, capped at 8 (RECENT_EVENT_LIMIT)", () => {
@@ -4500,7 +4500,7 @@ describe("recentEvents tracking", () => {
   it("keeps the pet display state on Gemini PreCompress while exposing the event in session snapshots", () => {
     const stateChanges = [];
     api.cleanup();
-    api = require("../src/state")(makeCtx({
+    api = require("../src/runtime/state/state")(makeCtx({
       sendToRenderer: (...args) => stateChanges.push(args),
       syncHitWin: () => {},
       sendToHitWin: () => {},
@@ -4545,7 +4545,7 @@ describe("buildSessionSnapshot", () => {
 
   beforeEach(() => {
     ctx = makeCtx({ processKill: makePidKill(new Set([pid])) });
-    api = require("../src/state")(ctx);
+    api = require("../src/runtime/state/state")(ctx);
   });
   afterEach(() => api.cleanup());
 
@@ -4735,7 +4735,7 @@ describe("buildSessionSnapshot", () => {
 
   it("hides detached ended idle sessions from HUD aggregates when auto-clear is enabled and source is dead", () => {
     api.cleanup();
-    api = require("../src/state")(makeCtx({
+    api = require("../src/runtime/state/state")(makeCtx({
       processKill: makePidKill(new Set()),
       sessionHudCleanupDetached: true,
     }));
@@ -4758,7 +4758,7 @@ describe("buildSessionSnapshot", () => {
 
   it("keeps detached idle sessions in HUD aggregates when auto-clear is enabled but badge is idle", () => {
     api.cleanup();
-    api = require("../src/state")(makeCtx({
+    api = require("../src/runtime/state/state")(makeCtx({
       processKill: makePidKill(new Set()),
       sessionHudCleanupDetached: true,
     }));
@@ -4780,7 +4780,7 @@ describe("buildSessionSnapshot", () => {
 
   it("keeps detached ended sessions in HUD aggregates when pid reachability is unknown", () => {
     api.cleanup();
-    api = require("../src/state")(makeCtx({
+    api = require("../src/runtime/state/state")(makeCtx({
       processKill: makePidKill(new Set()),
       sessionHudCleanupDetached: true,
     }));
@@ -4802,7 +4802,7 @@ describe("buildSessionSnapshot", () => {
 
   it("applies session aliases to displayTitle without mutating raw session fields", () => {
     api.cleanup();
-    api = require("../src/state")(makeCtx({
+    api = require("../src/runtime/state/state")(makeCtx({
       getSessionAliases: () => ({
         "local|claude-code|claude-local": { title: "Claude review", updatedAt: 100 },
         "local|codex|codex-local": { title: "Codex follow-up", updatedAt: 100 },
@@ -4862,7 +4862,7 @@ describe("buildSessionSnapshot", () => {
 
   it("keeps session aliases scoped by host, agent, and session id", () => {
     api.cleanup();
-    api = require("../src/state")(makeCtx({
+    api = require("../src/runtime/state/state")(makeCtx({
       getSessionAliases: () => ({
         "remote-box|codex|remote": { title: "Remote Codex", updatedAt: 100 },
         "local|claude-code|local": { title: "Local Claude", updatedAt: 100 },
@@ -4904,7 +4904,7 @@ describe("buildSessionSnapshot", () => {
 
   it("scopes Kiro default-session aliases by cwd", () => {
     api.cleanup();
-    api = require("../src/state")(makeCtx({
+    api = require("../src/runtime/state/state")(makeCtx({
       getSessionAliases: () => ({
         "local|kiro-cli|default|cwd:%2Frepo%2Fa": { title: "Kiro repo A", updatedAt: 100 },
       }),
@@ -4921,7 +4921,7 @@ describe("buildSessionSnapshot", () => {
 
   it("falls back to legacy Kiro default-session aliases when no cwd-scoped alias exists", () => {
     api.cleanup();
-    api = require("../src/state")(makeCtx({
+    api = require("../src/runtime/state/state")(makeCtx({
       getSessionAliases: () => ({
         "local|kiro-cli|default": { title: "Legacy Kiro", updatedAt: 100 },
       }),
@@ -4938,7 +4938,7 @@ describe("buildSessionSnapshot", () => {
 
   it("prefers cwd-scoped Kiro default-session aliases over legacy aliases", () => {
     api.cleanup();
-    api = require("../src/state")(makeCtx({
+    api = require("../src/runtime/state/state")(makeCtx({
       getSessionAliases: () => ({
         "local|kiro-cli|default": { title: "Legacy Kiro", updatedAt: 100 },
         "local|kiro-cli|default|cwd:%2Frepo%2Fa": { title: "Kiro repo A", updatedAt: 200 },
@@ -4956,7 +4956,7 @@ describe("buildSessionSnapshot", () => {
 
   it("returns active session alias keys for all sessions including idle and headless", () => {
     api.cleanup();
-    api = require("../src/state")(makeCtx());
+    api = require("../src/runtime/state/state")(makeCtx());
     api.sessions.set("idle-session", rawSession("idle", {
       agentId: "codex",
       host: null,
@@ -4987,7 +4987,7 @@ describe("emitSessionSnapshot diff", () => {
 
   beforeEach(() => {
     broadcasts = [];
-    api = require("../src/state")(makeCtx({
+    api = require("../src/runtime/state/state")(makeCtx({
       broadcastSessionSnapshot: (snapshot) => broadcasts.push(snapshot),
     }));
   });
@@ -5071,7 +5071,7 @@ describe("Stop completion gate (#406)", () => {
         if (channel === "state-change") stateChanges.push(args[0]);
       },
     });
-    api = require("../src/state")(ctx);
+    api = require("../src/runtime/state/state")(ctx);
   });
   afterEach(() => {
     api.cleanup();
@@ -5142,7 +5142,7 @@ describe("Stop completion gate (#406)", () => {
       showKimiNotifyBubble: () => {},
       clearKimiNotifyBubbles: () => {},
     });
-    api = require("../src/state")(ctx);
+    api = require("../src/runtime/state/state")(ctx);
     update(api, {
       id: "kimi-permission",
       state: "notification",
@@ -5796,7 +5796,7 @@ describe("Stop completion gate (#406)", () => {
         if (channel === "state-change") stateChanges.push(args[0]);
       },
     });
-    api = require("../src/state")(ctx);
+    api = require("../src/runtime/state/state")(ctx);
     const rawSessionId = "debounce-stale-delete-restore";
     const sessionId = resolveSessionIdentity(rawSessionId, "local").sessionId;
     update(api, {
@@ -6005,7 +6005,7 @@ describe("Stop completion gate (#406)", () => {
 
   it("mini mode: a debounced Stop promotes to mini-happy after the window", () => {
     ctx.miniMode = true;
-    api = require("../src/state")(ctx);
+    api = require("../src/runtime/state/state")(ctx);
     update(api, { id: "s1", state: "attention", event: "Stop" });
     stateChanges.length = 0;
     soundsPlayed.length = 0;
@@ -6390,7 +6390,7 @@ describe("Headless Stop debounce default (#449)", () => {
       processKill: () => true,
       playSound: (name) => soundsPlayed.push(name),
     });
-    api = require("../src/state")(ctx);
+    api = require("../src/runtime/state/state")(ctx);
   });
   afterEach(() => {
     api.cleanup();
@@ -6471,7 +6471,7 @@ describe("Headless Stop debounce default (#449)", () => {
 
 describe("deriveSessionBadge", () => {
   let api;
-  beforeEach(() => { api = require("../src/state")(makeCtx()); });
+  beforeEach(() => { api = require("../src/runtime/state/state")(makeCtx()); });
   afterEach(() => { api.cleanup(); });
 
   // ── reachable states (what updateSession actually keeps on session.state) ──
@@ -6574,7 +6574,7 @@ describe("DND mode", () => {
   beforeEach(() => {
     mock.timers.enable({ apis: ["setTimeout", "setInterval", "Date"] });
     ctx = makeCtx();
-    api = require("../src/state")(ctx);
+    api = require("../src/runtime/state/state")(ctx);
   });
   afterEach(() => {
     api.cleanup();
@@ -6595,7 +6595,7 @@ describe("DND mode", () => {
     theme.timings.dndSleepTransitionDuration = 4800;
     api.cleanup();
     ctx = makeCtx({ theme });
-    api = require("../src/state")(ctx);
+    api = require("../src/runtime/state/state")(ctx);
 
     api.enableDoNotDisturb();
 
@@ -6618,7 +6618,7 @@ describe("DND mode", () => {
     theme.sleepSequence = { mode: "direct" };
     api.cleanup();
     ctx = makeCtx({ theme });
-    api = require("../src/state")(ctx);
+    api = require("../src/runtime/state/state")(ctx);
 
     api.enableDoNotDisturb();
     assert.strictEqual(api.getCurrentState(), "sleeping");
@@ -6654,12 +6654,12 @@ describe("DND mode", () => {
   });
 
   it("DND preserves pending completion arbitration and records it without sound", () => {
-    const { createMemoryRecapSink } = require("../src/recap-sink");
+    const { createMemoryRecapSink } = require("../src/runtime/recap/sink");
     const recapSink = createMemoryRecapSink();
     const sounds = [];
     api.cleanup();
     ctx = makeCtx({ recapSink, playSound: (name) => sounds.push(name) });
-    api = require("../src/state")(ctx);
+    api = require("../src/runtime/state/state")(ctx);
 
     update(api, { event: "UserPromptSubmit", state: "thinking", headless: true });
     recapSink.clear();
@@ -6686,7 +6686,7 @@ describe("DND mode", () => {
   });
 
   it("DND preserves Claude transcript completion fallback and records it without sound", () => {
-    const { createMemoryRecapSink } = require("../src/recap-sink");
+    const { createMemoryRecapSink } = require("../src/runtime/recap/sink");
     const recapSink = createMemoryRecapSink();
     const sounds = [];
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "clawd-claude-dnd-fallback-"));
@@ -6700,7 +6700,7 @@ describe("DND mode", () => {
 
     api.cleanup();
     ctx = makeCtx({ recapSink, playSound: (name) => sounds.push(name) });
-    api = require("../src/state")(ctx);
+    api = require("../src/runtime/state/state")(ctx);
     update(api, {
       id: sessionId,
       rawSessionId,
@@ -6742,7 +6742,7 @@ describe("DND mode", () => {
 
     api.cleanup();
     ctx = makeCtx({ theme });
-    api = require("../src/state")(ctx);
+    api = require("../src/runtime/state/state")(ctx);
 
     api.enableDoNotDisturb();
     api.disableDoNotDisturb();
@@ -6771,7 +6771,7 @@ describe("refreshTheme()", () => {
   beforeEach(() => {
     mock.timers.enable({ apis: ["setTimeout", "setInterval", "Date"] });
     ctx = makeCtx();
-    api = require("../src/state")(ctx);
+    api = require("../src/runtime/state/state")(ctx);
   });
   afterEach(() => {
     api.cleanup();
@@ -6810,7 +6810,7 @@ describe("refreshTheme()", () => {
 
 describe("requiresCompletionAck lifecycle", () => {
   let api;
-  beforeEach(() => { api = require("../src/state")(makeCtx()); });
+  beforeEach(() => { api = require("../src/runtime/state/state")(makeCtx()); });
   afterEach(() => { api.cleanup(); });
 
   it("remote Codex Stop sets requiresCompletionAck=true (via finally reconciler)", () => {
@@ -6976,7 +6976,7 @@ describe("requiresCompletionAck lifecycle", () => {
     api.sessions.get("s1").requiresCompletionAck = true;
 
     const ctxNoKimi = makeCtx({ isAgentPermissionsEnabled: () => false });
-    const api2 = require("../src/state")(ctxNoKimi);
+    const api2 = require("../src/runtime/state/state")(ctxNoKimi);
     api2.sessions.set("s1", rawSession("idle", {
       agentId: "codex",
       host: "ssh:example.com",
@@ -7035,7 +7035,7 @@ describe("requiresCompletionAck lifecycle", () => {
 
 describe("evictOldestSessionIfNeeded two-phase", () => {
   let api;
-  beforeEach(() => { api = require("../src/state")(makeCtx()); });
+  beforeEach(() => { api = require("../src/runtime/state/state")(makeCtx()); });
   afterEach(() => { api.cleanup(); });
 
   function seed(api, count, ackedIndices = new Set()) {
@@ -7097,7 +7097,7 @@ describe("qwen-code self-submit filter", () => {
   beforeEach(() => {
     mock.timers.enable({ apis: ["setTimeout", "setInterval", "Date"] });
     ctx = makeCtx();
-    api = require("../src/state")(ctx);
+    api = require("../src/runtime/state/state")(ctx);
     delete process.env.CLAWD_QWEN_SELF_SUBMIT_FILTER;
     delete process.env.CLAWD_QWEN_SELF_SUBMIT_WINDOW_MS;
   });
@@ -7247,7 +7247,7 @@ describe("antigravity trailing PostToolUse filter", () => {
   beforeEach(() => {
     mock.timers.enable({ apis: ["setTimeout", "setInterval", "Date"] });
     ctx = makeCtx();
-    api = require("../src/state")(ctx);
+    api = require("../src/runtime/state/state")(ctx);
   });
   afterEach(() => {
     api.cleanup();
@@ -7319,7 +7319,7 @@ describe("DSH reopened conversation stays out of the HUD until activity", () => 
 
   beforeEach(() => {
     mock.timers.enable({ apis: ["setTimeout", "setInterval", "Date"] });
-    api = require("../src/state")(makeCtx());
+    api = require("../src/runtime/state/state")(makeCtx());
   });
   afterEach(() => {
     api.cleanup();
@@ -7402,7 +7402,7 @@ describe("DSH reopened conversation stays out of the HUD until activity", () => 
   it("broadcasts the approval snapshot itself, not only the trailing ack pass", () => {
     const broadcasts = [];
     const ctx = makeCtx({ broadcastSessionSnapshot: (snapshot) => broadcasts.push(snapshot) });
-    const localApi = require("../src/state")(ctx);
+    const localApi = require("../src/runtime/state/state")(ctx);
     try {
       update(localApi, {
         id: DSH_ID,

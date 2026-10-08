@@ -13,9 +13,9 @@ const path = require("node:path");
 const {
   buildPersistentReadinessCommand,
   buildSshArgs,
-} = require("../../src/remote-ssh-runtime");
-const { resolveRemoteRuntimeLayout } = require("../../src/remote-ssh-layout");
-const { quoteForPosixShellArg } = require("../../src/remote-ssh-quote");
+} = require("../../src/features/remote-ssh/runtime");
+const { resolveRemoteRuntimeLayout } = require("../../src/features/remote-ssh/layout");
+const { quoteForPosixShellArg } = require("../../src/features/remote-ssh/quote");
 
 const MAX_CAPTURE_BYTES = 64 * 1024;
 const SSH_OPERATION_TIMEOUT_MS = 45 * 1000;

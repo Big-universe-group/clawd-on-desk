@@ -2,7 +2,7 @@
 
 const { describe, it } = require("node:test");
 const assert = require("node:assert/strict");
-const { createClaudeToolPhaseLedger } = require("../src/claude-tool-phase");
+const { createClaudeToolPhaseLedger } = require("../src/agents/claude-code/tool-phase");
 
 function event(eventName, extra = {}) {
   return { sessionId: "local:claude-code:s1", promptId: "prompt-a", event: eventName, ...extra };

@@ -2,8 +2,8 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { createSessionAutomationStore } = require("../src/session-automation-store");
-const { createSessionAutomationCoordinator } = require("../src/session-automation-coordinator");
+const { createSessionAutomationStore } = require("../src/runtime/session/automation/store");
+const { createSessionAutomationCoordinator } = require("../src/runtime/session/automation/coordinator");
 
 function eligible() {
   return Object.freeze({ eligible: true, reason: "verified" });

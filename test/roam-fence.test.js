@@ -18,7 +18,7 @@
 const { describe, it } = require("node:test");
 const assert = require("node:assert");
 
-const createRoamFenceLoader = require("../src/roam-fence");
+const createRoamFenceLoader = require("../src/features/roam/fence");
 
 const VALID = JSON.stringify({
   enabled: true,

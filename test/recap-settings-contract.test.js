@@ -2,9 +2,9 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const prefs = require("../src/prefs");
-const { updateRegistry } = require("../src/settings-actions");
-const createSettingsEffectRouter = require("../src/settings-effect-router");
+const prefs = require("../src/core/settings/prefs");
+const { updateRegistry } = require("../src/core/settings/actions");
+const createSettingsEffectRouter = require("../src/core/settings/effect-router");
 
 function controller(snapshot) {
   const listeners = new Set();

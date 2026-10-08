@@ -15,7 +15,7 @@ const {
   isLocalTraeDesktopIdleSession,
   isLocalWorkBuddyDesktopIdleSession,
   getStaleSessionDecision,
-} = require("../src/state-stale-cleanup");
+} = require("../src/runtime/state/stale-cleanup");
 
 function session(overrides = {}) {
   return {

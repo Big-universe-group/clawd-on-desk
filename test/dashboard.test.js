@@ -7,14 +7,14 @@ const Module = require("node:module");
 const path = require("node:path");
 const { describe, it } = require("node:test");
 
-const DASHBOARD_MODULE_PATH = require.resolve("../src/dashboard");
+const DASHBOARD_MODULE_PATH = require.resolve("../src/ui/dashboard/dashboard");
 
 function loadDashboardWithElectron(fakeElectron, originFocus) {
   delete require.cache[DASHBOARD_MODULE_PATH];
   const originalLoad = Module._load;
   Module._load = function patchedLoad(request, parent, isMain) {
     if (request === "electron") return fakeElectron;
-    if (originFocus && request === "./dashboard-quick-mode" && parent.filename === DASHBOARD_MODULE_PATH) {
+    if (originFocus && request === "./quick-mode" && parent.filename === DASHBOARD_MODULE_PATH) {
       const actual = originalLoad.apply(this, arguments);
       return {
         ...actual,
@@ -24,7 +24,7 @@ function loadDashboardWithElectron(fakeElectron, originFocus) {
     return originalLoad.apply(this, arguments);
   };
   try {
-    return require("../src/dashboard");
+    return require("../src/ui/dashboard/dashboard");
   } finally {
     Module._load = originalLoad;
   }
@@ -1626,8 +1626,8 @@ describe("dashboard window", () => {
   });
 
   it("exposes a Clawd-only hide action instead of a terminal close action", () => {
-    const rendererSource = fs.readFileSync(path.join(__dirname, "..", "src", "dashboard-renderer.js"), "utf8");
-    const preloadSource = fs.readFileSync(path.join(__dirname, "..", "src", "preload-dashboard.js"), "utf8");
+    const rendererSource = fs.readFileSync(path.join(__dirname, "..", "src", "ui", "dashboard", "renderer.js"), "utf8");
+    const preloadSource = fs.readFileSync(path.join(__dirname, "..", "src", "ui", "dashboard", "preload.js"), "utf8");
 
     assert.match(rendererSource, /dashboardHideSessionTitle/);
     assert.match(rendererSource, /hideSession\(session\.id\)/);
@@ -1640,7 +1640,7 @@ describe("dashboard window", () => {
 
   it("wires Dashboard persistence to the Dashboard bounds key in main", () => {
     const mainSource = fs.readFileSync(path.join(__dirname, "..", "src", "main.js"), "utf8");
-    const start = mainSource.indexOf('const _dashboard = require("./dashboard")({');
+    const start = mainSource.indexOf('const _dashboard = require("./ui/dashboard/dashboard")({');
     const end = mainSource.indexOf("\n});", start);
     assert.ok(start >= 0 && end > start, "Dashboard runtime wiring block must exist");
     const wiring = mainSource.slice(start, end);
@@ -1657,9 +1657,9 @@ describe("dashboard window", () => {
   });
 
   it("wires account quota (including Dashboard-only Spark) into the dashboard header", () => {
-    const rendererSource = fs.readFileSync(path.join(__dirname, "..", "src", "dashboard-renderer.js"), "utf8");
-    const htmlSource = fs.readFileSync(path.join(__dirname, "..", "src", "dashboard.html"), "utf8");
-    const preloadSource = fs.readFileSync(path.join(__dirname, "..", "src", "preload-dashboard.js"), "utf8");
+    const rendererSource = fs.readFileSync(path.join(__dirname, "..", "src", "ui", "dashboard", "renderer.js"), "utf8");
+    const htmlSource = fs.readFileSync(path.join(__dirname, "..", "src", "ui", "dashboard", "dashboard.html"), "utf8");
+    const preloadSource = fs.readFileSync(path.join(__dirname, "..", "src", "ui", "dashboard", "preload.js"), "utf8");
 
     assert.match(htmlSource, /id="quotaSummary" class="quota-summary" hidden/);
     // Quota renders from the session-independent per-source store
@@ -1703,7 +1703,7 @@ describe("dashboard window", () => {
   });
 
   it("memoizes the quota summary rebuild instead of rebuilding on every 1s render tick", () => {
-    const rendererSource = fs.readFileSync(path.join(__dirname, "..", "src", "dashboard-renderer.js"), "utf8");
+    const rendererSource = fs.readFileSync(path.join(__dirname, "..", "src", "ui", "dashboard", "renderer.js"), "utf8");
 
     assert.match(rendererSource, /computeQuotaSummarySignature\(accountQuota\)/);
     assert.match(rendererSource, /if \(signature === lastQuotaSummarySignature\) return;/);
@@ -1711,8 +1711,8 @@ describe("dashboard window", () => {
   });
 
   it("does not replace an open session automation picker on the one-second render tick", () => {
-    const rendererSource = fs.readFileSync(path.join(__dirname, "..", "src", "dashboard-renderer.js"), "utf8");
-    const dashboardHtml = fs.readFileSync(path.join(__dirname, "..", "src", "dashboard.html"), "utf8");
+    const rendererSource = fs.readFileSync(path.join(__dirname, "..", "src", "ui", "dashboard", "renderer.js"), "utf8");
+    const dashboardHtml = fs.readFileSync(path.join(__dirname, "..", "src", "ui", "dashboard", "dashboard.html"), "utf8");
 
     assert.match(rendererSource, /function hasOpenSessionAutomationPicker\(/);
     assert.match(rendererSource, /element\.classList\.contains\("open"\)/);
@@ -1722,7 +1722,7 @@ describe("dashboard window", () => {
       /\(activeEdit \|\| hasOpenSessionAutomationPicker\(\)\) && !options\.force/
     );
     assert.match(dashboardHtml, /style-src 'self' 'unsafe-inline'/);
-    assert.match(dashboardHtml, /<link rel="stylesheet" href="language-picker\.css">/);
-    assert.match(dashboardHtml, /<script src="\.\/language-picker\.js"><\/script>/);
+    assert.match(dashboardHtml, /<link rel="stylesheet" href="\.\.\/settings\/language-picker\.css">/);
+    assert.match(dashboardHtml, /<script src="\.\.\/settings\/language-picker\.js"><\/script>/);
   });
 });

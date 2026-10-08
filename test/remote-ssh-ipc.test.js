@@ -4,10 +4,10 @@ const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const { EventEmitter } = require("events");
 
-const { registerRemoteSshIpc: registerRemoteSshIpcReal } = require("../src/remote-ssh-ipc");
-const { createRemoteSshTransportCoordinator } = require("../src/remote-ssh-transport-coordinator");
-const { commandRegistry } = require("../src/settings-actions");
-const { REMOTE_IDENTITY_STEP_NAMES } = require("../src/remote-ssh-profile");
+const { registerRemoteSshIpc: registerRemoteSshIpcReal } = require("../src/features/remote-ssh/ipc");
+const { createRemoteSshTransportCoordinator } = require("../src/features/remote-ssh/transport-coordinator");
+const { commandRegistry } = require("../src/core/settings/actions");
+const { REMOTE_IDENTITY_STEP_NAMES } = require("../src/features/remote-ssh/profile");
 
 const TEST_INSTALL_ID = "a".repeat(64);
 function registerRemoteSshIpc(options) {
@@ -1043,8 +1043,8 @@ test("remoteSsh:connect returns a structured deployment_required error before ru
 });
 
 test("settings remoteSsh updates refresh cached runtime profiles and stop removed states", async () => {
-  const { createSettingsController } = require("../src/settings-controller");
-  const prefs = require("../src/prefs");
+  const { createSettingsController } = require("../src/core/settings/controller");
+  const prefs = require("../src/core/settings/prefs");
   const ipcMain = mockIpcMain();
   const { BrowserWindow } = mockBrowserWindow();
   const refreshed = [];
@@ -2090,8 +2090,8 @@ test("remoteSsh:force-revoke disconnects first, persists revocation, and refresh
 });
 
 test("remoteSsh:force-revoke all commits through the real controller and drops both old generations", async () => {
-  const { createSettingsController } = require("../src/settings-controller");
-  const prefs = require("../src/prefs");
+  const { createSettingsController } = require("../src/core/settings/controller");
+  const prefs = require("../src/core/settings/prefs");
   const ipcMain = mockIpcMain();
   const { BrowserWindow } = mockBrowserWindow();
   const disconnected = [];
@@ -2735,7 +2735,7 @@ test("remoteSsh:deploy expectedTarget carries every deploy-target field (chainSt
   // deploy of a chain-enabled profile false-positived as target drift
   // ("deployed with previous settings — redeploy" on each run).
   const { DEPLOY_TARGET_FIELDS, deployTargetFingerprint, deployTargetDrift } =
-    require("../src/remote-ssh-profile");
+    require("../src/features/remote-ssh/profile");
   const profile = { ...baseProfile, chainStatusline: true };
   const ipcMain = mockIpcMain();
   const { BrowserWindow } = mockBrowserWindow();
@@ -2896,7 +2896,7 @@ test("remoteSsh:deploy keeps the identity transaction resumable when markDeploye
 });
 
 test("remoteSsh:deploy retries the same nonce after deployment ownership persistence fails", async () => {
-  const { REMOTE_IDENTITY_STEP_NAMES } = require("../src/remote-ssh-profile");
+  const { REMOTE_IDENTITY_STEP_NAMES } = require("../src/features/remote-ssh/profile");
   const profile = {
     ...baseProfile,
     runtimeMode: "account-default",

@@ -16,15 +16,15 @@ const {
   CLAWD_METADATA_ACCEPTED_HEADER,
   sendStateHealthResponse,
   handleStatePost,
-} = require("../src/server-route-state");
-const { classifyPermissionInteraction } = require("../src/permission-automation-policy");
+} = require("../src/core/server/route-state");
+const { classifyPermissionInteraction } = require("../src/runtime/permission/automation-policy");
 const { buildStateBody } = require("../hooks/clawd-hook");
-const { createMemoryRecapSink } = require("../src/recap-sink");
-const { makeSessionKey } = require("../src/session-key");
-const createAgentRuntimeMain = require("../src/agent-runtime-main");
-const { createDshStateSequenceFence } = require("../src/dsh-state-sequence");
-const initState = require("../src/state");
-const themeLoader = require("../src/theme-loader");
+const { createMemoryRecapSink } = require("../src/runtime/recap/sink");
+const { makeSessionKey } = require("../src/core/util/session-key");
+const createAgentRuntimeMain = require("../src/agents/runtime-main");
+const { createDshStateSequenceFence } = require("../src/agents/deepseek-harness/state-sequence");
+const initState = require("../src/runtime/state/state");
+const themeLoader = require("../src/features/themes/loader");
 themeLoader.init(path.join(__dirname, "..", "src"));
 const metadataContractTheme = themeLoader.loadTheme("clawd");
 const localSessionKey = (rawSessionId) => makeSessionKey({

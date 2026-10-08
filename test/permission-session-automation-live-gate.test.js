@@ -5,10 +5,10 @@ const assert = require("node:assert");
 const fs = require("node:fs");
 const path = require("node:path");
 
-const initPermission = require("../src/permission");
+const initPermission = require("../src/runtime/permission/permission");
 const {
   classifyPermissionInteraction,
-} = require("../src/permission-automation-policy");
+} = require("../src/runtime/permission/automation-policy");
 
 function liveResponse(overrides = {}) {
   return {
@@ -229,7 +229,7 @@ describe("permission session automation live gate", () => {
 
   it("renderer exposes one session-trust action without deriving eligibility", () => {
     const source = fs.readFileSync(
-      path.join(__dirname, "..", "src", "bubble-renderer.js"),
+      path.join(__dirname, "..", "src", "ui", "bubbles", "bubble-renderer.js"),
       "utf8"
     );
     assert.match(source, /data\.canOfferSessionTrust === true/);

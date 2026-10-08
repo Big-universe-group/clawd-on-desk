@@ -6,7 +6,7 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 
-const createCodexArchiveTracker = require("../src/codex-archive-tracker");
+const createCodexArchiveTracker = require("../src/agents/codex/archive-tracker");
 
 function uuidFor(n) {
   return `019d23d4-0000-7000-8000-${n.toString(16).padStart(12, "0")}`;

@@ -7,11 +7,11 @@ const vm = require("node:vm");
 const { describe, it } = require("node:test");
 
 const RENDERER_SOURCE = fs.readFileSync(
-  path.join(__dirname, "..", "src", "tutorial-renderer.js"),
+  path.join(__dirname, "..", "src", "features", "tutorial", "renderer.js"),
   "utf8",
 );
 const TUTORIAL_HTML = fs.readFileSync(
-  path.join(__dirname, "..", "src", "tutorial.html"),
+  path.join(__dirname, "..", "src", "features", "tutorial", "tutorial.html"),
   "utf8",
 );
 

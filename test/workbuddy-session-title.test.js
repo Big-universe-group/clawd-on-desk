@@ -11,11 +11,11 @@ const {
   readWorkBuddyDatabaseSession,
   readWorkBuddyDatabaseTitle,
   createWorkBuddySessionTitleTracker,
-} = require("../src/workbuddy-session-title");
-const { createJsonlSessionTitleTracker } = require("../src/jsonl-session-title");
-const createAgentRuntimeMain = require("../src/agent-runtime-main");
-const initState = require("../src/state");
-const themeLoader = require("../src/theme-loader");
+} = require("../src/agents/workbuddy/session-title");
+const { createJsonlSessionTitleTracker } = require("../src/agents/jsonl-session-title");
+const createAgentRuntimeMain = require("../src/agents/runtime-main");
+const initState = require("../src/runtime/state/state");
+const themeLoader = require("../src/features/themes/loader");
 
 let DatabaseSync;
 try { ({ DatabaseSync } = require("node:sqlite")); } catch {}

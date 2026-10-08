@@ -3,8 +3,8 @@
 const { describe, it } = require("node:test");
 const assert = require("node:assert");
 
-const { formatDetail, formatAntigravityDetail, formatReminderReason, truncate, firstStringValue, parseMcpToolName } = require("../src/bubble-format");
-const { SUPPORTED_LANGS } = require("../src/i18n");
+const { formatDetail, formatAntigravityDetail, formatReminderReason, truncate, firstStringValue, parseMcpToolName } = require("../src/runtime/permission/bubble-format");
+const { SUPPORTED_LANGS } = require("../src/core/i18n/i18n");
 
 describe("bubble-format reminder reason labels", () => {
   it("turns stable diagnostic tags into readable text in every supported locale", () => {

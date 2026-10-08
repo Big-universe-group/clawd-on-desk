@@ -6,7 +6,7 @@ const assert = require("node:assert");
 const {
   isTrustedMainFrameEvent,
   registerPetInteractionIpc,
-} = require("../src/pet-interaction-ipc");
+} = require("../src/ui/pet/pet-interaction-ipc");
 
 class FakeIpcMain {
   constructor() {

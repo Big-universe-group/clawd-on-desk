@@ -18,8 +18,8 @@ const { describe, it } = require("node:test");
 const assert = require("node:assert");
 const { EventEmitter } = require("node:events");
 
-const initServer = require("../src/server");
-const { checkLocalServer } = require("../src/doctor-detectors/local-server");
+const initServer = require("../src/core/server/server");
+const { checkLocalServer } = require("../src/features/doctor/detectors/local-server");
 
 function makeServer({
   writeRuntimeConfig = () => true,

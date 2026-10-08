@@ -8,7 +8,7 @@ const {
   readiness,
   DEFAULT_DISCORD_PRESENCE,
   DEFAULT_CLAWD_DISCORD_APP_ID,
-} = require("../src/discord-presence-settings");
+} = require("../src/features/discord/settings");
 
 test("normalizeDiscordPresence coerces types and strips non-digits from the App ID", () => {
   assert.deepStrictEqual(normalizeDiscordPresence(null), { ...DEFAULT_DISCORD_PRESENCE });

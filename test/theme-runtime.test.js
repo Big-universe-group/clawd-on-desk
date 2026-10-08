@@ -6,8 +6,8 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 
-const createThemeRuntime = require("../src/theme-runtime");
-const themeLoader = require("../src/theme-loader");
+const createThemeRuntime = require("../src/features/themes/runtime");
+const themeLoader = require("../src/features/themes/loader");
 
 const SRC_DIR = path.join(__dirname, "..", "src");
 const REQUIRED_STATES = [
@@ -153,7 +153,7 @@ afterEach(() => {
 
 describe("theme-runtime active ownership", () => {
   it("keeps active theme caches out of theme-loader and deferred wrappers out of main", () => {
-    const loaderSource = fs.readFileSync(path.join(SRC_DIR, "theme-loader.js"), "utf8");
+    const loaderSource = fs.readFileSync(path.join(SRC_DIR, "features", "themes", "loader.js"), "utf8");
     const mainSource = fs.readFileSync(path.join(SRC_DIR, "main.js"), "utf8");
 
     assert.doesNotMatch(loaderSource, /\blet\s+activeTheme\b/);

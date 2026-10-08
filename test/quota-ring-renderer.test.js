@@ -5,9 +5,9 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
-const quotaGeometry = require("../src/quota-ring-geometry");
+const quotaGeometry = require("../src/quota/ring-geometry");
 
-const rendererSource = fs.readFileSync(path.join(__dirname, "..", "src", "quota-ring-renderer.js"), "utf8");
+const rendererSource = fs.readFileSync(path.join(__dirname, "..", "src", "quota", "ring-renderer.js"), "utf8");
 
 class FakeElement {
   constructor(tag) {

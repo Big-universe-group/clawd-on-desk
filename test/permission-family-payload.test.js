@@ -15,9 +15,9 @@ const assert = require("node:assert");
 const fs = require("fs");
 const path = require("path");
 
-const initPermission = require("../src/permission");
-const { classifyPermissionInteraction } = require("../src/permission-automation-policy");
-const { SUPPORTED_LANGS } = require("../src/i18n");
+const initPermission = require("../src/runtime/permission/permission");
+const { classifyPermissionInteraction } = require("../src/runtime/permission/automation-policy");
+const { SUPPORTED_LANGS } = require("../src/core/i18n/i18n");
 
 function makeCtx(overrides = {}) {
   return {
@@ -128,7 +128,7 @@ describe("opencode-family bubble payload", () => {
 });
 
 describe("bubble-renderer family contract (static)", () => {
-  const source = fs.readFileSync(path.join(__dirname, "..", "src", "bubble-renderer.js"), "utf8");
+  const source = fs.readFileSync(path.join(__dirname, "..", "src", "ui", "bubbles", "bubble-renderer.js"), "utf8");
 
   // Per this repo's convention (see bubble-kimi-cue.test.js) the renderer is
   // asserted against its source rather than instantiated — but at STATEMENT

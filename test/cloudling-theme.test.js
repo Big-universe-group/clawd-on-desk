@@ -5,8 +5,8 @@ const assert = require("node:assert");
 const fs = require("node:fs");
 const path = require("node:path");
 
-const themeLoader = require("../src/theme-loader");
-const hitGeometry = require("../src/hit-geometry");
+const themeLoader = require("../src/features/themes/loader");
+const hitGeometry = require("../src/ui/pet/hit-geometry");
 
 themeLoader.init(path.join(__dirname, "..", "src"));
 

@@ -6,7 +6,7 @@ const assert = require("node:assert/strict");
 const {
   shouldFlipAssetDirection,
   isAccessoryMirrored,
-} = require("../src/pet-accessory-mirror");
+} = require("../src/features/accessories/mirror");
 
 const CLAWD = Object.freeze({
   hasRoamVisual: true,   // states.roam is a dedicated visual, not idle[0]

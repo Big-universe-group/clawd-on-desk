@@ -5,9 +5,9 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
-const { createSessionHistoryRuntime, RESUME_CONFIRMATION_MS } = require("../src/session-history-runtime");
+const { createSessionHistoryRuntime, RESUME_CONFIRMATION_MS } = require("../src/runtime/session/history-runtime");
 const { recordSessionHistoryFromStateBody } = require("../hooks/session-history");
-const { launchClaudeSession } = require("../src/launch-claude");
+const { launchClaudeSession } = require("../src/agents/claude-code/launch");
 
 describe("session history resume owner", () => {
   let root, clock, sessions, enabled, launches, runtime, payload;

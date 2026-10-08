@@ -5,7 +5,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 const test = require("node:test");
-const { i18n, SUPPORTED_LANGS } = require("../src/i18n");
+const { i18n, SUPPORTED_LANGS } = require("../src/core/i18n/i18n");
 
 class FakeClassList {
   constructor(element) { this.element = element; }
@@ -254,9 +254,9 @@ async function loadDashboard(
     clearTimeout,
     requestAnimationFrame: (cb) => cb(),
   });
-  vm.runInContext(fs.readFileSync(path.join(__dirname, "..", "src", "session-focus-unavailable.js"), "utf8"), context);
-  vm.runInContext(fs.readFileSync(path.join(__dirname, "..", "src", "language-picker.js"), "utf8"), context);
-  vm.runInContext(fs.readFileSync(path.join(__dirname, "..", "src", "dashboard-renderer.js"), "utf8"), context);
+  vm.runInContext(fs.readFileSync(path.join(__dirname, "..", "src", "runtime", "focus", "session-focus-unavailable.js"), "utf8"), context);
+  vm.runInContext(fs.readFileSync(path.join(__dirname, "..", "src", "ui", "settings", "language-picker.js"), "utf8"), context);
+  vm.runInContext(fs.readFileSync(path.join(__dirname, "..", "src", "ui", "dashboard", "renderer.js"), "utf8"), context);
   await flush();
   return {
     root: document.elements.get("content"),
@@ -300,9 +300,9 @@ async function loadHud(sessions, openResult = { status: "ok" }) {
     setTimeout: (callback) => { feedbackTimeout = callback; return 1; },
     clearTimeout: () => { feedbackTimeout = null; },
   });
-  vm.runInContext(fs.readFileSync(path.join(__dirname, "..", "src", "session-focus-unavailable.js"), "utf8"), context);
-  vm.runInContext(fs.readFileSync(path.join(__dirname, "..", "src", "quota-ring-renderer.js"), "utf8"), context);
-  vm.runInContext(fs.readFileSync(path.join(__dirname, "..", "src", "session-hud-renderer.js"), "utf8"), context);
+  vm.runInContext(fs.readFileSync(path.join(__dirname, "..", "src", "runtime", "focus", "session-focus-unavailable.js"), "utf8"), context);
+  vm.runInContext(fs.readFileSync(path.join(__dirname, "..", "src", "quota", "ring-renderer.js"), "utf8"), context);
+  vm.runInContext(fs.readFileSync(path.join(__dirname, "..", "src", "ui", "hud", "session-hud-renderer.js"), "utf8"), context);
   await flush();
   snapshotListener({ sessions, orderedIds: sessions.map((entry) => entry.id) });
   return {

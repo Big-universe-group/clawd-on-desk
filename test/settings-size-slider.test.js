@@ -8,7 +8,7 @@ const {
   formatSizeKey,
   getSizeSliderAnchorPx,
   SIZE_SLIDER_THUMB_DIAMETER,
-} = require("../src/settings-size-slider");
+} = require("../src/ui/settings/size-slider");
 
 it("formats slider positions as clamped proportional size keys", () => {
   assert.strictEqual(formatSizeKey(70), "P:21");

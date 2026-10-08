@@ -285,10 +285,10 @@ describe("Orca pane key validator copies", () => {
     "hooks/pi-extension-core.js",
     "hooks/omp-extension-core.js",
     "hooks/opencode-family-plugin/core.mjs",
-    "src/server-route-state.js",
-    "src/server-route-permission.js",
-    "src/focus.js",
-    "src/session-focus.js",
+    "src/core/server/route-state.js",
+    "src/core/server/route-permission.js",
+    "src/runtime/focus/focus.js",
+    "src/runtime/focus/session-focus.js",
   ];
 
   it("shares one pattern across every copy", () => {
@@ -894,7 +894,7 @@ describe("Orca focus wiring", () => {
   // test/focus-windows.test.js, which mocks spawn so the real helper never starts.
   it("is dispatched from the Windows and macOS branches, never Linux", () => {
     const fs = require("fs");
-    const src = fs.readFileSync(path.join(__dirname, "..", "src", "focus.js"), "utf8");
+    const src = fs.readFileSync(path.join(__dirname, "..", "src", "runtime", "focus", "focus.js"), "utf8");
     const calls = src.match(/scheduleOrcaPaneFocus\(request\./g) || [];
     assert.strictEqual(calls.length, 2, "expected one dispatch per supported platform");
     // Linux still has no raise it can trust — WM_CLASS "orca" also matches GNOME's
@@ -1031,8 +1031,8 @@ describe("Orca focus wiring", () => {
       ["src/main.js", "if (entry.orcaPaneKey) focusEntry.orcaPaneKey = entry.orcaPaneKey;"],
       ["src/main.js", "orcaPaneKey: session.orcaPaneKey,"],
       ["src/main.js", "if (!session || (!session.sourcePid && !session.orcaPaneKey)) return false;"],
-      ["src/permission.js", "if (perm.orcaPaneKey) focusEntry.orcaPaneKey = perm.orcaPaneKey;"],
-      ["src/state-session-snapshot.js", "orcaPaneKey: (session && session.orcaPaneKey) || null,"],
+      ["src/runtime/permission/permission.js", "if (perm.orcaPaneKey) focusEntry.orcaPaneKey = perm.orcaPaneKey;"],
+      ["src/runtime/state/session-snapshot.js", "orcaPaneKey: (session && session.orcaPaneKey) || null,"],
     ];
     for (const [rel, needle] of sites) {
       const src = fs.readFileSync(path.join(repo, rel), "utf8");

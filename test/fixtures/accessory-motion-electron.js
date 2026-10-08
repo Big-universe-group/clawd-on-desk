@@ -8,17 +8,17 @@ const ROOT = path.resolve(__dirname, "..", "..");
 const {
   PET_ACCESSORY_CATALOG,
   PET_MOUTH_ACCESSORY_CATALOG,
-} = require(path.join(ROOT, "src", "pet-customization-catalog"));
-const { computeDynamicAccessoryLayout } = require(path.join(ROOT, "src", "pet-accessory-layout"));
-const { isAccessoryMirrored } = require(path.join(ROOT, "src", "pet-accessory-mirror"));
-const { resolveAccessoryDescriptor } = require(path.join(ROOT, "src", "pet-accessory-descriptor"));
+} = require(path.join(ROOT, "src", "features", "accessories", "customization-catalog.js"));
+const { computeDynamicAccessoryLayout } = require(path.join(ROOT, "src", "features", "accessories", "layout.js"));
+const { isAccessoryMirrored } = require(path.join(ROOT, "src", "features", "accessories", "mirror.js"));
+const { resolveAccessoryDescriptor } = require(path.join(ROOT, "src", "features", "accessories", "descriptor.js"));
 const {
   BUILTIN_ACCESSORY_MOTION_PADDING,
   BUILTIN_MOUTH_ACCESSORY_MOTION_PADDING,
   resolveAccessoryAwareHitBox,
-} = require(path.join(ROOT, "src", "pet-accessory-hitbox"));
-const hitGeometry = require(path.join(ROOT, "src", "hit-geometry"));
-const themeLoader = require(path.join(ROOT, "src", "theme-loader"));
+} = require(path.join(ROOT, "src", "features", "accessories", "hitbox.js"));
+const hitGeometry = require(path.join(ROOT, "src", "ui", "pet", "hit-geometry.js"));
+const themeLoader = require(path.join(ROOT, "src", "features", "themes", "loader.js"));
 
 themeLoader.init(path.join(ROOT, "src"));
 

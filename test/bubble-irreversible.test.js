@@ -4,12 +4,12 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 
-const { detectIrreversible, formatReminderReason } = require("../src/bubble-format");
-const { SUPPORTED_LANGS } = require("../src/i18n");
+const { detectIrreversible, formatReminderReason } = require("../src/runtime/permission/bubble-format");
+const { SUPPORTED_LANGS } = require("../src/core/i18n/i18n");
 
-const bubbleRenderer = fs.readFileSync(path.join(__dirname, "..", "src", "bubble-renderer.js"), "utf8");
-const bubbleHtml = fs.readFileSync(path.join(__dirname, "..", "src", "bubble.html"), "utf8");
-const bubbleCss = fs.readFileSync(path.join(__dirname, "..", "src", "bubble.css"), "utf8");
+const bubbleRenderer = fs.readFileSync(path.join(__dirname, "..", "src", "ui", "bubbles", "bubble-renderer.js"), "utf8");
+const bubbleHtml = fs.readFileSync(path.join(__dirname, "..", "src", "ui", "bubbles", "bubble.html"), "utf8");
+const bubbleCss = fs.readFileSync(path.join(__dirname, "..", "src", "ui", "bubbles", "bubble.css"), "utf8");
 
 describe("detectIrreversible — destructive shell commands get a hint", () => {
   const hits = [
@@ -76,7 +76,7 @@ describe("detectIrreversible — ordinary commands stay quiet (precision over re
 
 describe("bubble wiring — badge is display-only", () => {
   it("issue #1039 follow-up: multi-resource shell commands show the warning badge", () => {
-    const format = require("../src/bubble-format");
+    const format = require("../src/runtime/permission/bubble-format");
     const block = bubbleRenderer.slice(
       bubbleRenderer.indexOf("function renderIrreversibleBadge("),
       bubbleRenderer.indexOf("function resetBubbleContent("));

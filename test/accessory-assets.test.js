@@ -8,7 +8,7 @@ const path = require("node:path");
 const {
   PET_ACCESSORY_CATALOG,
   PET_MOUTH_ACCESSORY_CATALOG,
-} = require("../src/pet-customization-catalog");
+} = require("../src/features/accessories/customization-catalog");
 
 const ASSET_DIR = path.join(__dirname, "..", "assets", "accessories");
 const MAX_SMIL_VALUES = 16;

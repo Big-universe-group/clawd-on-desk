@@ -3,10 +3,10 @@
 const { describe, it } = require("node:test");
 const assert = require("node:assert/strict");
 
-const initPermission = require("../src/permission");
-const { FeishuApprovalClient } = require("../src/feishu-approval-client");
-const { prepareElicitationToolInput } = require("../src/server-permission-utils");
-const { classifyPermissionInteraction } = require("../src/permission-automation-policy");
+const initPermission = require("../src/runtime/permission/permission");
+const { FeishuApprovalClient } = require("../src/features/feishu/client");
+const { prepareElicitationToolInput } = require("../src/core/server/permission-utils");
+const { classifyPermissionInteraction } = require("../src/runtime/permission/automation-policy");
 
 function flush() {
   return new Promise((resolve) => setImmediate(resolve));

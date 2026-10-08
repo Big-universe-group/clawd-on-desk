@@ -3,8 +3,8 @@
 const { describe, it } = require("node:test");
 const assert = require("node:assert/strict");
 
-const initPermission = require("../src/permission");
-const { classifyPermissionInteraction } = require("../src/permission-automation-policy");
+const initPermission = require("../src/runtime/permission/permission");
+const { classifyPermissionInteraction } = require("../src/runtime/permission/automation-policy");
 
 function makeCtx(overrides = {}) {
   return {

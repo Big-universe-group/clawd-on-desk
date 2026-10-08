@@ -1,6 +1,6 @@
 const { describe, it } = require("node:test");
 const assert = require("node:assert");
-const registry = require("../agents/registry");
+const registry = require("../src/agents/registry");
 
 describe("Agent Registry", () => {
   it("should return all supported agents", () => {

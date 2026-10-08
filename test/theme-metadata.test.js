@@ -14,7 +14,7 @@ const {
   buildVariantMetadata,
   computePreviewContentRatio,
   computePreviewContentOffsetPct,
-} = require("../src/theme-metadata");
+} = require("../src/features/themes/metadata");
 
 const tempDirs = [];
 

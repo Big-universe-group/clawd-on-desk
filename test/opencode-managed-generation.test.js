@@ -13,7 +13,7 @@ const { describe, it, afterEach } = require("node:test");
 
 const mg = require("../hooks/opencode-family-managed-generation");
 const ownership = require("../hooks/opencode-family-entry-ownership");
-const { getFamilyConfig } = require("../agents/opencode-family");
+const { getFamilyConfig } = require("../hooks/opencode-family");
 const {
   registerOpencodePlugin,
   unregisterOpencodePlugin,

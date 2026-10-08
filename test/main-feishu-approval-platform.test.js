@@ -6,10 +6,10 @@ const fs = require("node:fs");
 const path = require("node:path");
 const util = require("node:util");
 const vm = require("node:vm");
-const { classifyFeishuSdkError } = require("../src/feishu-approval-client");
-const feishuApprovalSettings = require("../src/feishu-approval-settings");
-const { createSettingsController } = require("../src/settings-controller");
-const { commandRegistry, saveFeishuApproverByEmail } = require("../src/settings-actions");
+const { classifyFeishuSdkError } = require("../src/features/feishu/client");
+const feishuApprovalSettings = require("../src/features/feishu/settings");
+const { createSettingsController } = require("../src/core/settings/controller");
+const { commandRegistry, saveFeishuApproverByEmail } = require("../src/core/settings/actions");
 
 // main.js cannot be required here (it pulls in electron), so this follows the
 // existing main-*.test.js convention of reading the source. Where behavior can

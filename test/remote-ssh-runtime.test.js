@@ -25,9 +25,9 @@ const {
   PROBE_CHILD_TIMEOUT_MS,
   BACKOFF_SCHEDULE_MS,
   FORWARD_RECOVERY_FAILURE_LIMIT,
-} = require("../src/remote-ssh-runtime");
-const { clearRemoteNodeCache } = require("../src/remote-ssh-node");
-const { createRemoteSshTransportCoordinator } = require("../src/remote-ssh-transport-coordinator");
+} = require("../src/features/remote-ssh/runtime");
+const { clearRemoteNodeCache } = require("../src/features/remote-ssh/node");
+const { createRemoteSshTransportCoordinator } = require("../src/features/remote-ssh/transport-coordinator");
 
 const DETECT_SSH_OK = () => ({
   available: true,

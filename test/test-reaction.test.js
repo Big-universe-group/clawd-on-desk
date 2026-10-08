@@ -7,7 +7,7 @@ const {
   normalizeTestResult,
   canPlayTestReaction,
   createTestReactionHandler,
-} = require("../src/test-reaction");
+} = require("../src/features/test-reaction");
 
 describe("test reaction main-process gate", () => {
   it("accepts only the two wire values", () => {

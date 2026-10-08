@@ -8,9 +8,9 @@
 const fs = require("node:fs");
 const path = require("node:path");
 
-const catalog = require("../src/official-theme-catalog");
+const catalog = require("../src/features/themes/official/catalog");
 
-const SNAPSHOT_PATH = path.join(__dirname, "..", "src", "official-theme-catalog-snapshot.json");
+const SNAPSHOT_PATH = path.join(__dirname, "..", "src", "features", "themes", "official", "catalog-snapshot.json");
 const DEFAULT_FETCH_TIMEOUT_MS = 30000;
 
 function readCurrentSnapshotVersion({ fsImpl = fs, snapshotPath = SNAPSHOT_PATH } = {}) {

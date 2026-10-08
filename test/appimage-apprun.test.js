@@ -148,13 +148,13 @@ test("Wayland smoke PR paths cover the hook closure by pattern instead of a drif
 
   assert.match(pathsBlock, /- hooks\/\*\*/, "hooks/** must trigger the packaged gate");
   for (const required of [
-    "src/claude-hook-health.js",
-    "src/claude-settings-watcher.js",
-    "src/claude-hook-operations.js",
-    "src/prefs.js",
-    "src/integration-sync.js",
-    "src/server.js",
-    "src/remote-ssh-deploy.js",
+    "src/agents/claude-code/hook-health.js",
+    "src/agents/claude-code/settings-watcher.js",
+    "src/agents/claude-code/hook-operations.js",
+    "src/core/settings/prefs.js",
+    "src/agents/integration-sync.js",
+    "src/core/server/server.js",
+    "src/features/remote-ssh/deploy.js",
   ]) {
     assert.ok(pathsBlock.includes(`- ${required}`), `${required} must trigger the packaged gate`);
   }

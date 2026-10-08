@@ -5,10 +5,10 @@ const test = require("node:test");
 
 const {
   sanitizeTelegramApprovalLogMeta,
-} = require("../src/telegram-approval-log-meta");
+} = require("../src/features/telegram/approval-log-meta");
 const {
   sanitizeProxy,
-} = require("../src/telegram-fetch-transport");
+} = require("../src/features/telegram/fetch-transport");
 
 test("keeps only stable terminal and proxy diagnostics", () => {
   assert.deepEqual(sanitizeTelegramApprovalLogMeta({

@@ -2,7 +2,7 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const { EventEmitter } = require("node:events");
-const { createQuotaNotificationPresenter, formatQuotaAlert } = require("../src/quota-notifications");
+const { createQuotaNotificationPresenter, formatQuotaAlert } = require("../src/quota/notifications");
 const EVENT = { type: "low", providerKey: "codexQuota", windowMinutes: 300, remainingPercent: 9 };
 function harness(overrides = {}) {
   const notifications = [], timers = new Map(), clicks = [];

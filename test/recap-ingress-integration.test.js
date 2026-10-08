@@ -5,9 +5,9 @@ const assert = require("node:assert");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
-const themeLoader = require("../src/theme-loader");
-const { createRecapRuntime } = require("../src/recap-runtime");
-const { createMemoryRecapSink } = require("../src/recap-sink");
+const themeLoader = require("../src/features/themes/loader");
+const { createRecapRuntime } = require("../src/runtime/recap/runtime");
+const { createMemoryRecapSink } = require("../src/runtime/recap/sink");
 
 themeLoader.init(path.join(__dirname, "..", "src"));
 const theme = themeLoader.loadTheme("clawd");
@@ -46,7 +46,7 @@ function makeRuntime(options = {}) {
     isAgentEnabled: options.isAgentEnabled || (() => true),
     isAgentPermissionsEnabled: options.isAgentPermissionsEnabled,
   };
-  return { api: require("../src/state")(ctx), sink, effects };
+  return { api: require("../src/runtime/state/state")(ctx), sink, effects };
 }
 
 function send(api, event, state, options = {}) {

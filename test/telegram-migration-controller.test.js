@@ -4,12 +4,12 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 const {
   createTelegramMigrationController,
-} = require("../src/telegram-migration-controller");
+} = require("../src/features/telegram/migration-controller");
 const {
   STATES,
   EVENTS,
   TEST_ORIGINS,
-} = require("../src/telegram-migration-state");
+} = require("../src/features/telegram/migration-state");
 
 class FakeNative {
   constructor() {

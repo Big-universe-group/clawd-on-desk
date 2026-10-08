@@ -3,7 +3,7 @@
 const { describe, it } = require("node:test");
 const assert = require("node:assert");
 
-const CodexSubagentClassifier = require("../agents/codex-subagent-classifier");
+const CodexSubagentClassifier = require("../src/agents/codex/subagent-classifier");
 
 describe("CodexSubagentClassifier", () => {
   it("registers root and subagent sessions from session metadata", () => {

@@ -9,7 +9,7 @@ const {
   PROBE_TIMEOUT_MS,
   MANAGED_PROBE_TIMEOUT_MS,
   POSIX_OS_RX,
-} = require("../src/remote-ssh-shell-detect");
+} = require("../src/features/remote-ssh/shell-detect");
 
 function makeFakeChild() {
   const child = new EventEmitter();

@@ -8,8 +8,8 @@ const {
   checkAgentIntegrations,
   findOpenClawPluginEntry,
   findOpencodePluginEntry,
-} = require("../src/doctor-detectors/agent-integrations");
-const { getAgentDescriptor } = require("../src/doctor-detectors/agent-descriptors");
+} = require("../src/agents/doctor/integrations");
+const { getAgentDescriptor } = require("../src/agents/doctor/descriptors");
 const { GEMINI_HOOK_EVENTS } = require("../hooks/gemini-install");
 const { ANTIGRAVITY_HOOK_EVENTS, __test: antigravityInstallTest } = require("../hooks/antigravity-install");
 const { QWEN_CODE_HOOK_EVENTS, buildQwenCodeHookCommand } = require("../hooks/qwen-code-install");
@@ -29,8 +29,8 @@ const {
 const {
   computeCodexHookTrustedHash,
   findCodexHookTrustPositions,
-} = require("../src/doctor-detectors/codex-features-check");
-const { validateHookCommand, validateHookTarget } = require("../src/doctor-detectors/agent-node-bin-parser");
+} = require("../src/agents/codex/doctor-features-check");
+const { validateHookCommand, validateHookTarget } = require("../src/agents/doctor/node-bin-parser");
 const {
   ZCODE_HOOK_EVENTS,
   buildZcodeHookCommand,
@@ -2827,9 +2827,9 @@ describe("checkAgentIntegrations", () => {
 
   it("descriptor configJsonc matches the family registry's jsonc flag (drift lock)", () => {
     // eslint-disable-next-line global-require
-    const { AGENT_DESCRIPTORS } = require("../src/doctor-detectors/agent-descriptors");
+    const { AGENT_DESCRIPTORS } = require("../src/agents/doctor/descriptors");
     // eslint-disable-next-line global-require
-    const { OPENCODE_FAMILY } = require("../agents/opencode-family");
+    const { OPENCODE_FAMILY } = require("../hooks/opencode-family");
     for (const [agentId, cfg] of Object.entries(OPENCODE_FAMILY)) {
       const descriptor = AGENT_DESCRIPTORS.find((d) => d.agentId === agentId);
       assert.ok(descriptor, `family member ${agentId} must have a doctor descriptor`);

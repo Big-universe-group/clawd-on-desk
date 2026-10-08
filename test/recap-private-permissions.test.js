@@ -18,7 +18,7 @@ const {
   hasExactPrivateDacl,
   isTransientRecapPrivateAclError,
   normalizeFinalWindowsPath,
-} = require("../src/recap-private-permissions");
+} = require("../src/runtime/recap/private-permissions");
 
 function windowsSystemTool(fileName) {
   return path.win32.join(process.env.SystemRoot || process.env.WINDIR, "System32", fileName);

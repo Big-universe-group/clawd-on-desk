@@ -12,7 +12,7 @@ const os = require("node:os");
 const path = require("node:path");
 const { execFileSync } = require("node:child_process");
 
-const focus = require("../src/focus");
+const focus = require("../src/runtime/focus/focus");
 const {
   findSupersetDataDirs,
   supersetSchemeForDir,

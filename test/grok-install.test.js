@@ -20,10 +20,10 @@ const {
   CONFIG_FILE_NAME,
   PREVIEW_CONFIG_FILE_NAME,
 } = grok;
-const { detectAgentInstallation } = require("../src/agent-installation-detector");
-const { getAgentDescriptor } = require("../src/doctor-detectors/agent-descriptors");
-const { checkAgent } = require("../src/doctor-detectors/agent-integrations");
-const { installAgentIntegration } = require("../src/settings-actions-agents");
+const { detectAgentInstallation } = require("../src/agents/installation-detector");
+const { getAgentDescriptor } = require("../src/agents/doctor/descriptors");
+const { checkAgent } = require("../src/agents/doctor/integrations");
+const { installAgentIntegration } = require("../src/agents/settings-actions");
 const { buildCleanupOptionsForHome, cleanupIntegrations } = require("../hooks/cleanup-integrations");
 const { DEFAULT_BACKUP_KEEP } = require("../hooks/json-utils");
 

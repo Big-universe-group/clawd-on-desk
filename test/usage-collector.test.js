@@ -7,7 +7,7 @@ const {
   createUsageCollector,
   SOURCE_MIN_INTERVAL_MS,
   FORCE_MIN_INTERVAL_MS,
-} = require("../src/usage-collector");
+} = require("../src/quota/usage-collector");
 
 function deferred() {
   let resolve;

@@ -12,7 +12,7 @@ const {
   computeInitial,
   applyEvent,
   checkInvariants,
-} = require("../src/telegram-migration-state");
+} = require("../src/features/telegram/migration-state");
 
 function files(complete = true) {
   return { nativeConfigComplete: complete };

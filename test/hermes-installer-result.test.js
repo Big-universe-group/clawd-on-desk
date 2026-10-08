@@ -8,8 +8,8 @@ const {
   HERMES_RESULT_SCHEMA_VERSION,
   HERMES_PLUGIN_ASSET_FILES,
   parseHermesInstallerResult,
-} = require("../src/hermes-installer-result");
-const wslDeploy = require("../src/wsl-deploy");
+} = require("../src/agents/hermes/installer-result");
+const wslDeploy = require("../src/features/wsl/deploy");
 
 function sentinelLine(value) {
   return `${HERMES_RESULT_SENTINEL}${JSON.stringify(value)}\n`;

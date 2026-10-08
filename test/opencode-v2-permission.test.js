@@ -242,7 +242,7 @@ test("PR #1045 follow-up: a non-shell v2 resource is not command-mapped", async 
 });
 
 test("PR #1045 follow-up: mapOpencodeV2ShellResource aliasing rules", () => {
-  const { mapOpencodeV2ShellResource } = require("../src/server-route-permission");
+  const { mapOpencodeV2ShellResource } = require("../src/core/server/route-permission");
 
   // Lone shell resource → command alias, original kept.
   assert.deepStrictEqual(
@@ -308,9 +308,9 @@ test("issue #1039 follow-up: benign multi-resource shell asks have no reminder h
 });
 
 test("issue #1039 follow-up: multi-resource shell alias only downgrades automatic approval", () => {
-  const { mapOpencodeV2ShellResource } = require("../src/server-route-permission");
-  const { preparePermissionReminder, reminderHolds } = require("../src/permission-reminder");
-  const { classifyPermissionInteraction, evaluatePermissionAutomation, AUTOMATION_ACTION } = require("../src/permission-automation-policy");
+  const { mapOpencodeV2ShellResource } = require("../src/core/server/route-permission");
+  const { preparePermissionReminder, reminderHolds } = require("../src/runtime/permission/reminder");
+  const { classifyPermissionInteraction, evaluatePermissionAutomation, AUTOMATION_ACTION } = require("../src/runtime/permission/automation-policy");
   const interaction = classifyPermissionInteraction({ agentId: "opencode", toolName: "shell" });
   const action = (resources) => {
     const { permissionReminder: reminder } = preparePermissionReminder("shell", mapOpencodeV2ShellResource("shell", { resources }));

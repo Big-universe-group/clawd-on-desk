@@ -11,7 +11,7 @@ const {
   parseTokenFromEnvFileText,
   buildEnvFileText,
   isValidToken,
-} = require("../src/telegram-token-store");
+} = require("../src/features/telegram/token-store");
 
 const VALID = "123456789:ABCDEFGHIJKLMNOPQRSTUVWXYZ-_0123456789";
 
@@ -123,7 +123,7 @@ test("Source invariant: src/telegram-token-store.js never references process.env
   const fs = require("node:fs");
   const path = require("node:path");
   const source = fs.readFileSync(
-    path.join(__dirname, "..", "src", "telegram-token-store.js"),
+    path.join(__dirname, "..", "src", "features", "telegram", "token-store.js"),
     "utf8",
   );
   assert.equal(

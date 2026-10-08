@@ -17,7 +17,7 @@ try {
   nativeImage = null;
 }
 
-const { getAllAgents } = require("../agents/registry");
+const { getAllAgents } = require("../src/agents/registry");
 
 const ICON_SIZE = 64;
 const ARTWORK_SIZE = 56;

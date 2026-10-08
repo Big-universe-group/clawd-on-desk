@@ -4,14 +4,14 @@ const { describe, it } = require("node:test");
 const assert = require("node:assert");
 const { EventEmitter } = require("node:events");
 
-const initServer = require("../src/server");
+const initServer = require("../src/core/server/server");
 
 const {
   buildToolInputFingerprint,
   findPendingPermissionForStateEvent,
-} = require("../src/server-permission-utils");
-const { classifyPermissionInteraction } = require("../src/permission-automation-policy");
-const { makeSessionKey } = require("../src/session-key");
+} = require("../src/core/server/permission-utils");
+const { classifyPermissionInteraction } = require("../src/runtime/permission/automation-policy");
+const { makeSessionKey } = require("../src/core/util/session-key");
 
 const localSessionKey = (rawSessionId) => makeSessionKey({
   profileId: "local",

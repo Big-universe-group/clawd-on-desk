@@ -6,8 +6,8 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 
-const { commandRegistry, updateRegistry, buildThemeScopedPrefsCommit } = require("../src/settings-actions");
-const { createSettingsController } = require("../src/settings-controller");
+const { commandRegistry, updateRegistry, buildThemeScopedPrefsCommit } = require("../src/core/settings/actions");
+const { createSettingsController } = require("../src/core/settings/controller");
 
 let tmp;
 beforeEach(() => {

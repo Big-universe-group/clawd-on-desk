@@ -6,7 +6,7 @@ const fs = require("fs");
 const path = require("path");
 const os = require("os");
 
-const prefs = require("../src/prefs");
+const prefs = require("../src/core/settings/prefs");
 
 const tempDirs = [];
 

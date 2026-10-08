@@ -3,10 +3,10 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 
-const { createTelegramNativeRunner } = require("../src/telegram-native-runner");
-const { renderTelegramMarkdown } = require("../src/telegram-message-format");
-const { EVENTS } = require("../src/telegram-migration-state");
-const { createRemoteCardWorkRegistry } = require("../src/session-automation-remote");
+const { createTelegramNativeRunner } = require("../src/features/telegram/native-runner");
+const { renderTelegramMarkdown } = require("../src/features/telegram/message-format");
+const { EVENTS } = require("../src/features/telegram/migration-state");
+const { createRemoteCardWorkRegistry } = require("../src/runtime/session/automation/remote");
 const { createFakeTelegramServer } = require("./fakes/telegram-server");
 
 const VALID_TOKEN = "123456:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghi_jklmnop";

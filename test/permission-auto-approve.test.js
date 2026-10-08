@@ -15,12 +15,12 @@
 const { describe, it } = require("node:test");
 const assert = require("node:assert");
 
-const initPermission = require("../src/permission");
+const initPermission = require("../src/runtime/permission/permission");
 const {
   classifyPermissionInteraction,
-} = require("../src/permission-automation-policy");
-const { createSessionAutomationStore } = require("../src/session-automation-store");
-const { createSessionAutomationCoordinator } = require("../src/session-automation-coordinator");
+} = require("../src/runtime/permission/automation-policy");
+const { createSessionAutomationStore } = require("../src/runtime/session/automation/store");
+const { createSessionAutomationCoordinator } = require("../src/runtime/session/automation/coordinator");
 
 function makeCtx(overrides = {}) {
   return {

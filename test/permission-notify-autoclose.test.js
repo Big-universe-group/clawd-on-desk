@@ -9,9 +9,9 @@ const path = require("node:path");
 const { describe, it, afterEach, mock } = require("node:test");
 const {
   classifyPermissionInteraction,
-} = require("../src/permission-automation-policy");
+} = require("../src/runtime/permission/automation-policy");
 
-const PERMISSION_MODULE_PATH = require.resolve("../src/permission");
+const PERMISSION_MODULE_PATH = require.resolve("../src/runtime/permission/permission");
 const tempLogPaths = new Set();
 
 function loadPermissionWithElectron(fakeElectron) {
@@ -22,7 +22,7 @@ function loadPermissionWithElectron(fakeElectron) {
     return originalLoad.apply(this, arguments);
   };
   try {
-    return require("../src/permission");
+    return require("../src/runtime/permission/permission");
   } finally {
     Module._load = originalLoad;
   }
@@ -1054,9 +1054,9 @@ describe("state ↔ permission joint: batched immediate cues stay on the queue h
     const harness = createPermissionHarness();
     const permApi = harness.api;
 
-    const themeLoader = require("../src/theme-loader");
+    const themeLoader = require("../src/features/themes/loader");
     themeLoader.init(path.join(__dirname, "..", "src"));
-    const { createTranslator } = require("../src/i18n");
+    const { createTranslator } = require("../src/core/i18n/i18n");
     const stateCtx = {
       lang: "en",
       theme: themeLoader.loadTheme("clawd"),
@@ -1085,7 +1085,7 @@ describe("state ↔ permission joint: batched immediate cues stay on the queue h
       clearKimiNotifyBubbles: (sessionId, reason) => permApi.clearKimiNotifyBubbles(sessionId, reason),
     };
     stateCtx.t = createTranslator(() => stateCtx.lang);
-    const stateApi = require("../src/state")(stateCtx);
+    const stateApi = require("../src/runtime/state/state")(stateCtx);
 
     try {
       // Batched immediate mode: t1 and t2 land back-to-back while the

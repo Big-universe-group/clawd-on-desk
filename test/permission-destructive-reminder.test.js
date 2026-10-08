@@ -39,18 +39,18 @@ const {
   preparePermissionReminder,
   reminderHolds,
   joinArgvBounded,
-} = require("../src/permission-reminder");
+} = require("../src/runtime/permission/reminder");
 const {
   AUTOMATION_ACTION,
   PERMISSION_AUTOMATION_MODE,
   classifyPermissionInteraction,
   evaluatePermissionAutomation,
-} = require("../src/permission-automation-policy");
-const { truncateDeep, PREVIEW_MAX } = require("../src/server-permission-utils");
-const initPermission = require("../src/permission");
-const { formatReminderReason } = require("../src/bubble-format");
-const { createSessionAutomationStore } = require("../src/session-automation-store");
-const { createSessionAutomationCoordinator } = require("../src/session-automation-coordinator");
+} = require("../src/runtime/permission/automation-policy");
+const { truncateDeep, PREVIEW_MAX } = require("../src/core/server/permission-utils");
+const initPermission = require("../src/runtime/permission/permission");
+const { formatReminderReason } = require("../src/runtime/permission/bubble-format");
+const { createSessionAutomationStore } = require("../src/runtime/session/automation/store");
+const { createSessionAutomationCoordinator } = require("../src/runtime/session/automation/coordinator");
 
 const SRC = path.join(__dirname, "..", "src");
 const EN_FORCE_PUSH_REASON = formatReminderReason("force-push", "en");
@@ -183,7 +183,7 @@ describe("destructive reminder — commands that hold for a human", () => {
     // only knew about bash/shell/run_command, so a force-push sent under one of them
     // was never examined. Deriving the list from the policy's own set means the next
     // name added there fails this lane until someone reviews it.
-    const policySource = fs.readFileSync(path.join(SRC, "permission-automation-policy.js"), "utf8");
+    const policySource = fs.readFileSync(path.join(SRC, "runtime", "permission", "automation-policy.js"), "utf8");
     const block = policySource.match(/CLAUDE_COMPATIBLE_TOOL_APPROVAL_NAMES = new Set\(\[([\s\S]*?)\]\)/);
     assert.ok(block, "the eligible-tool set must still be readable from the policy");
     const eligible = [...block[1].matchAll(/"([a-z0-9_]+)"/g)].map((m) => m[1]);
@@ -1517,12 +1517,12 @@ describe("destructive reminder — a scan that cannot complete ends at the human
       detectIrreversible,
       detectIrreversibleStrict,
       detectIrreversibleMatches,
-    } = require("../src/bubble-format");
+    } = require("../src/runtime/permission/bubble-format");
     const hostile = { get command() { throw new Error("hostile getter"); } };
     assert.equal(detectIrreversible("Bash", hostile), null);
     assert.throws(() => detectIrreversibleStrict("Bash", hostile));
     assert.equal(
-      fs.readFileSync(path.join(SRC, "permission-reminder.js"), "utf8").includes("detectIrreversibleMatches"),
+      fs.readFileSync(path.join(SRC, "runtime", "permission", "reminder.js"), "utf8").includes("detectIrreversibleMatches"),
       true,
       "the reminder must reuse the display matcher rather than carry a second pattern list"
     );
@@ -1693,7 +1693,7 @@ describe("destructive reminder — takeover fail-closed regressions", () => {
     const {
       detectIrreversible,
       detectIrreversibleStrict,
-    } = require("../src/bubble-format");
+    } = require("../src/runtime/permission/bubble-format");
     for (const command of [
       'echo "$(rm -rf /etc)',
       "echo $(rm -rf /etc",
@@ -1902,7 +1902,7 @@ function liveResponse() {
 
 // The rendered strings are the contract a human reads on the card, so the
 // lanes below assert them verbatim rather than by substring.
-const { i18n: RUNTIME_I18N, SUPPORTED_LANGS } = require("../src/i18n.js");
+const { i18n: RUNTIME_I18N, SUPPORTED_LANGS } = require("../src/core/i18n/i18n.js");
 const EN = RUNTIME_I18N.en;
 
 function makeRuntime(ctxOverrides = {}, entryOverrides = {}) {
@@ -2008,7 +2008,7 @@ describe("destructive reminder — runtime behavior", () => {
   });
 
   it("the session-trust offer is the same predicate, so a held card does not offer it", () => {
-    const coordinator = fs.readFileSync(path.join(SRC, "session-automation-coordinator.js"), "utf8");
+    const coordinator = fs.readFileSync(path.join(SRC, "runtime", "session", "automation", "coordinator.js"), "utf8");
     assert.match(
       coordinator,
       /function canOfferSessionTrust\(entry\) \{\s*return canResolve\(entry, \{ sessionOnly: true, mode: MODE_AUTO_TOOLS \}\);/,
@@ -2574,19 +2574,19 @@ describe("destructive reminder — wiring", () => {
     // that spreads neither helper -- which is how the remote-only path came to
     // have no reminder at all. This lane only keeps the net itself from being
     // deleted: an entry that reaches the funnel without a view must hold.
-    const route = fs.readFileSync(path.join(SRC, "server-route-permission.js"), "utf8");
+    const route = fs.readFileSync(path.join(SRC, "core", "server", "route-permission.js"), "utf8");
     assert.match(route, /permEntry\.permissionReminder === undefined/);
     assert.match(route, /permissionReminder = \{ hold: true, tag: NOT_INSPECTED_TAG \}/);
   });
 
   it("the renderer reads the main process's reason rather than re-deriving it", () => {
-    const renderer = fs.readFileSync(path.join(SRC, "bubble-renderer.js"), "utf8");
+    const renderer = fs.readFileSync(path.join(SRC, "ui", "bubbles", "bubble-renderer.js"), "utf8");
     assert.match(renderer, /data\.reminderTag/);
     assert.match(renderer, /reminderHeldHint/);
   });
 
   it("explains the safety action without exposing matcher jargon in any locale", () => {
-    const renderer = fs.readFileSync(path.join(SRC, "bubble-renderer.js"), "utf8");
+    const renderer = fs.readFileSync(path.join(SRC, "ui", "bubbles", "bubble-renderer.js"), "utf8");
     const expected = {
       en: ["Automatic approval paused: {reason}", "Potentially destructive action: {reason}"],
       zh: ["已暂停自动批准：{reason}", "可能的破坏性操作：{reason}"],
@@ -2631,10 +2631,10 @@ describe("destructive reminder — wiring", () => {
     // the longest blurb on the General tab by a factor of three against a 240
     // maximum. The limits moved to the descExtraKey slot the agent rows already
     // use, which keeps both lines inside the tab's own range.
-    const tab = fs.readFileSync(path.join(SRC, "settings-tab-general.js"), "utf8");
+    const tab = fs.readFileSync(path.join(SRC, "ui", "settings", "tabs", "general.js"), "utf8");
     assert.match(tab, /descKey: "rowDestructiveActionReminderDesc"/);
     assert.match(tab, /descExtraKey: "rowDestructiveActionReminderNote"/);
-    const i18n = fs.readFileSync(path.join(SRC, "settings-i18n.js"), "utf8");
+    const i18n = fs.readFileSync(path.join(SRC, "core", "i18n", "settings-i18n.js"), "utf8");
     const count = (needle) => i18n.split(needle).length - 1;
     assert.equal(count("rowDestructiveActionReminderDesc:"), 7, "one per locale");
     assert.equal(count("rowDestructiveActionReminderNote:"), 7, "one per locale");
@@ -2649,13 +2649,13 @@ describe("destructive reminder — wiring", () => {
   });
 
   it("the setting exists, defaults to off, and is writable through the ordinary path", () => {
-    const prefs = fs.readFileSync(path.join(SRC, "prefs.js"), "utf8");
+    const prefs = fs.readFileSync(path.join(SRC, "core", "settings", "prefs.js"), "utf8");
     assert.match(prefs, /destructiveActionReminder: \{ type: "boolean", default: false \}/);
-    const actions = fs.readFileSync(path.join(SRC, "settings-actions.js"), "utf8");
+    const actions = fs.readFileSync(path.join(SRC, "core", "settings", "actions.js"), "utf8");
     assert.match(actions, /destructiveActionReminder: requireBoolean\("destructiveActionReminder"\)/);
     // Unlike the automation mode itself, this key narrows what runs unattended,
     // so it is deliberately absent from the command-only gate list.
-    const ipc = fs.readFileSync(path.join(SRC, "settings-ipc.js"), "utf8");
+    const ipc = fs.readFileSync(path.join(SRC, "core", "settings", "ipc.js"), "utf8");
     const gate = ipc.slice(ipc.indexOf("permission automation is gated") - 900, ipc.indexOf("permission automation is gated"));
     assert.ok(!gate.includes("destructiveActionReminder"));
   });

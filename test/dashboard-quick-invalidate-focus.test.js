@@ -18,7 +18,7 @@
 const assert = require("node:assert/strict");
 const { test } = require("node:test");
 
-const { createDashboardQuickMode } = require("../src/dashboard-quick-mode");
+const { createDashboardQuickMode } = require("../src/ui/dashboard/quick-mode");
 
 class FakeWindow {
   constructor(name) {

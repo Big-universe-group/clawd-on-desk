@@ -17,7 +17,7 @@ function electronExecutable() {
 }
 
 test("cigarette SMIL and object geometry survive 1x and fractional display scales", { timeout: 90_000 }, (t) => {
-  const source = fs.readFileSync(path.join(__dirname, "..", "src", "index.html"), "utf8");
+  const source = fs.readFileSync(path.join(__dirname, "..", "src", "ui", "pet", "index.html"), "utf8");
   assert.match(source, /<object id="clawd-mouth-accessory"[^>]*type="image\/svg\+xml"/);
 
   const executable = electronExecutable();

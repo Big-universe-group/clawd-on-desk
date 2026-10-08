@@ -5,8 +5,8 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 
-const themeLoader = require("../src/theme-loader");
-const accessoryLayout = require("../src/pet-accessory-layout");
+const themeLoader = require("../src/features/themes/loader");
+const accessoryLayout = require("../src/features/accessories/layout");
 
 const ROOT = path.join(__dirname, "..");
 themeLoader.init(path.join(ROOT, "src"));
@@ -254,7 +254,7 @@ test("the canonical cigarette frame reproduces the pinned standard-pose coordina
 test("every visible animated cigarette has a measured or authored hit envelope", () => {
   const theme = themeLoader.loadTheme("clawd", { strict: true });
   const files = theme.customization.mouthAccessories.files;
-  const measured = require("../src/pet-accessory-hitbox")
+  const measured = require("../src/features/accessories/hitbox")
     .BUILTIN_MOUTH_ACCESSORY_MOTION_PADDING.clawd;
 
   for (const file of VISIBLE_MOUTH_FILES) {

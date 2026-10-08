@@ -12,10 +12,10 @@ const assert = require("node:assert");
 const fs = require("node:fs");
 const path = require("node:path");
 
-const quotaRingHtml = fs.readFileSync(path.join(__dirname, "..", "src", "session-hud.html"), "utf8");
-const dashboardHtml = fs.readFileSync(path.join(__dirname, "..", "src", "dashboard.html"), "utf8");
-const quotaRingRenderer = fs.readFileSync(path.join(__dirname, "..", "src", "quota-ring-renderer.js"), "utf8");
-const dashboardRenderer = fs.readFileSync(path.join(__dirname, "..", "src", "dashboard-renderer.js"), "utf8");
+const quotaRingHtml = fs.readFileSync(path.join(__dirname, "..", "src", "ui", "hud", "session-hud.html"), "utf8");
+const dashboardHtml = fs.readFileSync(path.join(__dirname, "..", "src", "ui", "dashboard", "dashboard.html"), "utf8");
+const quotaRingRenderer = fs.readFileSync(path.join(__dirname, "..", "src", "quota", "ring-renderer.js"), "utf8");
+const dashboardRenderer = fs.readFileSync(path.join(__dirname, "..", "src", "ui", "dashboard", "renderer.js"), "utf8");
 
 // "extra" is the one shared pair every generic provider (source.extraQuota)
 // wears; it is held to the same uniqueness / alert-band rules as a brand pair.

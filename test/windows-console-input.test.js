@@ -12,7 +12,7 @@ const {
   normalizePid,
   normalizePidList,
   parseConsoleInputResult,
-} = require("../src/windows-console-input");
+} = require("../src/platform/win/console-input");
 
 function createHelperSpawn({
   result,

@@ -13,7 +13,7 @@ const {
   plainTelegramText,
   renderTelegramMarkdown,
   sanitizeTelegramUrl,
-} = require("../src/telegram-message-format");
+} = require("../src/features/telegram/message-format");
 
 test("renders a conservative Telegram HTML subset and readable plain fallback", () => {
   const message = renderTelegramMarkdown([

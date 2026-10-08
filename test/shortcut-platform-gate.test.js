@@ -18,10 +18,10 @@ const {
   isShortcutActionSupported,
   getSupportedShortcutActionIds,
   normalizeShortcuts,
-} = require("../src/shortcut-actions");
-const createShortcutRuntime = require("../src/shortcut-runtime");
+} = require("../src/core/shortcuts/actions");
+const createShortcutRuntime = require("../src/core/shortcuts/runtime");
 const { registerShortcut, resetShortcut, resetAllShortcuts } =
-  require("../src/settings-actions-shortcuts");
+  require("../src/core/shortcuts/settings-actions");
 
 const LEFTOVER = "CommandOrControl+Shift+D";
 
@@ -30,7 +30,7 @@ const LEFTOVER = "CommandOrControl+Shift+D";
 // to. The renderer feature-detects on exactly this surface.
 function loadPreload(platform) {
   const source = fs.readFileSync(
-    path.join(__dirname, "../src/preload-dashboard.js"),
+    path.join(__dirname, "../src/ui/dashboard/preload.js"),
     "utf8"
   );
   const subscribed = [];

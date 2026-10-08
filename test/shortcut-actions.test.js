@@ -16,7 +16,7 @@ const {
   isDangerousAccelerator,
   acceleratorsConflict,
   validateShortcutMapShape,
-} = require("../src/shortcut-actions");
+} = require("../src/core/shortcuts/actions");
 
 describe("shortcut-actions metadata", () => {
   it("exposes all known shortcut action ids", () => {
@@ -193,7 +193,7 @@ describe("buildAcceleratorFromEvent", () => {
   });
 
   it("formats live partial previews for modifier-only state", () => {
-    const { formatAcceleratorPartial } = require("../src/shortcut-actions");
+    const { formatAcceleratorPartial } = require("../src/core/shortcuts/actions");
     assert.strictEqual(formatAcceleratorPartial([]), "");
     assert.strictEqual(
       formatAcceleratorPartial(["CommandOrControl", "Shift"]),

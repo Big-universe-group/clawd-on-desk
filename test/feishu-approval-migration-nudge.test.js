@@ -7,7 +7,7 @@ const {
   LEGACY_PROVENANCE_SIGNATURE,
   decideFeishuApprovalMigrationNudge,
   createFeishuApprovalMigrationNudge,
-} = require("../src/feishu-approval-migration-nudge");
+} = require("../src/features/feishu/migration-nudge");
 
 function decisionFor(reason, previous = "") {
   return decideFeishuApprovalMigrationNudge(

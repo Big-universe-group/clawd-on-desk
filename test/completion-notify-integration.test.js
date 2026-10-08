@@ -10,9 +10,9 @@
 const { describe, it, beforeEach, afterEach, mock } = require("node:test");
 const assert = require("node:assert");
 const path = require("path");
-const themeLoader = require("../src/theme-loader");
-const { createTelegramCompanion } = require("../src/telegram-companion");
-const { createSlackNotifyClient } = require("../src/slack-notify-client");
+const themeLoader = require("../src/features/themes/loader");
+const { createTelegramCompanion } = require("../src/features/telegram/companion");
+const { createSlackNotifyClient } = require("../src/features/slack/notify-client");
 
 themeLoader.init(path.join(__dirname, "..", "src"));
 const theme = themeLoader.loadTheme("clawd");
@@ -73,7 +73,7 @@ describe("#406 state -> Telegram completion integration", () => {
       getNotifyOnComplete: () => true,
     });
     companion.onSnapshot({ sessions: [] }); // prime dedupe (no backlog re-ping)
-    api = require("../src/state")(makeCtx({
+    api = require("../src/runtime/state/state")(makeCtx({
       broadcastSessionSnapshot: (snapshot) => companion.onSnapshot(snapshot),
     }));
   });
@@ -172,7 +172,7 @@ describe("#952 state -> Slack completion integration", () => {
       },
     });
     slack.onSnapshot({ sessions: [] });
-    api = require("../src/state")(makeCtx({
+    api = require("../src/runtime/state/state")(makeCtx({
       broadcastSessionSnapshot: (snapshot) => slack.onSnapshot(snapshot),
     }));
   });
@@ -235,7 +235,7 @@ describe("#406 completion hold preserves the assistant output", () => {
       getCompletionOutputMode: () => "full",
     });
     companion.onSnapshot({ sessions: [] }); // prime dedupe (no backlog re-ping)
-    api = require("../src/state")(makeCtx({
+    api = require("../src/runtime/state/state")(makeCtx({
       broadcastSessionSnapshot: (snapshot) => companion.onSnapshot(snapshot),
     }));
   }
@@ -350,7 +350,7 @@ describe("#406 completion hold does not overreach", () => {
       getCompletionOutputMode: () => "full",
     });
     companion.onSnapshot({ sessions: [] });
-    api = require("../src/state")(makeCtx({
+    api = require("../src/runtime/state/state")(makeCtx({
       broadcastSessionSnapshot: (snapshot) => companion.onSnapshot(snapshot),
     }));
   }

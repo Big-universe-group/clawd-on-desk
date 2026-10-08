@@ -58,7 +58,7 @@ async function makeAppRoot(root, targetId, {
   logicalOnlyNative = false,
   unknownKoffiLogical = false,
 } = {}) {
-  const target = require("../src/native-package-target").getReleaseTarget(targetId);
+  const target = require("../src/platform/koffi/native-package-target").getReleaseTarget(targetId);
   const appRoot = target.runtimePlatform === "darwin"
     ? path.join(root, "Clawd on Desk.app")
     : path.join(root, "app");

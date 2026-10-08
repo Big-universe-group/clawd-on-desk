@@ -6,7 +6,7 @@ const path = require("node:path");
 const test = require("node:test");
 const vm = require("node:vm");
 
-const PRELOAD_SETTINGS = path.join(__dirname, "..", "src", "preload-settings.js");
+const PRELOAD_SETTINGS = path.join(__dirname, "..", "src", "ui", "settings", "preload.js");
 
 function loadPreload() {
   const ipcHandlers = new Map();

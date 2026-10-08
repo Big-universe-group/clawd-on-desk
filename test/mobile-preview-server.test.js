@@ -12,7 +12,7 @@ const {
   initMobilePreviewServer,
   isRetryablePortError,
   PROTOCOL_VERSION,
-} = require("../src/network/mobile-preview-server");
+} = require("../src/features/mobile/preview-server");
 
 async function occupyPort(port) {
   const blocker = http.createServer((_req, res) => res.end());

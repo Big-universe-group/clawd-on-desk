@@ -7,7 +7,7 @@ const {
   getCodexHookHealth,
   classifyCodexHookDetail,
   decideCodexHookNotification,
-} = require("../src/codex-hook-health");
+} = require("../src/agents/codex/hook-health");
 
 describe("classifyCodexHookDetail", () => {
   it("treats an ok integration as healthy (no signature)", () => {

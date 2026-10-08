@@ -3,9 +3,9 @@
 const assert = require("node:assert");
 const Module = require("node:module");
 const { describe, it, afterEach, mock } = require("node:test");
-const createFloatingWindowRuntime = require("../src/floating-window-runtime");
+const createFloatingWindowRuntime = require("../src/ui/pet/floating-window-runtime");
 
-const UPDATE_BUBBLE_MODULE_PATH = require.resolve("../src/update-bubble");
+const UPDATE_BUBBLE_MODULE_PATH = require.resolve("../src/ui/bubbles/update-bubble");
 
 class FakeBrowserWindow {
   static instances = [];
@@ -75,7 +75,7 @@ function loadUpdateBubbleWithElectron(fakeElectron) {
     return originalLoad.apply(this, arguments);
   };
   try {
-    return require("../src/update-bubble");
+    return require("../src/ui/bubbles/update-bubble");
   } finally {
     Module._load = originalLoad;
   }

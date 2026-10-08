@@ -12,7 +12,7 @@ const {
   MAX_MANAGED_JSON_BYTES,
   TEMP_FILE_TTL_MS,
   createRecapStore,
-} = require("../src/recap-store");
+} = require("../src/runtime/recap/store");
 
 function tempRoot() {
   return fs.mkdtempSync(path.join(os.tmpdir(), "clawd-recap-store-"));

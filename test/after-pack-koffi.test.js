@@ -51,7 +51,7 @@ function nativeForTarget(targetId) {
 }
 
 async function makePackagedKoffi(root, targetId) {
-  const target = require("../src/native-package-target").getReleaseTarget(targetId);
+  const target = require("../src/platform/koffi/native-package-target").getReleaseTarget(targetId);
   const appOutDir = target.runtimePlatform === "darwin" ? path.join(root, "out") : path.join(root, "app");
   const appRoot = target.runtimePlatform === "darwin"
     ? path.join(appOutDir, "Clawd on Desk.app")

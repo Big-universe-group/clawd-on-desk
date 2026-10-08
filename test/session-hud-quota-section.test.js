@@ -5,7 +5,7 @@ const assert = require("node:assert/strict");
 const EventEmitter = require("node:events");
 const Module = require("node:module");
 
-const SESSION_HUD_PATH = require.resolve("../src/session-hud");
+const SESSION_HUD_PATH = require.resolve("../src/ui/hud/session-hud");
 
 function loadSessionHud(platform) {
   const windows = [];

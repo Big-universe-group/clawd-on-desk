@@ -21,10 +21,10 @@ const {
   sessionDisplayFolder,
   sessionDisplayTitle,
   normalizeTitle,
-} = require("../src/state-session-snapshot");
-const { getFocusableLocalHudSessionIds } = require("../src/session-focus");
-const { makeSessionKey } = require("../src/session-key");
-const { sessionAliasKey } = require("../src/session-alias");
+} = require("../src/runtime/state/session-snapshot");
+const { getFocusableLocalHudSessionIds } = require("../src/runtime/focus/session-focus");
+const { makeSessionKey } = require("../src/core/util/session-key");
+const { sessionAliasKey } = require("../src/runtime/session/alias");
 
 describe("deriveSourceInfo", () => {
   it("derives WSL source from the wsl: host prefix", () => {

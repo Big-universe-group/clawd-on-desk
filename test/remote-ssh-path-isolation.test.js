@@ -10,7 +10,7 @@ const childProcess = require("child_process");
 const {
   resolveRemoteRuntimeLayout,
   collectRemoteLayoutPathSet,
-} = require("../src/remote-ssh-layout");
+} = require("../src/features/remote-ssh/layout");
 const serverConfig = require("../hooks/server-config");
 const claudeInstall = require("../hooks/install");
 const codexInstall = require("../hooks/codex-install-utils");
@@ -18,7 +18,7 @@ const copilotInstall = require("../hooks/copilot-install");
 const { __test: statuslineTest } = require("../hooks/claude-statusline");
 const { __test: monitorTest } = require("../hooks/codex-remote-monitor");
 const recoveryLease = require("../hooks/session-recovery-lease");
-const { __test: deployTest } = require("../src/remote-ssh-deploy");
+const { __test: deployTest } = require("../src/features/remote-ssh/deploy");
 
 const REPO_ROOT = path.join(__dirname, "..");
 
@@ -212,9 +212,9 @@ test("remote-capable modules resolve mutable HOME paths at call time, never modu
     "hooks/codex-remote-monitor.js",
     "hooks/claude-statusline.js",
     "hooks/session-recovery-lease.js",
-    "src/remote-ssh-layout.js",
-    "src/remote-ssh-runtime.js",
-    "src/remote-ssh-deploy.js",
+    "src/features/remote-ssh/layout.js",
+    "src/features/remote-ssh/runtime.js",
+    "src/features/remote-ssh/deploy.js",
   ];
   const moduleConstant = /^\s*(?:const|let|var)\s+[A-Z0-9_]*(?:HOME|DIR|PATH|FILE)[A-Z0-9_]*\s*=.*(?:os\.)?homedir\(\)/m;
   for (const relative of files) {

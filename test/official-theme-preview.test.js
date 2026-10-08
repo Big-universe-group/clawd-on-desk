@@ -7,7 +7,7 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 
-const preview = require("../src/official-theme-preview");
+const preview = require("../src/features/themes/official/preview");
 const { createFakeNet, streamResponse } = require("./helpers/fake-official-net");
 
 let tmp = null;

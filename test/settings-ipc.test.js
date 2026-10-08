@@ -9,15 +9,15 @@ const zlib = require("node:zlib");
 const { EventEmitter } = require("node:events");
 const { pathToFileURL } = require("node:url");
 
-const { registerSettingsIpc } = require("../src/settings-ipc");
+const { registerSettingsIpc } = require("../src/core/settings/ipc");
 const {
   listPetTintOptions,
   listPetAccessoryOptions,
   listPetMouthAccessoryOptions,
-} = require("../src/pet-customization-catalog");
-const prefs = require("../src/prefs");
-const { createSettingsController } = require("../src/settings-controller");
-const { commandRegistry } = require("../src/settings-actions");
+} = require("../src/features/accessories/customization-catalog");
+const prefs = require("../src/core/settings/prefs");
+const { createSettingsController } = require("../src/core/settings/controller");
+const { commandRegistry } = require("../src/core/settings/actions");
 
 class FakeIpcMain {
   constructor() {
@@ -134,7 +134,7 @@ function createHarness(overrides = {}) {
   const calls = [];
   const ipcMain = new FakeIpcMain();
   const settingsMainFrame = {
-    url: pathToFileURL(path.join(__dirname, "..", "src", "settings.html")).href,
+    url: pathToFileURL(path.join(__dirname, "..", "src", "ui", "settings", "settings.html")).href,
   };
   const settingsWebContents = new EventEmitter();
   settingsWebContents.mainFrame = settingsMainFrame;
@@ -1489,7 +1489,7 @@ test("settings IPC exposes read-only agent installation detection", async () => 
 // previously withheld both, and the catalog then labelled the ones it had never
 // examined as "not detected locally".
 test("settings IPC scan examines Codex locally and still withholds Claude", async () => {
-  const { detectAgentInstallations: realDetect } = require("../src/agent-installation-detector");
+  const { detectAgentInstallations: realDetect } = require("../src/agents/installation-detector");
   const homeDir = fs.mkdtempSync(path.join(os.tmpdir(), "clawd-ipc-detect-"));
   fs.mkdirSync(path.join(homeDir, ".codex"));
   const { ipcMain, runtime } = createHarness({

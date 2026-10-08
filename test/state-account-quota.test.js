@@ -6,7 +6,7 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 
-const { createAccountQuotaStore } = require("../src/state-account-quota");
+const { createAccountQuotaStore } = require("../src/quota/account-store");
 
 function tempPersistPath() {
   return path.join(fs.mkdtempSync(path.join(os.tmpdir(), "clawd-account-quota-")), "account-quota.json");
@@ -507,7 +507,7 @@ describe("account quota store", () => {
   });
 
   it("caps distinct sources and keeps accepting updates for existing ones", () => {
-    const { MAX_SOURCES } = require("../src/state-account-quota");
+    const { MAX_SOURCES } = require("../src/quota/account-store");
     const store = createAccountQuotaStore({ persistPath: null, now: () => 1000 });
     const group = { claudeQuota: { claudeWeekly: { usedPercent: 1, resetAt: 999999 } } };
     for (let i = 0; i < MAX_SOURCES; i++) {
@@ -524,7 +524,7 @@ describe("account quota store", () => {
   });
 
   it("rejects already-expired and implausibly-distant resetAt at write time", () => {
-    const { MAX_RESET_AHEAD_MS } = require("../src/state-account-quota");
+    const { MAX_RESET_AHEAD_MS } = require("../src/quota/account-store");
     const store = createAccountQuotaStore({ persistPath: null, now: () => 1000000 });
     assert.strictEqual(store.update(null, {
       claudeQuota: {
@@ -635,7 +635,7 @@ describe("account quota store", () => {
   });
 
   it("prunes long-expired buckets, unconfirmed providers, and emptied sources", () => {
-    const { EXPIRED_BUCKET_DROP_AFTER_MS, PROVIDER_RETENTION_MS } = require("../src/state-account-quota");
+    const { EXPIRED_BUCKET_DROP_AFTER_MS, PROVIDER_RETENTION_MS } = require("../src/quota/account-store");
     let nowMs = 1000000;
     const store = createAccountQuotaStore({ persistPath: null, now: () => nowMs });
     store.update("pi", {
@@ -661,7 +661,7 @@ describe("account quota store", () => {
   });
 
   it("prunes at load so a dead persist file does not resurrect zombie sources", () => {
-    const { PROVIDER_RETENTION_MS } = require("../src/state-account-quota");
+    const { PROVIDER_RETENTION_MS } = require("../src/quota/account-store");
     const persistPath = tempPersistPath();
     const store = createAccountQuotaStore({ persistPath, now: () => 1000 });
     store.update("pi", { claudeQuota: { claudeWeekly: { usedPercent: 41, resetAt: 99999999999 } } });
@@ -676,7 +676,7 @@ describe("account quota store", () => {
     const HOUR = 60 * 60 * 1000;
 
     it("sanitizes, orders and caps a provider report", () => {
-      const { MAX_RESET_AHEAD_MS } = require("../src/state-account-quota");
+      const { MAX_RESET_AHEAD_MS } = require("../src/quota/account-store");
       const store = createAccountQuotaStore({ persistPath: null, now: () => BASE });
       store.update(null, { extraQuota: {
         "Bad ID": { label: "nope", limits: [{ id: "x", kind: "balance", remaining: 1, unit: "usd" }] },
@@ -708,7 +708,7 @@ describe("account quota store", () => {
     });
 
     it("caps providers per source and limits per provider", () => {
-      const { MAX_EXTRA_PROVIDERS, MAX_EXTRA_LIMITS } = require("../src/state-account-quota");
+      const { MAX_EXTRA_PROVIDERS, MAX_EXTRA_LIMITS } = require("../src/quota/account-store");
       const store = createAccountQuotaStore({ persistPath: null, now: () => BASE });
       const limits = Array.from({ length: MAX_EXTRA_LIMITS + 4 }, (_, i) => ({
         id: `b${i}`, kind: "balance", remaining: i, unit: "credits",
@@ -754,7 +754,7 @@ describe("account quota store", () => {
     });
 
     it("reports change only on value change or a lastSeenAt minute crossing", () => {
-      const { SEEN_QUANTUM_MS } = require("../src/state-account-quota");
+      const { SEEN_QUANTUM_MS } = require("../src/quota/account-store");
       let nowMs = BASE;
       const store = createAccountQuotaStore({ persistPath: null, now: () => nowMs });
       const report = { extraQuota: { deepseek: {
@@ -772,7 +772,7 @@ describe("account quota store", () => {
     });
 
     it("flags reset windows, drops them later, and keeps balances until retention", () => {
-      const { EXPIRED_BUCKET_DROP_AFTER_MS, PROVIDER_RETENTION_MS } = require("../src/state-account-quota");
+      const { EXPIRED_BUCKET_DROP_AFTER_MS, PROVIDER_RETENTION_MS } = require("../src/quota/account-store");
       let nowMs = BASE;
       const store = createAccountQuotaStore({ persistPath: null, now: () => nowMs });
       store.update(null, { extraQuota: { commandcode: { label: "Command Code", limits: [
@@ -869,8 +869,8 @@ describe("account quota store", () => {
     });
 
     it("moves the session snapshot signature on extra value/label/freshness changes only", () => {
-      const { buildSessionSnapshot, sessionSnapshotSignature } = require("../src/state-session-snapshot");
-      const { SEEN_QUANTUM_MS } = require("../src/state-account-quota");
+      const { buildSessionSnapshot, sessionSnapshotSignature } = require("../src/runtime/state/session-snapshot");
+      const { SEEN_QUANTUM_MS } = require("../src/quota/account-store");
       let nowMs = BASE;
       const store = createAccountQuotaStore({ persistPath: null, now: () => nowMs });
       const signature = () => sessionSnapshotSignature(buildSessionSnapshot(new Map(), {

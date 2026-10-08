@@ -5,7 +5,7 @@ const {
   checkCodexHooksFeatureText,
   collectTrustedCodexHookIds,
   computeCodexHookTrustedHash,
-} = require("../src/doctor-detectors/codex-features-check");
+} = require("../src/agents/codex/doctor-features-check");
 
 describe("Codex hooks feature check", () => {
   it("returns enabled when [features].hooks is true", () => {

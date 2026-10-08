@@ -3,10 +3,10 @@
 const { describe, it } = require("node:test");
 const assert = require("node:assert");
 
-const initPermission = require("../src/permission");
-const { classifyPermissionInteraction } = require("../src/permission-automation-policy");
-const { getSessionFocusTarget } = require("../src/session-focus");
-const { buildApprovalCard } = require("../src/feishu-approval-client");
+const initPermission = require("../src/runtime/permission/permission");
+const { classifyPermissionInteraction } = require("../src/runtime/permission/automation-policy");
+const { getSessionFocusTarget } = require("../src/runtime/focus/session-focus");
+const { buildApprovalCard } = require("../src/features/feishu/client");
 
 function flushAsync() {
   return new Promise((resolve) => setImmediate(resolve));

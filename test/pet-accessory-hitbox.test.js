@@ -4,19 +4,19 @@ const { describe, it } = require("node:test");
 const assert = require("node:assert");
 const path = require("node:path");
 
-const themeLoader = require("../src/theme-loader");
-const hitGeometry = require("../src/hit-geometry");
+const themeLoader = require("../src/features/themes/loader");
+const hitGeometry = require("../src/ui/pet/hit-geometry");
 const {
   PET_ACCESSORY_IDS,
   PET_MOUTH_ACCESSORY_IDS,
   buildPetMouthAccessoryPayload,
   resolvePetAccessoryPayload,
-} = require("../src/pet-customization-catalog");
+} = require("../src/features/accessories/customization-catalog");
 const {
   BUILTIN_ACCESSORY_MOTION_PADDING,
   BUILTIN_MOUTH_ACCESSORY_MOTION_PADDING,
   resolveAccessoryAwareHitBox,
-} = require("../src/pet-accessory-hitbox");
+} = require("../src/features/accessories/hitbox");
 
 const ROOT = path.join(__dirname, "..");
 const EPSILON = 1e-9;

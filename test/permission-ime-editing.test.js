@@ -23,7 +23,7 @@ Module._load = function (request) {
   if (request === "electron") return __electronMock;
   return __origModuleLoad.apply(this, arguments);
 };
-const initPermission = require("../src/permission");
+const initPermission = require("../src/runtime/permission/permission");
 Module._load = __origModuleLoad;
 
 function read(rel) {
@@ -37,7 +37,7 @@ function read(rel) {
 // in one file that silently breaks the chain gets caught.
 describe("macOS IME editing wiring", () => {
   it("renderer reports text-input focus/blur to the main process", () => {
-    const renderer = read("bubble-renderer.js");
+    const renderer = read("ui/bubbles/bubble-renderer.js");
     assert.match(renderer, /addEventListener\("focusin"/);
     assert.match(renderer, /addEventListener\("focusout"/);
     assert.match(renderer, /setImeEditing\(true\)/);
@@ -48,13 +48,13 @@ describe("macOS IME editing wiring", () => {
   });
 
   it("preload exposes setImeEditing over the bubble-ime-editing channel", () => {
-    const preload = read("preload-bubble.js");
+    const preload = read("ui/bubbles/preload-bubble.js");
     assert.match(preload, /setImeEditing:/);
     assert.match(preload, /"bubble-ime-editing"/);
   });
 
   it("permission main handles the channel and toggles the editing flag", () => {
-    const permission = read("permission.js");
+    const permission = read("runtime/permission/permission.js");
     assert.match(permission, /on\("bubble-ime-editing"/);
     assert.match(permission, /function handleImeEditing/);
     assert.match(permission, /__clawdMacImeEditing = true/);

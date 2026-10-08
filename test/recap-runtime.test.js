@@ -7,16 +7,16 @@ const os = require("node:os");
 const path = require("node:path");
 const { spawn } = require("node:child_process");
 const { EventEmitter } = require("node:events");
-const { createRecapAggregate } = require("../src/recap-aggregate");
-const { createRecapJournal } = require("../src/recap-journal");
-const { getZonedDateTimeParts } = require("../src/recap-time");
+const { createRecapAggregate } = require("../src/runtime/recap/aggregate");
+const { createRecapJournal } = require("../src/runtime/recap/journal");
+const { getZonedDateTimeParts } = require("../src/runtime/recap/time");
 const {
   createRecapRuntime,
   elapsedMinutesInCurrentLocalHour,
   MAX_FUTURE_SKEW_MS,
   rangeForPeriod,
-} = require("../src/recap-runtime");
-const { createRecapStore } = require("../src/recap-store");
+} = require("../src/runtime/recap/runtime");
+const { createRecapStore } = require("../src/runtime/recap/store");
 
 function fixture(t, options = {}) {
   const root = options.root || fs.mkdtempSync(path.join(os.tmpdir(), "clawd-recap-runtime-"));

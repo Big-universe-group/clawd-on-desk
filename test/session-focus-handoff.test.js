@@ -11,7 +11,7 @@ const {
   launchDshDesktopApp,
   sanitizeFocusError,
   stripElectronLaunchEnv,
-} = require("../src/session-focus-handoff");
+} = require("../src/runtime/focus/session-focus-handoff");
 const { discoverDshDesktopSync } = require("../hooks/dsh-install");
 
 const DSH_PLIST = [

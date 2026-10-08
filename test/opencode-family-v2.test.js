@@ -549,7 +549,7 @@ describe("opencode v2 entry drift locks", () => {
       path.join(HOOKS_DIR, "opencode-plugin-v2", "index.mjs"),
       "utf8"
     );
-    const family = require("../agents/opencode-family.js");
+    const family = require("../hooks/opencode-family.js");
     const cfg = family.getFamilyConfig("opencode");
     assert.ok(source.includes('agentId: "opencode"'), "agentId literal");
     assert.ok(source.includes(`hookSource: "${cfg.v2HookSource}"`));
@@ -815,7 +815,7 @@ describe("opencode v2 review follow-ups", () => {
       { state: "error", event: "StopFailure" }
     );
 
-    const { mapRecapMetrics } = require("../src/recap-metrics");
+    const { mapRecapMetrics } = require("../src/runtime/recap/metrics");
     assert.deepStrictEqual(
       mapRecapMetrics({ agentId: "opencode", event: last.body.event, completionAccepted: true }),
       ["activity"],

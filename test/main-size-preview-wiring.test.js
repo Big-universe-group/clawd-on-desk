@@ -15,8 +15,8 @@ function section(start, end) {
 }
 
 it("wires menu resize and roaming to the shared size preview state", () => {
-  const menu = section("const _menuCtx = {", 'const _menu = require("./menu")');
-  const roam = section("const _roamCtx = {", 'const _roam = require("./roam")');
+  const menu = section("const _menuCtx = {", 'const _menu = require("./ui/menu/menu")');
+  const roam = section("const _roamCtx = {", 'const _roam = require("./features/roam/roam")');
   assert.ok(menu.includes("cancelRoam: () => _roam.cancelRoam(),"));
   assert.ok(menu.includes("resetKeepSizeFrozen: () => resetKeepSizeFrozen(),"));
   assert.ok(roam.includes("isSizePreviewActive: () => petWindowRuntime.isSettingsSizePreviewActive(),"));

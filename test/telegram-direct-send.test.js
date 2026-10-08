@@ -10,9 +10,9 @@ const {
   createTelegramDirectSend,
   createWindowsPasteOnlyDeliveryAdapter,
   normalizePromptText,
-} = require("../src/telegram-direct-send");
-const { buildSessionSnapshot } = require("../src/state-session-snapshot");
-const { createCodexQueueDeliveryAdapter } = require("../src/codex-queue-delivery");
+} = require("../src/features/telegram/direct-send");
+const { buildSessionSnapshot } = require("../src/runtime/state/session-snapshot");
+const { createCodexQueueDeliveryAdapter } = require("../src/agents/codex/queue-delivery");
 
 function localTerminalEntry(overrides = {}) {
   return {
@@ -1638,8 +1638,8 @@ test("direct send preserves oversized replies and copies them without Console su
 });
 
 test("the delivery ack names the display tag, not the key envelope or raw prefix", () => {
-  const { formatDeliveryAck } = require("../src/telegram-direct-send");
-  const { resolveSessionIdentity } = require("../src/session-key");
+  const { formatDeliveryAck } = require("../src/features/telegram/direct-send");
+  const { resolveSessionIdentity } = require("../src/core/util/session-key");
   const t = (key) => (key === "directSendAckSent" ? "sent to {session}" : key);
 
   function ackFor(rawSessionId, overrides = {}) {

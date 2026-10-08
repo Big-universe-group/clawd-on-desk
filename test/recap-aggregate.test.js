@@ -10,9 +10,9 @@ const {
   createRecapAggregate,
   createRecapDayProjection,
   normalizeDay,
-} = require("../src/recap-aggregate");
-const { createRecapJournal } = require("../src/recap-journal");
-const { createRecapStore } = require("../src/recap-store");
+} = require("../src/runtime/recap/aggregate");
+const { createRecapJournal } = require("../src/runtime/recap/journal");
+const { createRecapStore } = require("../src/runtime/recap/store");
 
 function fixture(t) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "clawd-recap-aggregate-"));

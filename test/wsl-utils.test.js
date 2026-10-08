@@ -9,7 +9,7 @@ const assert = require("node:assert");
 const {
   parseDistroList,
   EXCLUDED_DISTROS,
-} = require("../src/wsl-utils");
+} = require("../src/features/wsl/utils");
 
 describe("wsl-utils", () => {
   describe("parseDistroList", () => {

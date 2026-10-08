@@ -7,9 +7,9 @@ const Module = require("node:module");
 const path = require("node:path");
 const { describe, it } = require("node:test");
 
-const TUTORIAL_MODULE_PATH = require.resolve("../src/tutorial");
-const TUTORIAL_RENDERER_PATH = path.join(__dirname, "..", "src", "tutorial-renderer.js");
-const TUTORIAL_HTML_PATH = path.join(__dirname, "..", "src", "tutorial.html");
+const TUTORIAL_MODULE_PATH = require.resolve("../src/features/tutorial/tutorial");
+const TUTORIAL_RENDERER_PATH = path.join(__dirname, "..", "src", "features", "tutorial", "renderer.js");
+const TUTORIAL_HTML_PATH = path.join(__dirname, "..", "src", "features", "tutorial", "tutorial.html");
 
 function loadTutorialWithElectron(fakeElectron) {
   delete require.cache[TUTORIAL_MODULE_PATH];
@@ -19,7 +19,7 @@ function loadTutorialWithElectron(fakeElectron) {
     return originalLoad.apply(this, arguments);
   };
   try {
-    return require("../src/tutorial");
+    return require("../src/features/tutorial/tutorial");
   } finally {
     Module._load = originalLoad;
   }
@@ -156,8 +156,8 @@ describe("tutorial window shell", () => {
     assert.ok(renderer.includes("mountedLanguagePicker.ensureVisible()"));
     assert.ok(!renderer.includes("<select"));
     assert.ok(!renderer.includes("lang-select"));
-    assert.ok(html.includes(`href="language-picker.css"`));
-    assert.ok(html.includes(`src="language-picker.js"`));
+    assert.ok(html.includes(`href="../../ui/settings/language-picker.css"`));
+    assert.ok(html.includes(`src="../../ui/settings/language-picker.js"`));
     assert.match(html, /\.body\.step-welcome \{[^}]*padding:\s*18px 26px 234px;[^}]*scrollbar-width:\s*none;/s);
     assert.match(html, /\.body\.step-welcome::-webkit-scrollbar \{[^}]*width:\s*0;[^}]*height:\s*0;/);
     assert.doesNotMatch(html, /\.step-welcome \.welcome \{[^}]*transform:/);

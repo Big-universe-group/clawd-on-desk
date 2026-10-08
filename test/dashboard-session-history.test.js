@@ -10,7 +10,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 const { describe, it } = require("node:test");
-const { i18n } = require("../src/i18n");
+const { i18n } = require("../src/core/i18n/i18n");
 
 class FakeClassList {
   constructor(element) { this.element = element; }
@@ -130,15 +130,15 @@ function loadDashboard({ sessions = [], history = [],
     requestAnimationFrame: (cb) => cb(),
   });
   vm.runInContext(
-    fs.readFileSync(path.join(__dirname, "..", "src", "session-focus-unavailable.js"), "utf8"),
+    fs.readFileSync(path.join(__dirname, "..", "src", "runtime", "focus", "session-focus-unavailable.js"), "utf8"),
     context,
   );
   vm.runInContext(
-    fs.readFileSync(path.join(__dirname, "..", "src", "language-picker.js"), "utf8"),
+    fs.readFileSync(path.join(__dirname, "..", "src", "ui", "settings", "language-picker.js"), "utf8"),
     context,
   );
   vm.runInContext(
-    fs.readFileSync(path.join(__dirname, "..", "src", "dashboard-renderer.js"), "utf8"),
+    fs.readFileSync(path.join(__dirname, "..", "src", "ui", "dashboard", "renderer.js"), "utf8"),
     context,
   );
 

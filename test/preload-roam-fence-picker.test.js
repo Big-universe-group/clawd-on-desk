@@ -6,7 +6,7 @@ const path = require("node:path");
 const test = require("node:test");
 const vm = require("node:vm");
 
-const PRELOAD = path.join(__dirname, "..", "src", "preload-roam-fence-picker.js");
+const PRELOAD = path.join(__dirname, "..", "src", "features", "roam", "preload-fence-picker.js");
 
 test("roam fence picker preload exposes only scoped ready/result/state operations", () => {
   const calls = [];

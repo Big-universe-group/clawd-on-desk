@@ -10,7 +10,7 @@ const {
   createWindowsToolhelpSnapshot,
   normalizePid,
   walkProcessAncestry,
-} = require("../src/win-process-ancestry");
+} = require("../src/platform/win/process-ancestry");
 
 function time(low) {
   return { high: 1, low };

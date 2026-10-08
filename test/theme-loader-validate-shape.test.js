@@ -4,9 +4,9 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 
-const themeLoader = require("../src/theme-loader");
-const { collectRequiredAssetFiles } = require("../src/theme-schema");
-const { checkThemeHealth } = require("../src/doctor-detectors/theme-health");
+const themeLoader = require("../src/features/themes/loader");
+const { collectRequiredAssetFiles } = require("../src/features/themes/schema");
+const { checkThemeHealth } = require("../src/features/doctor/detectors/theme-health");
 
 const tempDirs = [];
 const REQUIRED_FILES = [

@@ -3,7 +3,7 @@
 const { describe, it } = require("node:test");
 const assert = require("node:assert");
 
-const { resolveHorizontalEdgeContext } = require("../src/display-edge");
+const { resolveHorizontalEdgeContext } = require("../src/core/util/display-edge");
 
 const bounds = (x, y, w, h) => ({ x, y, width: w, height: h });
 

@@ -5,7 +5,7 @@ const assert = require("node:assert");
 
 const {
   createSettingsSizePreviewSession,
-} = require("../src/settings-size-preview-session");
+} = require("../src/ui/settings/size-preview-session");
 
 function deferred() {
   let resolve;

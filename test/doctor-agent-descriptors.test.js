@@ -6,7 +6,7 @@ const {
   AGENT_DESCRIPTORS,
   getAgentDescriptor,
   getAgentDescriptors,
-} = require("../src/doctor-detectors/agent-descriptors");
+} = require("../src/agents/doctor/descriptors");
 
 describe("doctor agent descriptors", () => {
   it("covers all supported agents", () => {
@@ -241,7 +241,7 @@ describe("doctor agent descriptors", () => {
   });
 
   it("CodeWhale descriptor honors CODEWHALE_CONFIG_PATH at module-load time", () => {
-    const descriptorsPath = require.resolve("../src/doctor-detectors/agent-descriptors");
+    const descriptorsPath = require.resolve("../src/agents/doctor/descriptors");
     const codewhalePath = require.resolve("../hooks/codewhale-install");
     const oldCodewhaleConfigPath = process.env.CODEWHALE_CONFIG_PATH;
     const oldDeepseekConfigPath = process.env.DEEPSEEK_CONFIG_PATH;
@@ -250,7 +250,7 @@ describe("doctor agent descriptors", () => {
     delete require.cache[descriptorsPath];
     delete require.cache[codewhalePath];
     try {
-      const { getAgentDescriptor: getFresh } = require("../src/doctor-detectors/agent-descriptors");
+      const { getAgentDescriptor: getFresh } = require("../src/agents/doctor/descriptors");
       const descriptor = getFresh("codewhale");
       assert.strictEqual(descriptor.configPath, process.env.CODEWHALE_CONFIG_PATH);
       assert.strictEqual(descriptor.parentDir, path.dirname(process.env.CODEWHALE_CONFIG_PATH));
@@ -261,7 +261,7 @@ describe("doctor agent descriptors", () => {
       else process.env.DEEPSEEK_CONFIG_PATH = oldDeepseekConfigPath;
       delete require.cache[descriptorsPath];
       delete require.cache[codewhalePath];
-      require("../src/doctor-detectors/agent-descriptors");
+      require("../src/agents/doctor/descriptors");
     }
   });
 
@@ -280,14 +280,14 @@ describe("doctor agent descriptors", () => {
     process.env.COPILOT_HOME = tempHome;
 
     const installerPath = require.resolve("../hooks/copilot-install");
-    const descriptorsPath = require.resolve("../src/doctor-detectors/agent-descriptors");
+    const descriptorsPath = require.resolve("../src/agents/doctor/descriptors");
     const prevInstallerCache = require.cache[installerPath];
     const prevDescriptorsCache = require.cache[descriptorsPath];
     delete require.cache[installerPath];
     delete require.cache[descriptorsPath];
 
     try {
-      const { getAgentDescriptor: getFresh } = require("../src/doctor-detectors/agent-descriptors");
+      const { getAgentDescriptor: getFresh } = require("../src/agents/doctor/descriptors");
       const desc = getFresh("copilot-cli");
 
       assert.strictEqual(desc.parentDir, tempHome,
@@ -338,14 +338,14 @@ describe("doctor agent descriptors", () => {
     delete process.env.PI_PROFILE;
 
     const installerPath = require.resolve("../hooks/omp-install");
-    const descriptorsPath = require.resolve("../src/doctor-detectors/agent-descriptors");
+    const descriptorsPath = require.resolve("../src/agents/doctor/descriptors");
     const prevInstallerCache = require.cache[installerPath];
     const prevDescriptorsCache = require.cache[descriptorsPath];
     delete require.cache[installerPath];
     delete require.cache[descriptorsPath];
 
     try {
-      const descriptor = require("../src/doctor-detectors/agent-descriptors").getAgentDescriptor("omp");
+      const descriptor = require("../src/agents/doctor/descriptors").getAgentDescriptor("omp");
       assert.strictEqual(descriptor.parentDir, tempAgentDir,
         "descriptor.parentDir should follow PI_CODING_AGENT_DIR");
       assert.strictEqual(

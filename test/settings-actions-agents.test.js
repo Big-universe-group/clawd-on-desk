@@ -3,9 +3,9 @@
 const test = require("node:test");
 const assert = require("node:assert");
 
-const prefs = require("../src/prefs");
-const agentCommands = require("../src/settings-actions-agents");
-const { commandRegistry } = require("../src/settings-actions");
+const prefs = require("../src/core/settings/prefs");
+const agentCommands = require("../src/agents/settings-actions");
+const { commandRegistry } = require("../src/core/settings/actions");
 
 test("settings agent actions expose the command surface", () => {
   assert.deepStrictEqual(Object.keys(agentCommands).sort(), [
@@ -1155,7 +1155,7 @@ test("every opencode-family member is installable AND auto-repairable (R10 P3)",
   // gates install/uninstall. Dropping a family member from either set turns
   // the Settings/Doctor Repair buttons into "no automatic repair available"
   // with every other test green (GPT-5.5 review mutation).
-  const { OPENCODE_FAMILY } = require("../agents/opencode-family");
+  const { OPENCODE_FAMILY } = require("../hooks/opencode-family");
   for (const agentId of Object.keys(OPENCODE_FAMILY)) {
     assert.ok(
       agentCommands.INSTALLABLE_AGENT_IDS.has(agentId),

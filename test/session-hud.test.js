@@ -1,7 +1,7 @@
 const { describe, it } = require("node:test");
 const assert = require("node:assert");
 
-const sessionHud = require("../src/session-hud");
+const sessionHud = require("../src/ui/hud/session-hud");
 const {
   computeSessionHudBounds,
   computeHudBoxHeight,

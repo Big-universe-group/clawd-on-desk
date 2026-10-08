@@ -2,7 +2,7 @@
 
 const { describe, it } = require("node:test");
 const assert = require("node:assert");
-const { getAllAgents } = require("../agents/registry");
+const { getAllAgents } = require("../src/agents/registry");
 const { ANTIGRAVITY_HOOK_EVENTS } = require("../hooks/antigravity-install");
 const { __test: antigravityHook } = require("../hooks/antigravity-hook");
 const { CURSOR_HOOK_EVENTS } = require("../hooks/cursor-install");
@@ -10,7 +10,7 @@ const {
   AGENT_METRIC_POLICIES,
   assertRegistryCoverage,
   mapRecapMetrics,
-} = require("../src/recap-metrics");
+} = require("../src/runtime/recap/metrics");
 
 describe("recap metric policies", () => {
   it("explicitly covers every registry agent", () => {

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data: file:; media-src 'self' file:">
+<title>Clawd Settings</title>
+<link rel="stylesheet" href="settings.css">
+<link rel="stylesheet" href="language-picker.css">
+</head>
+<body>
+<div class="app">
+  <nav class="sidebar" id="sidebar"></nav>
+  <main class="content" id="content" data-language-picker-boundary></main>
+</div>
+<div class="toast-stack" id="toastStack"></div>
+<div id="modalRoot"></div>
+<script src="../../core/shortcuts/actions.js"></script>
+<script src="language-picker.js"></script>
+<script src="size-slider.js"></script>
+<script src="../../core/i18n/settings-i18n.js"></script>
+<script src="../../features/feishu/recipient.js"></script>
+<script src="../../features/anim-overrides/merge.js"></script>
+<script src="ui-core.js"></script>
+<script src="../../agents/settings-order.js"></script>
+<script src="tabs/general.js"></script>
+<script src="tabs/agents.js"></script>
+<script src="tabs/theme.js"></script>
+<script src="tabs/anim-map.js"></script>
+<script src="tabs/anim-overrides.js"></script>
+<script src="tabs/shortcuts.js"></script>
+<script src="tabs/telegram-approval.js"></script>
+<script src="tabs/discord-presence.js"></script>
+<script src="tabs/recap.js"></script>
+<script src="tabs/about.js"></script>
+<script src="tabs/remote-ssh.js"></script>
+<script src="tabs/mobile.js"></script>
+<script src="doctor-modal.js"></script>
+<script src="icons.js"></script>
+<script src="renderer.js"></script>
+</body>
+</html>

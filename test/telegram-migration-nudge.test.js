@@ -7,8 +7,8 @@ const {
   SIGNATURES,
   decideTelegramMigrationNudge,
   createTelegramMigrationNudge,
-} = require("../src/telegram-migration-nudge");
-const { STATES, TEST_ORIGINS } = require("../src/telegram-migration-state");
+} = require("../src/features/telegram/migration-nudge");
+const { STATES, TEST_ORIGINS } = require("../src/features/telegram/migration-state");
 
 test("legacy and native verification nudges use distinct persistent signatures", () => {
   const legacy = decideTelegramMigrationNudge({

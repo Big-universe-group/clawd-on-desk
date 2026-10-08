@@ -13,7 +13,7 @@ const {
   FAMILY_CAPABILITIES,
   isOpencodeFamily,
   isOpencodeFamilyEntry,
-} = require("../agents/opencode-family");
+} = require("../hooks/opencode-family");
 
 const { NESTED_TERMINAL_ENV } = require("../hooks/shared-process");
 
@@ -350,14 +350,14 @@ describe("opencode-family registry", () => {
     assert.strictEqual(isOpencodeFamilyEntry(null), false);
   });
 
-  it("EVERY member's agents/<id>.js sources the shared family contract by REFERENCE", () => {
+  it("EVERY member's src/agents/<id>/descriptor.js sources the shared family contract by REFERENCE", () => {
     // strictEqual (same object), not deepStrictEqual: a look-alike copy with
     // one drifted value (e.g. Stop: "idle", or permissionApproval: false —
     // which silently kills the member's permission bubbles) must fail here
     // (dual-review S-F2).
     for (const agentId of Object.keys(OPENCODE_FAMILY)) {
       // eslint-disable-next-line global-require
-      const agent = require(`../agents/${agentId}`);
+      const agent = require(`../src/agents/${agentId}/descriptor`);
       assert.strictEqual(agent.eventMap, FAMILY_EVENT_MAP, `${agentId} eventMap must be the shared object`);
       assert.strictEqual(agent.capabilities, FAMILY_CAPABILITIES, `${agentId} capabilities must be the shared object`);
       assert.strictEqual(agent.eventSource, "plugin-event");
@@ -369,7 +369,7 @@ describe("opencode-family registry", () => {
     // doctor-logs falls back to this basename list when picking the most
     // recent log; a typo'd entry silently drops the member from that path.
     // eslint-disable-next-line global-require
-    const { DEFAULT_LOG_BASENAMES } = require("../src/doctor-logs");
+    const { DEFAULT_LOG_BASENAMES } = require("../src/features/doctor/logs");
     for (const [agentId, cfg] of Object.entries(OPENCODE_FAMILY)) {
       assert.ok(
         DEFAULT_LOG_BASENAMES.includes(cfg.logFileName),
@@ -383,7 +383,7 @@ describe("opencode-family registry", () => {
     // loop above cannot see it. Read the literal from the entry instead of
     // repeating it here so the registry and entry stay coupled.
     // eslint-disable-next-line global-require
-    const { DEFAULT_LOG_BASENAMES } = require("../src/doctor-logs");
+    const { DEFAULT_LOG_BASENAMES } = require("../src/features/doctor/logs");
     for (const [agentId, cfg] of Object.entries(OPENCODE_FAMILY)) {
       if (!cfg.v2PluginDirName) continue;
       const entryPath = path.join(HOOKS_DIR, cfg.v2PluginDirName, "index.mjs");

@@ -191,13 +191,15 @@ describe("package build config", () => {
       pkg.build.files.includes("extensions/**/*"),
       "build.files should include extensions/**/*"
     );
+    // Agent descriptors live at src/agents/<id>/descriptor.js and are loaded
+    // by the main process, so they ship inside the asar through src/**/*.
     assert.ok(
-      pkg.build.files.includes("agents/**/*"),
-      "build.files should include agents/**/*"
+      pkg.build.files.includes("src/**/*"),
+      "build.files should include src/**/* so agent descriptors ship"
     );
     assert.ok(
-      pkg.build.asarUnpack.includes("agents/**/*"),
-      "asarUnpack should include agents/**/*"
+      matchedByAnyGlob(pkg.build.files, "src/agents/opencode/descriptor.js"),
+      "build.files should ship src/agents/<id>/descriptor.js"
     );
     assert.ok(
       pkg.build.asarUnpack.includes("hooks/**/*"),
@@ -206,6 +208,26 @@ describe("package build config", () => {
     assert.ok(
       pkg.build.asarUnpack.includes("extensions/**/*"),
       "asarUnpack should include extensions/**/*"
+    );
+    // The shared opencode family contract moved into the unpacked hooks
+    // closure that external hook scripts read outside app.asar.
+    const familyContract = "hooks/opencode-family.js";
+    assert.ok(
+      fs.existsSync(path.join(ROOT, familyContract)),
+      `${familyContract} should exist as the shipped family contract`
+    );
+    assert.ok(
+      matchedByAnyGlob(pkg.build.files, familyContract),
+      `${familyContract} should be reachable from the shipped hooks closure`
+    );
+    assert.ok(
+      matchedByAnyGlob(pkg.build.asarUnpack, familyContract),
+      `${familyContract} should be reachable from the unpacked hooks closure`
+    );
+    // The retired top-level agents/ directory no longer exists.
+    assert.ok(
+      !pkg.build.files.includes("agents/**/*") && !pkg.build.asarUnpack.includes("agents/**/*"),
+      "the retired top-level agents/**/* glob should be gone"
     );
   });
 
@@ -709,9 +731,9 @@ describe("package build config", () => {
       assert.match(workflow, /dist\/native-package-manifests\/\*\.json/);
       assert.match(workflow, /runner: windows-11-arm/);
       assert.match(workflow, /runner: macos-15-intel/);
-      assert.match(workflow, /- "src\/recap-\*\.js"/);
-      assert.match(workflow, /- "src\/settings-ui-core\.js"/);
-      assert.match(workflow, /- "src\/settings-tab-recap\.js"/);
+      assert.match(workflow, /- "src\/runtime\/recap\/\*\.js"/);
+      assert.match(workflow, /- "src\/ui\/settings\/ui-core\.js"/);
+      assert.match(workflow, /- "src\/ui\/settings\/tabs\/recap\.js"/);
       assert.match(workflow, /- "test\/recap\*\.test\.js"/);
       assert.match(workflow, /- "test\/fixtures\/recap-private-permissions-\*\.js"/);
       assert.match(workflow, /- "test\/settings-recap\.test\.js"/);

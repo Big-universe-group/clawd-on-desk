@@ -5,12 +5,12 @@ const assert = require("node:assert");
 const fs = require("node:fs");
 const path = require("node:path");
 
-const themeLoader = require("../src/theme-loader");
-const { buildThemeMetadata } = require("../src/theme-metadata");
+const themeLoader = require("../src/features/themes/loader");
+const { buildThemeMetadata } = require("../src/features/themes/metadata");
 const {
   collectRequiredAssetFiles,
   projectThemeVisualUsages,
-} = require("../src/theme-schema");
+} = require("../src/features/themes/schema");
 
 const ROOT = path.join(__dirname, "..");
 const THEMES_DIR = path.join(ROOT, "themes");

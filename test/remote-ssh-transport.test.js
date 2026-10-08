@@ -13,7 +13,7 @@ const {
   localTargetFingerprint,
   redactTransportDiagnostic,
   inspectEffectiveTransport,
-} = require("../src/remote-ssh-transport");
+} = require("../src/features/remote-ssh/transport");
 
 function fakeChild() {
   const child = new EventEmitter();

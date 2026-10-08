@@ -163,9 +163,9 @@ test("#546 V10 accepts only the identity nonce as the deliberate wrong-nonce req
 test("production composition has no harness import or packaged failure-injection switch", () => {
   const production = [
     "main.js",
-    "remote-ssh-ipc.js",
-    "remote-ssh-runtime.js",
-    "remote-ssh-transport-coordinator.js",
+    "features/remote-ssh/ipc.js",
+    "features/remote-ssh/runtime.js",
+    "features/remote-ssh/transport-coordinator.js",
   ].map((name) => fs.readFileSync(path.join(ROOT, "src", name), "utf8")).join("\n");
   assert.doesNotMatch(production, /remote-ssh-codespaces-546|scripts[\\/]manual/i);
   assert.doesNotMatch(production, /CLAWD_.*(?:FAIL|INJECT).*SSH/i);

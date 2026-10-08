@@ -6,7 +6,7 @@ const os = require("node:os");
 const path = require("node:path");
 const test = require("node:test");
 
-const settings = require("../src/slack-notify-settings");
+const settings = require("../src/features/slack/notify-settings");
 
 const tempDirs = [];
 

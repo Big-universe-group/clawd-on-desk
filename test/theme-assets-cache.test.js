@@ -10,7 +10,7 @@ const {
   resolveExternalAssetsDir,
   externalAssetsSourceDir,
   isPathInsideDir,
-} = require("../src/theme-assets-cache");
+} = require("../src/features/themes/assets-cache");
 
 const tempDirs = [];
 

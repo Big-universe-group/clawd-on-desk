@@ -7,7 +7,7 @@ const os = require("node:os");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
 
-const createThemeContext = require("../src/theme-context");
+const createThemeContext = require("../src/features/themes/context");
 
 function makeRoot() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "clawd-theme-context-"));
@@ -97,7 +97,7 @@ test("null theme contexts return loader-compatible defaults", () => {
     const ctx = createThemeContext(null, fixture);
 
     assert.strictEqual(ctx.resolveAssetPath("idle.svg"), path.join(fixture.assetsSvgDir, "idle.svg"));
-    assert.strictEqual(ctx.getRendererAssetsPath(), "../assets/svg");
+    assert.strictEqual(ctx.getRendererAssetsPath(), "../../../assets/svg");
     assert.strictEqual(ctx.getRendererSourceAssetsPath(), null);
     assert.strictEqual(ctx.getRendererConfig(), null);
     assert.strictEqual(ctx.getHitRendererConfig(), null);
@@ -126,9 +126,9 @@ test("built-in contexts prefer theme-local assets and expose relative renderer p
 
     assert.strictEqual(ctx.resolveAssetPath("idle.apng"), path.join(themeDir, "assets", "idle.apng"));
     assert.strictEqual(ctx.resolveAssetPath("idle.svg"), path.join(fixture.assetsSvgDir, "idle.svg"));
-    assert.strictEqual(ctx.getRendererAssetsPath(), "../themes/calico/assets");
-    assert.strictEqual(ctx.getRendererSourceAssetsPath(), "../themes/calico/assets");
-    assert.strictEqual(ctx.getRendererConfig().assetsPath, "../themes/calico/assets");
+    assert.strictEqual(ctx.getRendererAssetsPath(), "../../../themes/calico/assets");
+    assert.strictEqual(ctx.getRendererSourceAssetsPath(), "../../../themes/calico/assets");
+    assert.strictEqual(ctx.getRendererConfig().assetsPath, "../../../themes/calico/assets");
     assert.strictEqual(ctx.getRendererConfig().petTintSupported, false);
     assert.strictEqual(ctx.getRendererConfig().accessorySupported, false);
     assert.strictEqual(ctx.getRendererConfig().accessoryAttachments, null);
@@ -187,7 +187,7 @@ test("external renderer asset path keeps the legacy default when file URL is abs
     });
     const ctx = createThemeContext(theme, fixture);
 
-    assert.strictEqual(ctx.getRendererAssetsPath(), "../assets/svg");
+    assert.strictEqual(ctx.getRendererAssetsPath(), "../../../assets/svg");
   } finally {
     fixture.cleanup();
   }

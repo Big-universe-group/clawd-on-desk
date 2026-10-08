@@ -9,11 +9,11 @@ const vm = require("node:vm");
 const {
   classifyClaudeHookHealthStatus,
   CLAUDE_HOOK_BADGE_SIGNATURES,
-} = require("../src/claude-hook-health-badge");
-const { SUPPORTED_LANGS } = require("../src/i18n");
+} = require("../src/agents/claude-code/hook-health-badge");
+const { SUPPORTED_LANGS } = require("../src/core/i18n/i18n");
 
 function loadSettingsI18nStrings() {
-  const source = fs.readFileSync(path.join(__dirname, "..", "src", "settings-i18n.js"), "utf8");
+  const source = fs.readFileSync(path.join(__dirname, "..", "src", "core", "i18n", "settings-i18n.js"), "utf8");
   const context = {};
   context.globalThis = context;
   vm.runInNewContext(source, context);

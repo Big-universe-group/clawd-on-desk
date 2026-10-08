@@ -11,7 +11,7 @@ const assert = require("node:assert");
 // the helper in test/focus-mac-extras.test.js.
 function loadFocusWithMock(execFileMock, options = {}) {
   const cpKey = require.resolve("child_process");
-  const focusKey = require.resolve("../src/focus");
+  const focusKey = require.resolve("../src/runtime/focus/focus");
   const platform = options.platform || "darwin";
 
   const origCp = require.cache[cpKey];
@@ -26,7 +26,7 @@ function loadFocusWithMock(execFileMock, options = {}) {
   delete require.cache[focusKey];
   let initFocus;
   try {
-    initFocus = require("../src/focus");
+    initFocus = require("../src/runtime/focus/focus");
   } finally {
     Object.defineProperty(process, "platform", origPlatform);
   }

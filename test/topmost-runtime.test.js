@@ -6,13 +6,13 @@ const { EventEmitter } = require("node:events");
 const fs = require("node:fs");
 const path = require("node:path");
 
-const createTopmostRuntime = require("../src/topmost-runtime");
-const createPetWindowRuntime = require("../src/pet-window-runtime");
+const createTopmostRuntime = require("../src/ui/pet/topmost-runtime");
+const createPetWindowRuntime = require("../src/ui/pet/pet-window-runtime");
 const {
   createHitWindowActivationController,
   createHitWindowFocusableSetter,
   WS_EX_NOACTIVATE,
-} = require("../src/win-hit-window-activation");
+} = require("../src/platform/win/hit-window-activation");
 
 class FakeWindow extends EventEmitter {
   constructor(options = {}) {

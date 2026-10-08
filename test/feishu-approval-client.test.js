@@ -21,9 +21,9 @@ const {
   createDeadlineHttpInstance,
   createWsClient,
   lookupOpenIdByEmail,
-} = require("../src/feishu-approval-client");
-const { createTranslator, i18n, SUPPORTED_LANGS } = require("../src/i18n");
-const { createRemoteCardWorkRegistry } = require("../src/session-automation-remote");
+} = require("../src/features/feishu/client");
+const { createTranslator, i18n, SUPPORTED_LANGS } = require("../src/core/i18n/i18n");
+const { createRemoteCardWorkRegistry } = require("../src/runtime/session/automation/remote");
 
 function flush() {
   return new Promise((resolve) => setImmediate(resolve));

@@ -28,7 +28,7 @@ test("retired binary and source paths are fail-closed", () => {
   ]) {
     assert.equal(isRetiredPath(value), true, value);
   }
-  assert.equal(isRetiredPath("src/telegram-native-runner.js"), false);
+  assert.equal(isRetiredPath("src/features/telegram/native-runner.js"), false);
   assert.equal(isRetiredPath("resources/icon.ico"), false);
 });
 
@@ -37,8 +37,9 @@ test("clean resources and a real clean app.asar pass deterministically", async (
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   fs.writeFileSync(path.join(root, "icon.ico"), "icon");
   const source = path.join(root, "source");
-  fs.mkdirSync(path.join(source, "src"), { recursive: true });
-  fs.writeFileSync(path.join(source, "src", "telegram-native-runner.js"), "native");
+  const nativeRunner = path.join(source, "src", "features", "telegram", "native-runner.js");
+  fs.mkdirSync(path.dirname(nativeRunner), { recursive: true });
+  fs.writeFileSync(nativeRunner, "native");
   await asar.createPackage(source, path.join(root, "app.asar"));
   fs.rmSync(source, { recursive: true, force: true });
 

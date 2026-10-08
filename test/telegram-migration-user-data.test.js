@@ -7,8 +7,8 @@ const os = require("node:os");
 const path = require("node:path");
 const test = require("node:test");
 
-const { createTelegramMigrationController } = require("../src/telegram-migration-controller");
-const { EVENTS, STATES } = require("../src/telegram-migration-state");
+const { createTelegramMigrationController } = require("../src/features/telegram/migration-controller");
+const { EVENTS, STATES } = require("../src/features/telegram/migration-state");
 
 function fingerprint(filePath) {
   const bytes = fs.readFileSync(filePath);

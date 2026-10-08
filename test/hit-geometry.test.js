@@ -2,8 +2,8 @@ const { describe, it } = require("node:test");
 const assert = require("node:assert");
 const path = require("path");
 
-const themeLoader = require("../src/theme-loader");
-const hitGeometry = require("../src/hit-geometry");
+const themeLoader = require("../src/features/themes/loader");
+const hitGeometry = require("../src/ui/pet/hit-geometry");
 
 themeLoader.init(path.join(__dirname, "..", "src"));
 const calico = themeLoader.loadTheme("calico");

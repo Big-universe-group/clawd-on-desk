@@ -9,7 +9,7 @@ const {
   KIMI_QUOTA_FIELDS,
   KimiQuotaSchemaError,
   normalizeKimiQuotaResponse,
-} = require("../src/kimi-quota-normalizer");
+} = require("../src/agents/kimi-cli/quota/normalizer");
 
 const PHASE0_FIXTURE = JSON.parse(fs.readFileSync(path.join(
   __dirname,

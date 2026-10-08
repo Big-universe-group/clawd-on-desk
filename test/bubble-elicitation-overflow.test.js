@@ -3,9 +3,9 @@ const assert = require("node:assert");
 const fs = require("node:fs");
 const path = require("node:path");
 
-const bubbleCss = fs.readFileSync(path.join(__dirname, "..", "src", "bubble.css"), "utf8");
-const bubbleRenderer = fs.readFileSync(path.join(__dirname, "..", "src", "bubble-renderer.js"), "utf8");
-const bubbleHtml = fs.readFileSync(path.join(__dirname, "..", "src", "bubble.html"), "utf8");
+const bubbleCss = fs.readFileSync(path.join(__dirname, "..", "src", "ui", "bubbles", "bubble.css"), "utf8");
+const bubbleRenderer = fs.readFileSync(path.join(__dirname, "..", "src", "ui", "bubbles", "bubble-renderer.js"), "utf8");
+const bubbleHtml = fs.readFileSync(path.join(__dirname, "..", "src", "ui", "bubbles", "bubble.html"), "utf8");
 
 function functionBody(name) {
   const start = bubbleRenderer.indexOf(`function ${name}(`);

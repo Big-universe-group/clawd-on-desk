@@ -2,7 +2,7 @@
 
 const fs = require("fs");
 const { app } = require("electron");
-const { hardenRecapPrivateDirectory } = require("../../src/recap-private-permissions");
+const { hardenRecapPrivateDirectory } = require("../../src/runtime/recap/private-permissions");
 
 app.whenReady().then(() => {
   const root = process.env.CLAWD_RECAP_ELECTRON_ACL_ROOT;

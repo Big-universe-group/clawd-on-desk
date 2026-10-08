@@ -3,7 +3,7 @@ const assert = require("node:assert");
 const path = require("path");
 
 // Load default theme for test ctx
-const themeLoader = require("../src/theme-loader");
+const themeLoader = require("../src/features/themes/loader");
 themeLoader.init(path.join(__dirname, "..", "src"));
 const _defaultTheme = themeLoader.loadTheme("clawd");
 
@@ -37,7 +37,7 @@ describe("display_svg session hints (updateSession path)", () => {
   const pid = process.pid;
 
   beforeEach(() => {
-    api = require("../src/state")(makeCtx());
+    api = require("../src/runtime/state/state")(makeCtx());
   });
 
   function baseOpts(overrides = {}) {
@@ -126,30 +126,30 @@ describe("default idle visual (getIdleVisualChoice ctx hook)", () => {
   it("getSvgOverride('idle') returns the user choice when set", () => {
     const ctx = makeCtx();
     ctx.getIdleVisualChoice = () => "clawd-idle-reading.svg";
-    const api = require("../src/state")(ctx);
+    const api = require("../src/runtime/state/state")(ctx);
     assert.strictEqual(api.getSvgOverride("idle"), "clawd-idle-reading.svg");
   });
 
   it("getSvgOverride('idle') falls back to the follow sprite when unset", () => {
     const ctx = makeCtx();
     ctx.getIdleVisualChoice = () => null;
-    const api = require("../src/state")(ctx);
+    const api = require("../src/runtime/state/state")(ctx);
     assert.strictEqual(api.getSvgOverride("idle"), "clawd-idle-follow.svg");
 
-    const apiNoHook = require("../src/state")(makeCtx());
+    const apiNoHook = require("../src/runtime/state/state")(makeCtx());
     assert.strictEqual(apiNoHook.getSvgOverride("idle"), "clawd-idle-follow.svg");
   });
 
   it("applyState('idle') with no override rests on the user choice", () => {
     const ctx = makeCtx();
     ctx.getIdleVisualChoice = () => "clawd-idle-reading.svg";
-    const api = require("../src/state")(ctx);
+    const api = require("../src/runtime/state/state")(ctx);
     api.applyState("idle");
     assert.strictEqual(api.getCurrentSvg(), "clawd-idle-reading.svg");
   });
 
   it("applyState('idle') without the hook keeps today's behavior", () => {
-    const api = require("../src/state")(makeCtx());
+    const api = require("../src/runtime/state/state")(makeCtx());
     api.applyState("idle");
     assert.strictEqual(api.getCurrentSvg(), "clawd-idle-follow.svg");
   });
@@ -157,7 +157,7 @@ describe("default idle visual (getIdleVisualChoice ctx hook)", () => {
   it("an explicit svgOverride still wins over the user choice", () => {
     const ctx = makeCtx();
     ctx.getIdleVisualChoice = () => "clawd-idle-reading.svg";
-    const api = require("../src/state")(ctx);
+    const api = require("../src/runtime/state/state")(ctx);
     api.applyState("idle", "clawd-idle-bubble.svg");
     assert.strictEqual(api.getCurrentSvg(), "clawd-idle-bubble.svg");
   });
@@ -179,7 +179,7 @@ describe("Claude design turn continuity", () => {
     ctx.theme.timings.minDisplay = Object.fromEntries(
       Object.keys(ctx.theme.timings.minDisplay).map((state) => [state, 0]),
     );
-    api = require("../src/state")(ctx);
+    api = require("../src/runtime/state/state")(ctx);
   });
 
   afterEach(() => {

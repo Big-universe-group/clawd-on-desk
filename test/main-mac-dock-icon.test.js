@@ -94,7 +94,7 @@ test("macOS runtime dock icon asset is packaged", () => {
 
 test("main wires startup Dock icon behavior through the shared runtime helper", () => {
   const source = fs.readFileSync(MAIN, "utf8");
-  assert.match(source, /require\("\.\/mac-dock-icon-runtime"\)/);
+  assert.match(source, /require\("\.\/platform\/mac\/dock-icon-runtime"\)/);
   assert.match(source, /resolveRuntimeDockIconPolicy\(\{/);
   assert.match(source, /installStartupDockIcon\(\{/);
   assert.match(source, /flashPath:\s*path\.join\([^\n]+tray-icon-flash\.png/);

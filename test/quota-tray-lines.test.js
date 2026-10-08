@@ -5,7 +5,7 @@ const { describe, it } = require("node:test");
 const {
   buildQuotaTrayLines,
   createQuotaTrayRefreshScheduler,
-} = require("../src/quota-tray-lines");
+} = require("../src/quota/tray-lines");
 
 const NOW = 10_000_000;
 

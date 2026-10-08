@@ -7,13 +7,13 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 
-const createOfficialThemeMain = require("../src/official-theme-main");
+const createOfficialThemeMain = require("../src/features/themes/official/main");
 const { MANAGER_ERROR_CODES } = createOfficialThemeMain;
-const downloadModule = require("../src/official-theme-download");
-const installerModule = require("../src/official-theme-installer");
-const catalogModule = require("../src/official-theme-catalog");
-const { createSettingsController } = require("../src/settings-controller");
-const themeLoader = require("../src/theme-loader");
+const downloadModule = require("../src/features/themes/official/download");
+const installerModule = require("../src/features/themes/official/installer");
+const catalogModule = require("../src/features/themes/official/catalog");
+const { createSettingsController } = require("../src/core/settings/controller");
+const themeLoader = require("../src/features/themes/loader");
 const { hashSageFixture } = require("./helpers/zip-builder");
 const { createFakeNet, streamResponse } = require("./helpers/fake-official-net");
 

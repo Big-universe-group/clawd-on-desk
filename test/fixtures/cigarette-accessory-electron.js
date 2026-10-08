@@ -2,12 +2,12 @@
 
 const path = require("node:path");
 const { app, BrowserWindow } = require("electron");
-const themeLoader = require("../../src/theme-loader");
+const themeLoader = require("../../src/features/themes/loader");
 
 const HTML = path.join(__dirname, "cigarette-accessory-electron.html");
 const ROOT = path.join(__dirname, "..", "..");
-const PRODUCTION_HTML = path.join(ROOT, "src", "index.html");
-const PRODUCTION_PRELOAD = path.join(ROOT, "src", "preload.js");
+const PRODUCTION_HTML = path.join(ROOT, "src", "ui", "pet", "index.html");
+const PRODUCTION_PRELOAD = path.join(ROOT, "src", "ui", "pet", "preload.js");
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);

@@ -7,7 +7,7 @@ const { EventEmitter } = require("node:events");
 const os = require("node:os");
 const path = require("node:path");
 
-const installer = require("../src/official-theme-installer");
+const installer = require("../src/features/themes/official/installer");
 const { buildZip, hashSageFixture, S_IFDIR, S_IFREG } = require("./helpers/zip-builder");
 
 const LIMITS = { maxEntries: 256, perEntryMaxBytes: 48 * 1024 * 1024, totalMaxBytes: 256 * 1024 * 1024 };

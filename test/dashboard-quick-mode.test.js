@@ -14,8 +14,8 @@ const {
   createDashboardQuickMode,
   isSupportedQuickPlatform,
   orderedCandidates,
-} = require("../src/dashboard-quick-mode");
-const createOriginFocus = require("../src/quick-select-origin-focus");
+} = require("../src/ui/dashboard/quick-mode");
+const createOriginFocus = require("../src/platform/win/quick-select-origin-focus");
 
 class FakeWindow {
   constructor(name) {

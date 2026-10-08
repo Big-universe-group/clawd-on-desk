@@ -5,17 +5,17 @@ const assert = require("node:assert");
 const { EventEmitter } = require("node:events");
 const path = require("node:path");
 
-const { createAccountQuotaStore } = require("../src/state-account-quota");
+const { createAccountQuotaStore } = require("../src/quota/account-store");
 const {
   mapOmpUsageReport,
   parseOmpUsageOutput,
   createOmpUsageSource,
   OMP_USAGE_ARGS,
-} = require("../src/usage-sources/omp-usage");
+} = require("../src/quota/sources/omp-usage");
 const {
   mapCodexRateLimitsResponse,
   createCodexAppServerSource,
-} = require("../src/usage-sources/codex-app-server");
+} = require("../src/quota/sources/codex-app-server");
 const {
   CLAUDE_USAGE_ENDPOINT,
   SECURITY_BIN,
@@ -25,8 +25,8 @@ const {
   mapClaudeUsageResponse,
   classifyClaudeUsageResponse,
   createClaudeOAuthSource,
-} = require("../src/usage-sources/claude-oauth");
-const { resolveCliBinary, buildCliEnv } = require("../src/usage-sources/cli-binary");
+} = require("../src/quota/sources/claude-oauth");
+const { resolveCliBinary, buildCliEnv } = require("../src/quota/sources/cli-binary");
 
 // Sanitized real `omp usage --json --redact` output (capacity section elided;
 // it is not read).

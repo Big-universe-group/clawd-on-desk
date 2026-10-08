@@ -4,9 +4,9 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
-const { createRecapRuntime } = require("../src/recap-runtime");
-const { resolveSessionIdentity } = require("../src/session-key");
-const themeLoader = require("../src/theme-loader");
+const { createRecapRuntime } = require("../src/runtime/recap/runtime");
+const { resolveSessionIdentity } = require("../src/core/util/session-key");
+const themeLoader = require("../src/features/themes/loader");
 themeLoader.init(path.join(__dirname, "..", "src"));
 
 for (const producer of ["start", "debounce", "transcript"]) {
@@ -19,7 +19,7 @@ for (const producer of ["start", "debounce", "transcript"]) {
       const recap = createRecapRuntime({ root: recapRoot, getTimeZone: () => "UTC",
         setTimeout: () => ({ unref() {} }), clearTimeout() {} });
       const noop = () => {};
-      const state = require("../src/state")({
+      const state = require("../src/runtime/state/state")({
         theme: themeLoader.loadTheme("clawd"), lang: "en", doNotDisturb: false,
         miniMode: false, playSound: noop, sendToRenderer: noop, syncHitWin: noop,
         sendToHitWin: noop, miniPeekIn: noop, miniPeekOut: noop,

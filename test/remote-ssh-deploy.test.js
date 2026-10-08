@@ -16,14 +16,14 @@ const {
   stopCodexMonitor: secureStopCodexMonitor,
   uninstallRemoteIntegrations: secureUninstallRemoteIntegrations,
   __test,
-} = require("../src/remote-ssh-deploy");
+} = require("../src/features/remote-ssh/deploy");
 // Preserve focused coverage of the retired implementation as a test-only
 // seam. The public exports below are exercised separately and never fall back.
 const deploy = __test.legacyDeploy;
 const startCodexMonitor = __test.legacyStartCodexMonitor;
 const stopCodexMonitor = __test.legacyStopCodexMonitor;
 const uninstallRemoteIntegrations = __test.legacyUninstallRemoteIntegrations;
-const { clearRemoteNodeCache } = require("../src/remote-ssh-node");
+const { clearRemoteNodeCache } = require("../src/features/remote-ssh/node");
 
 const REPO_ROOT = path.join(__dirname, "..");
 
@@ -877,7 +877,7 @@ const IDENTITY_STEP_NAMES = [
 ];
 
 function accountDefaultLayout(remoteHome = "/home/remote-user") {
-  return require("../src/remote-ssh-layout").resolveRemoteRuntimeLayout({
+  return require("../src/features/remote-ssh/layout").resolveRemoteRuntimeLayout({
     runtimeMode: "account-default",
     runtimeKey: "account-default",
     remoteHome,
@@ -1513,7 +1513,7 @@ test("the Hermes phase changes neither the identity step list nor the persisted 
   const {
     REMOTE_IDENTITY_STEP_NAMES,
     sanitizeIdentityTxn,
-  } = require("../src/remote-ssh-profile");
+  } = require("../src/features/remote-ssh/profile");
   assert.deepStrictEqual([...REMOTE_IDENTITY_STEP_NAMES], IDENTITY_STEP_NAMES);
   assert.equal(REMOTE_IDENTITY_STEP_NAMES.includes("installHermes"), false);
 
@@ -1639,7 +1639,7 @@ test("preflight freezes the Hermes target set and classifies plugin directories 
 });
 
 test("profile-isolated runtimes report no Hermes home and no targets", () => {
-  const layout = require("../src/remote-ssh-layout").resolveRemoteRuntimeLayout({
+  const layout = require("../src/features/remote-ssh/layout").resolveRemoteRuntimeLayout({
     runtimeMode: "profile-isolated",
     runtimeKey: "runtime_a",
     remoteHome: "/home/shared",
@@ -1749,7 +1749,7 @@ function localEnableHarness({ agents = { hermes: { integrationInstalled: false, 
   return {
     commandCalls,
     agents: () => state.agents,
-    register: (deployResult) => require("../src/remote-ssh-ipc").registerRemoteSshIpc({
+    register: (deployResult) => require("../src/features/remote-ssh/ipc").registerRemoteSshIpc({
       ipcMain,
       settingsController,
       remoteSshRuntime: runtime,
@@ -1992,7 +1992,7 @@ test("ownerless lock and stale release are diagnosed without takeover or broad d
   let recorder = makeRecordingSpawn([
     { code: 74 },
   ]);
-  const layout = require("../src/remote-ssh-layout").resolveRemoteRuntimeLayout({
+  const layout = require("../src/features/remote-ssh/layout").resolveRemoteRuntimeLayout({
     runtimeMode: "account-default",
     runtimeKey: "account-default",
     remoteHome: "/home/remote-user",
@@ -2028,7 +2028,7 @@ test("lease fencing gates every command in a multiline mutation block", {
   skip: process.platform === "win32" ? "requires POSIX filesystem and shell semantics" : false,
 }, () => {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), "clawd-fence-exec-"));
-  const layout = require("../src/remote-ssh-layout").resolveRemoteRuntimeLayout({
+  const layout = require("../src/features/remote-ssh/layout").resolveRemoteRuntimeLayout({
     runtimeMode: "account-default",
     runtimeKey: "account-default",
     remoteHome: temp,
@@ -2064,7 +2064,7 @@ test("ownership preflight detects managed config traces even when hook files are
   skip: process.platform === "win32" ? "requires POSIX filesystem and shell semantics" : false,
 }, () => {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), "clawd-config-trace-"));
-  const layout = require("../src/remote-ssh-layout").resolveRemoteRuntimeLayout({
+  const layout = require("../src/features/remote-ssh/layout").resolveRemoteRuntimeLayout({
     runtimeMode: "account-default",
     runtimeKey: "account-default",
     remoteHome: temp,
@@ -2095,7 +2095,7 @@ test("installer verification reads back the secure managed command shape", {
   skip: process.platform === "win32" ? "requires POSIX filesystem and shell semantics" : false,
 }, () => {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), "clawd-installer-readback-"));
-  const layout = require("../src/remote-ssh-layout").resolveRemoteRuntimeLayout({
+  const layout = require("../src/features/remote-ssh/layout").resolveRemoteRuntimeLayout({
     runtimeMode: "profile-isolated",
     runtimeKey: "runtime_a",
     remoteHome: temp,
@@ -2168,7 +2168,7 @@ test("monitor verification requires a live PID with the exact layout script path
   skip: process.platform === "win32" ? "requires POSIX filesystem and shell semantics" : false,
 }, async () => {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), "clawd-monitor-readback-"));
-  const layout = require("../src/remote-ssh-layout").resolveRemoteRuntimeLayout({
+  const layout = require("../src/features/remote-ssh/layout").resolveRemoteRuntimeLayout({
     runtimeMode: "account-default",
     runtimeKey: "account-default",
     remoteHome: temp,
@@ -2218,7 +2218,7 @@ test("isolated CLI probe survives the real remote shell and discovers PATH execu
 }, async () => {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), "clawd-isolated-cli-probe-"));
   const fakeBin = path.join(temp, "fake-bin");
-  const layout = require("../src/remote-ssh-layout").resolveRemoteRuntimeLayout({
+  const layout = require("../src/features/remote-ssh/layout").resolveRemoteRuntimeLayout({
     runtimeMode: "profile-isolated",
     runtimeKey: "runtime_a",
     remoteHome: temp,
@@ -2277,7 +2277,7 @@ test("isolated wrapper records exact evidence only after the CLI exits successfu
   skip: process.platform === "win32" ? "requires POSIX filesystem and shell semantics" : false,
 }, () => {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), "clawd-wrapper-evidence-"));
-  const layout = require("../src/remote-ssh-layout").resolveRemoteRuntimeLayout({
+  const layout = require("../src/features/remote-ssh/layout").resolveRemoteRuntimeLayout({
     runtimeMode: "profile-isolated",
     runtimeKey: "runtime_a",
     remoteHome: temp,
@@ -2327,7 +2327,7 @@ test("legacy monitor cleanup kills only the exact account-default monitor comman
   skip: process.platform === "win32" ? "requires POSIX filesystem and shell semantics" : false,
 }, async () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "clawd-legacy-monitor-"));
-  const layout = require("../src/remote-ssh-layout").resolveRemoteRuntimeLayout({
+  const layout = require("../src/features/remote-ssh/layout").resolveRemoteRuntimeLayout({
     runtimeMode: "account-default",
     runtimeKey: "account-default",
     remoteHome: tmpDir,
@@ -2399,7 +2399,7 @@ test("legacy monitor cleanup kills only the exact account-default monitor comman
     assert.equal(fs.existsSync(layout.legacyMonitorPidFile), false);
     await new Promise((resolve) => owned.once("exit", resolve));
 
-    const isolated = require("../src/remote-ssh-layout").resolveRemoteRuntimeLayout({
+    const isolated = require("../src/features/remote-ssh/layout").resolveRemoteRuntimeLayout({
       runtimeMode: "profile-isolated",
       runtimeKey: "profile-a",
       remoteHome: tmpDir,
@@ -2431,7 +2431,7 @@ test("isolated bootstrap validates the key first, creates a fresh root under the
     { code: 0 },
     { code: 0 },
   ]);
-  const created = await require("../src/remote-ssh-deploy").bootstrapIsolatedRuntime({
+  const created = await require("../src/features/remote-ssh/deploy").bootstrapIsolatedRuntime({
     profile: fixture.profile,
     installId: fixture.installId,
     runtimeKey: "profile_a",
@@ -2456,7 +2456,7 @@ test("isolated bootstrap validates the key first, creates a fresh root under the
   assert.match(createCommand, /0o700/);
 
   recorder = makeRecordingSpawn([]);
-  const invalid = await require("../src/remote-ssh-deploy").bootstrapIsolatedRuntime({
+  const invalid = await require("../src/features/remote-ssh/deploy").bootstrapIsolatedRuntime({
     profile: fixture.profile,
     installId: fixture.installId,
     runtimeKey: "../escape",
@@ -2473,7 +2473,7 @@ test("isolated bootstrap validates the key first, creates a fresh root under the
     { code: 88 },
     { code: 0 },
   ]);
-  const exists = await require("../src/remote-ssh-deploy").bootstrapIsolatedRuntime({
+  const exists = await require("../src/features/remote-ssh/deploy").bootstrapIsolatedRuntime({
     profile: fixture.profile,
     installId: fixture.installId,
     runtimeKey: "profile_b",

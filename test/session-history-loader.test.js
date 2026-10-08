@@ -14,7 +14,7 @@ const {
   loadResumableSessionHistory,
   resolveResumeTarget,
   clearTitleExtractionCache,
-} = require("../src/session-history-loader");
+} = require("../src/runtime/session/history-loader");
 const {
   LEGACY_HISTORY_VERSION,
   HISTORY_FILE_PREFIX,

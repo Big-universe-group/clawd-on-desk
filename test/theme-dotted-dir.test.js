@@ -6,8 +6,8 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 
-const themeLoader = require("../src/theme-loader");
-const themeMetadata = require("../src/theme-metadata");
+const themeLoader = require("../src/features/themes/loader");
+const themeMetadata = require("../src/features/themes/metadata");
 
 const SRC_DIR = path.join(__dirname, "..", "src");
 const REQUIRED_STATES = ["idle", "yawning", "dozing", "collapsing", "thinking", "working", "sleeping", "waking"];

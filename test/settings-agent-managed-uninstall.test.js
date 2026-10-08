@@ -6,11 +6,11 @@
 const { describe, it } = require("node:test");
 const assert = require("node:assert");
 
-const { commandRegistry, MANAGED_CLEANUP_AGENT_IDS } = require("../src/settings-actions");
+const { commandRegistry, MANAGED_CLEANUP_AGENT_IDS } = require("../src/core/settings/actions");
 const {
   uninstallAgentIntegration,
-} = require("../src/settings-actions-agents");
-const prefs = require("../src/prefs");
+} = require("../src/agents/settings-actions");
+const prefs = require("../src/core/settings/prefs");
 
 function installedSnapshot() {
   const snapshot = prefs.getDefaults();

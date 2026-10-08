@@ -15,7 +15,7 @@ const {
   createLarkClient,
   lookupOpenIdByEmail,
   normalizeApprovalPayload,
-} = require("../src/feishu-approval-client");
+} = require("../src/features/feishu/client");
 
 const SENTINEL = Object.freeze({
   appId: "cli_sensitive_app_id",

@@ -23,10 +23,10 @@ const {
 } = require("../hooks/minimax-install");
 const { registerCodexHooks, CODEX_OFFICIAL_HOOK_EVENTS } = require("../hooks/codex-install");
 const { stableCodexHookPaths } = require("../hooks/codex-install-utils");
-const agentCommands = require("../src/settings-actions-agents");
-const { MANAGED_CLEANUP_AGENT_IDS, commandRegistry } = require("../src/settings-actions");
-const { createIntegrationSyncRuntime } = require("../src/integration-sync");
-const prefs = require("../src/prefs");
+const agentCommands = require("../src/agents/settings-actions");
+const { MANAGED_CLEANUP_AGENT_IDS, commandRegistry } = require("../src/core/settings/actions");
+const { createIntegrationSyncRuntime } = require("../src/agents/integration-sync");
+const prefs = require("../src/core/settings/prefs");
 
 function writeJson(filePath, value) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });

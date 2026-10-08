@@ -12,7 +12,7 @@ const fs = require("fs");
 const path = require("path");
 const os = require("os");
 
-const { checkAgentIntegrations } = require("../src/doctor-detectors/agent-integrations");
+const { checkAgentIntegrations } = require("../src/agents/doctor/integrations");
 const { COPILOT_HOOK_EVENTS, MARKER } = require("../hooks/copilot-install");
 
 const tempDirs = [];

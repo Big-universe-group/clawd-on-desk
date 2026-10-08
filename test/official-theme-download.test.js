@@ -8,7 +8,7 @@ const { EventEmitter } = require("node:events");
 const os = require("node:os");
 const path = require("node:path");
 
-const download = require("../src/official-theme-download");
+const download = require("../src/features/themes/official/download");
 const { createFakeNet, streamResponse } = require("./helpers/fake-official-net");
 
 // Models a Windows host where the `.part` cannot be unlinked until the write

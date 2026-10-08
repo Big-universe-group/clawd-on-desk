@@ -6,7 +6,7 @@ const path = require("path");
 const { describe, it } = require("node:test");
 const { NESTED_TERMINAL_ENV } = require("../hooks/shared-process");
 const { readRemoteIdentity } = require("../hooks/server-config");
-const { buildRemoteIdentityDocument } = require("../src/remote-ssh-identity");
+const { buildRemoteIdentityDocument } = require("../src/features/remote-ssh/identity");
 
 const pluginDir = path.join(__dirname, "..", "hooks", "hermes-plugin");
 

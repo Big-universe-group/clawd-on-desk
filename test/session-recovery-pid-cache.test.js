@@ -7,7 +7,7 @@ const os = require("node:os");
 const path = require("node:path");
 const pidCache = require("../hooks/pid-cache");
 const { buildStateBody } = require("../hooks/clawd-hook");
-const { getAllAgents } = require("../agents/registry");
+const { getAllAgents } = require("../src/agents/registry");
 const {
   MAX_LEASE_AGE_MS,
   MAX_LEASE_FILES,

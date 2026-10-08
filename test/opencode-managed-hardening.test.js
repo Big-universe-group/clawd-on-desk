@@ -17,7 +17,7 @@ const { describe, it, afterEach } = require("node:test");
 const mg = require("../hooks/opencode-family-managed-generation");
 const ownership = require("../hooks/opencode-family-entry-ownership");
 const jsonc = require("../hooks/opencode-family-jsonc");
-const { getFamilyConfig } = require("../agents/opencode-family");
+const { getFamilyConfig } = require("../hooks/opencode-family");
 
 const OPENCODE_CFG = getFamilyConfig("opencode");
 const tempDirs = [];

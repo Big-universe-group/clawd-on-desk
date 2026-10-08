@@ -9,9 +9,9 @@ const os = require("node:os");
 const path = require("node:path");
 const { describe, it, afterEach } = require("node:test");
 
-const { checkAgentIntegrations } = require("../src/doctor-detectors/agent-integrations");
+const { checkAgentIntegrations } = require("../src/agents/doctor/integrations");
 const { registerOpencodePlugin } = require("../hooks/opencode-install");
-const { getAgentDescriptor } = require("../src/doctor-detectors/agent-descriptors");
+const { getAgentDescriptor } = require("../src/agents/doctor/descriptors");
 
 const tempDirs = [];
 function tmp(prefix) {
@@ -233,7 +233,7 @@ describe("#1026 managed OpenCode Doctor", () => {
     const home = makeHome();
     registerOpencodePlugin({ silent: true, v2Host: "v2", homeDir: home });
     const target = require("../hooks/opencode-family-managed-generation").resolveManagedTarget({
-      cfg: require("../agents/opencode-family").getFamilyConfig("opencode"),
+      cfg: require("../hooks/opencode-family").getFamilyConfig("opencode"),
       agentId: "opencode",
       homeDir: home,
       fs,
@@ -282,7 +282,7 @@ describe("#1026 managed OpenCode Doctor", () => {
 
   function managedTarget(home) {
     return require("../hooks/opencode-family-managed-generation").resolveManagedTarget({
-      cfg: require("../agents/opencode-family").getFamilyConfig("opencode"),
+      cfg: require("../hooks/opencode-family").getFamilyConfig("opencode"),
       agentId: "opencode",
       homeDir: home,
       fs,
@@ -411,7 +411,7 @@ describe("#1026 managed OpenCode Doctor", () => {
   // five-file one — the old test never exercised this upgrade path.
   function writeLegacyFourFileGeneration(home) {
     const mg = require("../hooks/opencode-family-managed-generation");
-    const family = require("../agents/opencode-family");
+    const family = require("../hooks/opencode-family");
     const cfg = family.getFamilyConfig("opencode");
     const sourcePluginDir = require("../hooks/opencode-install").resolveSourcePluginDir();
     const bundle = mg.readSourceBundle(cfg, sourcePluginDir, fs);

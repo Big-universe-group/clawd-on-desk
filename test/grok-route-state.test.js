@@ -5,11 +5,11 @@ const assert = require("node:assert");
 const { EventEmitter } = require("node:events");
 const path = require("node:path");
 
-const { handleStatePost } = require("../src/server-route-state");
-const { makeSessionKey } = require("../src/session-key");
-const createGrokTurnFence = require("../src/grok-turn-fence");
-const initState = require("../src/state");
-const themeLoader = require("../src/theme-loader");
+const { handleStatePost } = require("../src/core/server/route-state");
+const { makeSessionKey } = require("../src/core/util/session-key");
+const createGrokTurnFence = require("../src/agents/grok-build/turn-fence");
+const initState = require("../src/runtime/state/state");
+const themeLoader = require("../src/features/themes/loader");
 themeLoader.init(path.join(__dirname, "..", "src"));
 const theme = themeLoader.loadTheme("clawd");
 

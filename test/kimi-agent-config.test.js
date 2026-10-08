@@ -1,7 +1,7 @@
 const { describe, it } = require("node:test");
 const assert = require("node:assert");
 
-const kimi = require("../agents/kimi-cli");
+const kimi = require("../src/agents/kimi-cli/descriptor");
 
 describe("Kimi agent config", () => {
   it("uses hook-only event source", () => {

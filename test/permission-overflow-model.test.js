@@ -7,8 +7,8 @@ const {
   getPermissionSessionKey,
   groupPermissionEntries,
   selectOverflowRepresentatives,
-} = require("../src/permission-overflow-model");
-const { computeQueueCommitDeadline } = require("../src/permission").__test;
+} = require("../src/runtime/permission/overflow-model");
+const { computeQueueCommitDeadline } = require("../src/runtime/permission/permission").__test;
 
 function entry(id, ordinal, sessionId, agentId = "claude-code", extra = {}) {
   return {

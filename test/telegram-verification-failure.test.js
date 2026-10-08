@@ -7,7 +7,7 @@ const {
   ALLOWED_TEST_ERROR_CLASSES,
   normalizeTelegramVerificationFailure,
   sanitizeErrorClass,
-} = require("../src/telegram-verification-failure");
+} = require("../src/features/telegram/verification-failure");
 
 test("normalizes every allowlisted Telegram verification error class", () => {
   for (const errorClass of ALLOWED_TEST_ERROR_CLASSES) {

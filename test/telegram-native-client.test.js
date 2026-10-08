@@ -10,7 +10,7 @@ const {
   classifyError,
   pollWithConflictRetry,
   DEFAULT_RETRY_OPTS,
-} = require("../src/telegram-native-client");
+} = require("../src/features/telegram/native-client");
 const { createFakeTelegramServer } = require("./fakes/telegram-server");
 
 const VALID_TOKEN = "123456789:ABCDEFGHIJKLMNOPQRSTUVWXYZ-_0123456789";

@@ -6,7 +6,7 @@ const {
   createWindowsProcessQuery,
   createWindowsToolhelpSnapshot,
   walkProcessAncestry,
-} = require("../src/win-process-ancestry");
+} = require("../src/platform/win/process-ancestry");
 
 function percentile(values, fraction) {
   if (!values.length) return null;

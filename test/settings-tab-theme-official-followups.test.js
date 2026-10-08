@@ -215,8 +215,12 @@ function createHarness(options = {}) {
   };
   sandbox.globalThis = sandbox;
 
-  for (const file of ["settings-i18n.js", "settings-size-slider.js", "settings-ui-core.js"]) {
-    vm.runInNewContext(fs.readFileSync(path.join(SRC_DIR, file), "utf8"), sandbox, { filename: file });
+  for (const file of [
+    path.join("core", "i18n", "settings-i18n.js"),
+    path.join("ui", "settings", "size-slider.js"),
+    path.join("ui", "settings", "ui-core.js"),
+  ]) {
+    vm.runInNewContext(fs.readFileSync(path.join(SRC_DIR, file), "utf8"), sandbox, { filename: path.basename(file) });
   }
 
   const core = sandbox.ClawdSettingsCore;
@@ -267,7 +271,7 @@ function createHarness(options = {}) {
     core.tabs.theme.render(content);
   };
 
-  vm.runInNewContext(fs.readFileSync(path.join(SRC_DIR, "settings-tab-theme.js"), "utf8"), sandbox, { filename: "settings-tab-theme.js" });
+  vm.runInNewContext(fs.readFileSync(path.join(SRC_DIR, "ui", "settings", "tabs", "theme.js"), "utf8"), sandbox, { filename: "settings-tab-theme.js" });
   sandbox.ClawdSettingsTabTheme.init(core);
 
   return {

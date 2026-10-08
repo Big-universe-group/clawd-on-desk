@@ -16,10 +16,10 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 
-const HIT_RENDERER = path.join(__dirname, "..", "src", "hit-renderer.js");
+const HIT_RENDERER = path.join(__dirname, "..", "src", "ui", "pet", "hit-renderer.js");
 const SOURCE = fs.readFileSync(HIT_RENDERER, "utf8").replace(/\r\n/g, "\n");
 
-const { registerPetInteractionIpc } = require("../src/pet-interaction-ipc");
+const { registerPetInteractionIpc } = require("../src/ui/pet/pet-interaction-ipc");
 
 class FakeArea {
   constructor() {

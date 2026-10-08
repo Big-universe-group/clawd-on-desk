@@ -458,7 +458,7 @@ describe("mimocode installer wrapper surface (plan §5 contract)", () => {
     // in the CLI polite-skip case below.
     const familySrc = fs.readFileSync(require.resolve("../hooks/opencode-family-install.js"), "utf8");
     assert.match(familySrc, /reason: `\$\{agentId\}-not-found`/);
-    const syncSrc = fs.readFileSync(require.resolve("../src/integration-sync.js"), "utf8");
+    const syncSrc = fs.readFileSync(require.resolve("../src/agents/integration-sync.js"), "utf8");
     assert.match(syncSrc, /"mimocode-not-found"/);
   });
 });
@@ -518,7 +518,7 @@ describe("opencode JSONC installer — merged config semantics (#825)", () => {
   // eslint-disable-next-line global-require
   const { registerOpencodePlugin, unregisterOpencodePlugin } = require("../hooks/opencode-install");
   // eslint-disable-next-line global-require
-  const { getFamilyConfig } = require("../agents/opencode-family");
+  const { getFamilyConfig } = require("../hooks/opencode-family");
   const OC_PLUGIN_DIR = "/abs/hooks/opencode-plugin";
 
   function ocDir() {

@@ -7,8 +7,8 @@
 const assert = require("node:assert/strict");
 const { EventEmitter } = require("node:events");
 const { test } = require("node:test");
-const { createDashboardQuickMode } = require("../src/dashboard-quick-mode");
-const createOriginFocus = require("../src/quick-select-origin-focus");
+const { createDashboardQuickMode } = require("../src/ui/dashboard/quick-mode");
+const createOriginFocus = require("../src/platform/win/quick-select-origin-focus");
 
 function harness(options = {}) {
   let foreground = "source";

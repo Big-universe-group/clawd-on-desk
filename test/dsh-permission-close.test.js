@@ -4,8 +4,8 @@ const { describe, it } = require("node:test");
 const assert = require("node:assert");
 const { EventEmitter } = require("node:events");
 
-const initPermission = require("../src/permission");
-const { handlePermissionPost } = require("../src/server-route-permission");
+const initPermission = require("../src/runtime/permission/permission");
+const { handlePermissionPost } = require("../src/core/server/route-permission");
 
 const { CLAWD_SERVER_HEADER, CLAWD_SERVER_ID } = require("../hooks/server-config");
 

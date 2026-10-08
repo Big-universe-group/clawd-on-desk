@@ -3,7 +3,7 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 
-const { createKimiQuotaRuntime, emptyBinding } = require("../src/kimi-quota-runtime");
+const { createKimiQuotaRuntime, emptyBinding } = require("../src/agents/kimi-cli/quota/runtime");
 
 const ID_A = "123e4567-e89b-42d3-a456-426614174000";
 const ID_B = "123e4567-e89b-42d3-a456-426614174001";

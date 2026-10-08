@@ -3,9 +3,9 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 
-const fmt = require("../src/slack-message-format");
-const { resolveSessionIdentity } = require("../src/session-key");
-const { buildSessionSnapshot, buildSessionSnapshotEntry } = require("../src/state-session-snapshot");
+const fmt = require("../src/features/slack/message-format");
+const { resolveSessionIdentity } = require("../src/core/util/session-key");
+const { buildSessionSnapshot, buildSessionSnapshotEntry } = require("../src/runtime/state/session-snapshot");
 
 test("buildCompletionMessage renders a done card with fallback text", () => {
   const msg = fmt.buildCompletionMessage(

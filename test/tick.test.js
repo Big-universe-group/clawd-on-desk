@@ -4,8 +4,8 @@ const { describe, it, beforeEach, afterEach, mock } = require("node:test");
 const assert = require("node:assert");
 const path = require("node:path");
 
-const themeLoader = require("../src/theme-loader");
-const { resolveIdleVisualChoice } = require("../src/idle-visual");
+const themeLoader = require("../src/features/themes/loader");
+const { resolveIdleVisualChoice } = require("../src/runtime/visual/idle-visual");
 themeLoader.init(path.join(__dirname, "..", "src"));
 const _defaultTheme = themeLoader.loadTheme("clawd");
 
@@ -15,7 +15,7 @@ function cloneTheme(theme) {
 
 function loadTickWithScreen(getCursorScreenPoint) {
   const electronPath = require.resolve("electron");
-  const tickPath = require.resolve("../src/tick");
+  const tickPath = require.resolve("../src/ui/pet/tick");
   const previousElectron = Object.prototype.hasOwnProperty.call(require.cache, electronPath)
     ? require.cache[electronPath]
     : null;
@@ -34,7 +34,7 @@ function loadTickWithScreen(getCursorScreenPoint) {
   delete require.cache[tickPath];
 
   return {
-    initTick: require("../src/tick"),
+    initTick: require("../src/ui/pet/tick"),
     restore() {
       if (previousElectron) require.cache[electronPath] = previousElectron;
       else delete require.cache[electronPath];

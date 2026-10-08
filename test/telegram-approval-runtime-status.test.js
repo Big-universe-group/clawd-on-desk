@@ -8,10 +8,10 @@ const {
   isNativeTelegramApprovalSelected,
   buildTelegramStatusDiagnostic,
   formatTelegramStatusDiagnostic,
-} = require("../src/telegram-approval-runtime-status");
+} = require("../src/features/telegram/approval-runtime-status");
 const {
   ALLOWED_TEST_ERROR_CLASSES,
-} = require("../src/telegram-verification-failure");
+} = require("../src/features/telegram/verification-failure");
 
 const COMPLETE_CONFIG_DISABLED = {
   enabled: false,
@@ -551,7 +551,7 @@ test("R2 diagnostic redacts token, Telegram ids, paths, and tool-like secrets fr
 // namespaced session key. Slicing that key returns the envelope, which is the
 // same for every local session.
 test("distinct local sessions get distinct short ids in the diagnostic", () => {
-  const { resolveSessionIdentity } = require("../src/session-key");
+  const { resolveSessionIdentity } = require("../src/core/util/session-key");
 
   function lineFor(rawSessionId) {
     const identity = resolveSessionIdentity(rawSessionId);
@@ -622,7 +622,7 @@ test("status all uses each snapshot display tag without leaking canonical ids", 
 });
 
 test("hashes a token-shaped session id without leaking a raw prefix", () => {
-  const { resolveSessionIdentity } = require("../src/session-key");
+  const { resolveSessionIdentity } = require("../src/core/util/session-key");
   const secret = "123456789:AAHqwertyuiopasdfghjklzxcvbnm123456";
   const identity = resolveSessionIdentity(secret, "local");
   const diagnostic = buildTelegramStatusDiagnostic({

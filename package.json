@@ -176,7 +176,6 @@
       "assets/tray-icon*.png",
       "hooks/**/*",
       "extensions/**/*",
-      "agents/**/*",
       "themes/**/*",
       "pwa/**/*"
     ],
@@ -185,7 +184,6 @@
       "assets/accessories/**/*",
       "hooks/**/*",
       "extensions/**/*",
-      "agents/**/*",
       "themes/**/*",
       "node_modules/jsonc-parser/**/*"
     ],

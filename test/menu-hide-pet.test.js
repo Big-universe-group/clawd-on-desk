@@ -3,7 +3,7 @@ const Module = require("node:module");
 const path = require("node:path");
 const { describe, it } = require("node:test");
 
-const MENU_MODULE_PATH = require.resolve("../src/menu");
+const MENU_MODULE_PATH = require.resolve("../src/ui/menu/menu");
 
 function loadMenuWithElectron(fakeElectron, fakeTaskbar = null, platform = null) {
   delete require.cache[MENU_MODULE_PATH];
@@ -14,11 +14,11 @@ function loadMenuWithElectron(fakeElectron, fakeTaskbar = null, platform = null)
   }
   Module._load = function patchedLoad(request, parent, isMain) {
     if (request === "electron") return fakeElectron;
-    if (fakeTaskbar && request === "./taskbar") return fakeTaskbar;
+    if (fakeTaskbar && request === "../../platform/taskbar") return fakeTaskbar;
     return originalLoad.apply(this, arguments);
   };
   try {
-    return require("../src/menu");
+    return require("../src/ui/menu/menu");
   } finally {
     Module._load = originalLoad;
     if (platform) Object.defineProperty(process, "platform", originalPlatform);

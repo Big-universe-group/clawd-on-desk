@@ -5,8 +5,8 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
-const mirror = require("../src/mirrored-files");
-const { createDisplayedVisualProjection } = require("../src/displayed-visual-projection");
+const mirror = require("../src/core/util/mirrored-files");
+const { createDisplayedVisualProjection } = require("../src/runtime/visual/displayed-visual-projection");
 
 // Run the actual main request/refresh path with a real projection. Electron's
 // window and screen are the only geometry boundaries replaced here.

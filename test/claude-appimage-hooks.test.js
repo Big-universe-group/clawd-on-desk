@@ -21,8 +21,8 @@ const {
   inspectClaudeHookHealth,
   hasNoAutomaticRepairWork,
   buildClaudeRepairSignature,
-} = require("../src/claude-hook-health");
-const { createClaudeSettingsWatcher } = require("../src/claude-settings-watcher");
+} = require("../src/agents/claude-code/hook-health");
+const { createClaudeSettingsWatcher } = require("../src/agents/claude-code/settings-watcher");
 const { EventEmitter } = require("node:events");
 const { resolveAppImageExecutable, launchApp, isMaterializedAppImageHooksDir } = require("../hooks/auto-start");
 

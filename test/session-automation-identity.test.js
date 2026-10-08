@@ -6,7 +6,7 @@ const assert = require("node:assert");
 const {
   ADAPTER_POLICY,
   assessSessionAutomationIdentity,
-} = require("../src/session-automation-identity");
+} = require("../src/runtime/session/automation/identity");
 const {
   CODEX_PLACEHOLDER_SESSION_IDS,
 } = require("../hooks/codex-originator");

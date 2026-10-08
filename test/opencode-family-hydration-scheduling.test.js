@@ -10,10 +10,10 @@ const { EventEmitter } = require("node:events");
 const { syncBuiltinESMExports } = require("node:module");
 const { pathToFileURL } = require("node:url");
 const { before, after, it, mock } = require("node:test");
-const { handleStatePost } = require("../src/server-route-state");
-const { makeSessionKey } = require("../src/session-key");
-const initState = require("../src/state");
-const themeLoader = require("../src/theme-loader");
+const { handleStatePost } = require("../src/core/server/route-state");
+const { makeSessionKey } = require("../src/core/util/session-key");
+const initState = require("../src/runtime/state/state");
+const themeLoader = require("../src/features/themes/loader");
 
 const TEMP_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "clawd-hydration-scheduling-"));
 const directory = path.join(TEMP_DIR, "project");

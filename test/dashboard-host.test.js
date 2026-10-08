@@ -8,7 +8,7 @@
 const assert = require("node:assert/strict");
 const { test } = require("node:test");
 
-const { createDashboardHost, usesWebContentsView } = require("../src/dashboard-host");
+const { createDashboardHost, usesWebContentsView } = require("../src/ui/dashboard/host");
 
 class FakeBaseWindow {
   constructor(opts) {

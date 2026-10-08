@@ -2,8 +2,8 @@ const { describe, it } = require("node:test");
 const assert = require("node:assert");
 const path = require("path");
 
-const themeLoader = require("../src/theme-loader");
-const hitGeometry = require("../src/hit-geometry");
+const themeLoader = require("../src/features/themes/loader");
+const hitGeometry = require("../src/ui/pet/hit-geometry");
 const {
   getThemeMarginBox,
   computeThemeAnchorRect,
@@ -11,7 +11,7 @@ const {
   computeStableVisibleContentMargins,
   getLooseDragMargins,
   getRestClampMargins,
-} = require("../src/visible-margins");
+} = require("../src/ui/pet/visible-margins");
 
 themeLoader.init(path.join(__dirname, "..", "src"));
 

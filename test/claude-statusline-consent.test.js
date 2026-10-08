@@ -1,9 +1,9 @@
 "use strict";
 const { it } = require("node:test");
 const assert = require("node:assert/strict");
-const { setClaudeCollectionWithConsent } = require("../src/claude-statusline-consent");
-const { createSettingsController } = require("../src/settings-controller");
-const { DEFAULTS } = require("../src/prefs");
+const { setClaudeCollectionWithConsent } = require("../src/agents/claude-code/statusline-consent");
+const { createSettingsController } = require("../src/core/settings/controller");
+const { DEFAULTS } = require("../src/core/settings/prefs");
 const digest = "a".repeat(64);
 const occupied = { status: "error", reason: "statusline-occupied", statuslineFingerprint: digest };
 

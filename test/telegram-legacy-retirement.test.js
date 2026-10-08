@@ -37,12 +37,12 @@ test("retired Telegram runtime modules are absent and have no production importe
 
   const productionSources = [
     "src/main.js",
-    "src/permission.js",
-    "src/settings-tab-telegram-approval.js",
-    "src/telegram-approval-runtime-status.js",
-    "src/telegram-approval-settings.js",
-    "src/telegram-migration-controller.js",
-    "src/telegram-migration-state.js",
+    "src/runtime/permission/permission.js",
+    "src/ui/settings/tabs/telegram-approval.js",
+    "src/features/telegram/approval-runtime-status.js",
+    "src/features/telegram/approval-settings.js",
+    "src/features/telegram/migration-controller.js",
+    "src/features/telegram/migration-state.js",
   ].map((relativePath) => `${relativePath}\n${read(relativePath)}`).join("\n");
 
   for (const relativePath of RETIRED_SOURCE_PATHS) {
@@ -58,8 +58,8 @@ test("retired Telegram runtime modules are absent and have no production importe
 test("production migration vocabulary has no legacy runtime transition", () => {
   const sources = [
     read("src/main.js"),
-    read("src/telegram-migration-controller.js"),
-    read("src/telegram-migration-state.js"),
+    read("src/features/telegram/migration-controller.js"),
+    read("src/features/telegram/migration-state.js"),
   ].join("\n");
   for (const token of RETIRED_RUNTIME_TOKENS) {
     assert.equal(sources.includes(token), false, `${token} must not return`);

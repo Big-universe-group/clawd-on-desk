@@ -6,8 +6,8 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
 
-const { registerSessionIpc } = require("../src/session-ipc");
-const { SUPPORTED_LANGS } = require("../src/i18n");
+const { registerSessionIpc } = require("../src/runtime/session/ipc");
+const { SUPPORTED_LANGS } = require("../src/core/i18n/i18n");
 
 class FakeIpcMain {
   constructor() {
@@ -54,7 +54,7 @@ function createHarness(overrides = {}) {
   const calls = [];
   const ipcMain = new FakeIpcMain();
   const dashboardMainFrame = {
-    url: pathToFileURL(path.join(__dirname, "..", "src", "dashboard.html")).toString(),
+    url: pathToFileURL(path.join(__dirname, "..", "src", "ui", "dashboard", "dashboard.html")).toString(),
   };
   // The page's WebContents belongs to a WebContentsView on darwin/win32, so
   // the trust check must resolve it directly and never through a window.
@@ -515,7 +515,7 @@ test("dashboard renderer wires the Mark-read button + ackCompletion fallback (so
   // (3) Mark-read click awaits invoke result and re-enables on failure.
   // Manual QA covers the actual click flow.
   const rendererSrc = fs.readFileSync(
-    path.join(__dirname, "..", "src", "dashboard-renderer.js"),
+    path.join(__dirname, "..", "src", "ui", "dashboard", "renderer.js"),
     "utf8"
   );
   assert.ok(rendererSrc.includes("session.requiresCompletionAck === true"),
@@ -528,7 +528,7 @@ test("dashboard renderer wires the Mark-read button + ackCompletion fallback (so
   assert.ok(/result\.status !== "ok"[\s\S]+button\.disabled = false/.test(rendererSrc),
     "Mark-read click must re-enable button on ack failure");
 
-  const i18nSrc = fs.readFileSync(path.join(__dirname, "..", "src", "i18n.js"), "utf8");
+  const i18nSrc = fs.readFileSync(path.join(__dirname, "..", "src", "core", "i18n", "i18n.js"), "utf8");
   // Both new keys must appear once in every supported language table.
   for (const key of ["dashboardMarkRead", "dashboardMarkReadTitle"]) {
     const matches = i18nSrc.match(new RegExp(`\\b${key}:`, "g"));
@@ -539,10 +539,10 @@ test("dashboard renderer wires the Mark-read button + ackCompletion fallback (so
 });
 
 test("Dashboard exposes the trusted Kimi quota refresh bridge and localized action", () => {
-  const rendererSrc = fs.readFileSync(path.join(__dirname, "..", "src", "dashboard-renderer.js"), "utf8");
-  const preloadSrc = fs.readFileSync(path.join(__dirname, "..", "src", "preload-dashboard.js"), "utf8");
-  const htmlSrc = fs.readFileSync(path.join(__dirname, "..", "src", "dashboard.html"), "utf8");
-  const i18nSrc = fs.readFileSync(path.join(__dirname, "..", "src", "i18n.js"), "utf8");
+  const rendererSrc = fs.readFileSync(path.join(__dirname, "..", "src", "ui", "dashboard", "renderer.js"), "utf8");
+  const preloadSrc = fs.readFileSync(path.join(__dirname, "..", "src", "ui", "dashboard", "preload.js"), "utf8");
+  const htmlSrc = fs.readFileSync(path.join(__dirname, "..", "src", "ui", "dashboard", "dashboard.html"), "utf8");
+  const i18nSrc = fs.readFileSync(path.join(__dirname, "..", "src", "core", "i18n", "i18n.js"), "utf8");
 
   // The refresh button is built by the renderer inside the Kimi quota
   // section header, not static markup in dashboard.html.
