@@ -230,20 +230,16 @@
             agentId: source.agentId,
             scope: source.scope,
             scopeInstance: source.scopeInstance,
-            sessionsStarted: 0,
             turnsCompleted: 0,
             toolCalls: 0,
             activityEvents: 0,
-            sessionsStartedPartial: false,
           };
           rows.set(key, row);
         }
         const metrics = source.metrics || {};
-        row.sessionsStarted = combineMetric(row.sessionsStarted, metrics.sessionsStarted);
         row.turnsCompleted = combineMetric(row.turnsCompleted, metrics.turnsCompleted);
         row.toolCalls = combineMetric(row.toolCalls, metrics.toolCalls);
         row.activityEvents += Number.isSafeInteger(metrics.activityEvents) ? metrics.activityEvents : 0;
-        row.sessionsStartedPartial ||= source.sessionsStartedPartial === true;
       }
     }
     return {
@@ -523,10 +519,9 @@
     return group;
   }
 
-  function metricText(value, partial = false) {
+  function metricText(value) {
     if (value === null) return t("recapMetricUnavailable");
-    const formatted = formatNumber(value);
-    return partial ? `${formatted} · ${t("recapMetricPartial")}` : formatted;
+    return formatNumber(value);
   }
 
   function buildAgentRows(summary, interaction) {
@@ -548,15 +543,14 @@
       item.setAttribute("role", "button");
       item.setAttribute("aria-pressed", view.lockedRowKey === row.key ? "true" : "false");
       const metricEntries = [
-        ["recapMetricSessions", row.sessionsStarted, row.sessionsStartedPartial],
-        ["recapMetricTurns", row.turnsCompleted, false],
-        ["recapMetricTools", row.toolCalls, false],
-        ["recapMetricSignals", row.activityEvents, false],
+        ["recapMetricTurns", row.turnsCompleted],
+        ["recapMetricTools", row.toolCalls],
+        ["recapMetricSignals", row.activityEvents],
       ];
-      const metricDescription = metricEntries.map(([labelKey, value, partial]) => {
+      const metricDescription = metricEntries.map(([labelKey, value]) => {
         const accessibleValue = value === null
           ? t("recapMetricUnavailableReason")
-          : metricText(value, partial);
+          : metricText(value);
         return `${t(labelKey)}: ${accessibleValue}`;
       }).join(". ");
       item.setAttribute("aria-label", `${replace(t("recapAgentHighlightAria"), {
@@ -581,12 +575,12 @@
       item.appendChild(identity);
       const metrics = document.createElement("dl");
       metrics.className = "recap-agent-metrics";
-      for (const [labelKey, value, partial] of metricEntries) {
+      for (const [labelKey, value] of metricEntries) {
         const pair = document.createElement("div");
         const label = document.createElement("dt");
         label.textContent = t(labelKey);
         const count = document.createElement("dd");
-        count.textContent = metricText(value, partial);
+        count.textContent = metricText(value);
         if (value === null) {
           count.title = t("recapMetricUnavailableReason");
           count.setAttribute("aria-label", `${t(labelKey)}: ${t("recapMetricUnavailableReason")}`);

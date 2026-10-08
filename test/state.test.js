@@ -70,6 +70,111 @@ function cloneTheme(theme) {
   return JSON.parse(JSON.stringify(theme));
 }
 
+describe("Claude correlated batch phase", () => {
+  let api;
+  let ctx;
+  beforeEach(() => { ctx = makeCtx(); api = require("../src/state")(ctx); });
+  afterEach(() => api.cleanup());
+  const sid = "batch-session";
+  function event(name, state, extra = {}) {
+    return api.updateSession(sid, state, name, { agentId: "claude-code", claudePromptId: "prompt-1", ...extra });
+  }
+
+  it("waits for a whole parallel batch then ignores its late per-tool callbacks", () => {
+    event("UserPromptSubmit", "thinking");
+    event("PreToolUse", "working", { toolUseId: "tool-a" });
+    event("PreToolUse", "working", { toolUseId: "tool-b" });
+    event("PostToolUse", "working", { toolUseId: "tool-a" });
+    assert.equal(event("PostToolBatch", "thinking", { batchToolUseIds: ["tool-a"] }), false);
+    assert.equal(api.sessions.get(sid).state, "working");
+    event("PostToolBatch", "thinking", { batchToolUseIds: ["tool-a", "tool-b"] });
+    assert.equal(api.sessions.get(sid).state, "thinking");
+    const before = JSON.stringify(api.buildSessionSnapshot());
+    assert.equal(event("PostToolUse", "working", { toolUseId: "tool-b" }), false);
+    assert.equal(event("PostToolBatch", "thinking", { batchToolUseIds: ["tool-a", "tool-b"] }), false);
+    assert.equal(JSON.stringify(api.buildSessionSnapshot()), before);
+  });
+
+  it("rejects old-prompt batches, tool tails and Stop without disturbing a newer tool", () => {
+    event("UserPromptSubmit", "thinking");
+    event("PreToolUse", "working", { toolUseId: "old-tool" });
+    event("UserPromptSubmit", "thinking", { claudePromptId: "prompt-2" });
+    event("PreToolUse", "working", { claudePromptId: "prompt-2", toolUseId: "new-tool" });
+    const before = JSON.stringify(api.buildSessionSnapshot());
+    assert.equal(event("PostToolBatch", "thinking", { batchToolUseIds: ["old-tool"] }), false);
+    assert.equal(event("PostToolUse", "working", { toolUseId: "old-tool" }), false);
+    assert.equal(event("Stop", "attention"), false);
+    assert.equal(JSON.stringify(api.buildSessionSnapshot()), before);
+  });
+
+  it("does not resurrect a completed turn or create an unobserved session", () => {
+    assert.equal(event("PostToolBatch", "thinking", { batchToolUseIds: ["tool-a"] }), false);
+    assert.equal(api.sessions.size, 0);
+    event("UserPromptSubmit", "thinking");
+    event("PreToolUse", "working", { toolUseId: "tool-a" });
+    event("Stop", "attention");
+    const before = JSON.stringify(api.buildSessionSnapshot());
+    assert.equal(event("PostToolBatch", "thinking", { batchToolUseIds: ["tool-a"] }), false);
+    assert.equal(JSON.stringify(api.buildSessionSnapshot()), before);
+  });
+
+  it("keeps pending approvals and confirmed subagents visible", () => {
+    event("UserPromptSubmit", "thinking");
+    event("PreToolUse", "working", { toolUseId: "tool-a" });
+    ctx.pendingPermissions.push({ sessionId: sid, agentId: "claude-code", res: {} });
+    assert.equal(event("PostToolBatch", "thinking", { batchToolUseIds: ["tool-a"] }), false);
+    ctx.pendingPermissions.length = 0;
+    event("SubagentStart", "juggling", { subagentId: "child-a", subagentLifecycleSource: "native" });
+    event("PostToolBatch", "thinking", { batchToolUseIds: ["tool-a"] });
+    assert.equal(api.sessions.get(sid).state, "juggling");
+    assert.equal(api.sessions.get(sid).subagentTracker.confirmedIds.size, 1);
+  });
+
+  it("keeps a delayed synthetic subagent start above its early batch hint", () => {
+    event("UserPromptSubmit", "thinking");
+    event("PostToolBatch", "thinking", { batchToolUseIds: ["agent-tool"] });
+    event("SubagentStart", "juggling", { toolUseId: "agent-tool", toolName: "Agent",
+      subagentLifecycleSource: "synthetic-tool" });
+    assert.equal(api.sessions.get(sid).subagentTracker.legacyFloor, true);
+    assert.equal(api.sessions.get(sid).state, "juggling");
+  });
+
+  it("keeps legacy working when prompt identity is absent and never treats a batch as completion", () => {
+    const sounds = [];
+    ctx.playSound = (...args) => sounds.push(args);
+    event("UserPromptSubmit", "thinking", { claudePromptId: null });
+    event("PreToolUse", "working", { claudePromptId: null, toolUseId: "tool-a" });
+    assert.equal(event("PostToolBatch", "thinking", { batchToolUseIds: ["tool-a"] }), false);
+    assert.equal(api.sessions.get(sid).state, "working");
+    event("UserPromptSubmit", "thinking", { claudePromptId: "prompt-2" });
+    event("PreToolUse", "working", { claudePromptId: "prompt-2", toolUseId: "tool-b" });
+    event("PostToolUseFailure", "error", { claudePromptId: "prompt-2", toolUseId: "tool-b" });
+    event("PostToolBatch", "thinking", { claudePromptId: "prompt-2", batchToolUseIds: ["tool-b"] });
+    assert.equal(api.sessions.get(sid).state, "thinking");
+    assert.notEqual(api.sessions.get(sid).requiresCompletionAck, true, "a batch does not create a completed-turn acknowledgement");
+    assert.ok(!sounds.some((args) => args.includes("happy")));
+  });
+
+  for (const batchFirst of [true, false]) {
+    it(`plays the failure cue and resumes thinking with real theme holds when batchFirst=${batchFirst}`, (t) => {
+      t.mock.timers.enable({ apis: ["Date", "setTimeout"] });
+      try {
+        event("UserPromptSubmit", "thinking");
+        event("PreToolUse", "working", { toolUseId: "failed-tool" });
+        if (batchFirst) event("PostToolBatch", "thinking", { batchToolUseIds: ["failed-tool"] });
+        event("PostToolUseFailure", "error", { toolUseId: "failed-tool" });
+        if (!batchFirst) event("PostToolBatch", "thinking", { batchToolUseIds: ["failed-tool"] });
+        t.mock.timers.tick(1000);
+        assert.equal(api.getCurrentState(), "error");
+        assert.equal(api.sessions.get(sid).state, "thinking");
+        t.mock.timers.tick(5000);
+        assert.equal(api.getCurrentState(), "thinking");
+        assert.equal(api.sessions.get(sid).requiresCompletionAck, undefined);
+      } finally { api.cleanup(); t.mock.timers.reset(); }
+    });
+  }
+});
+
 describe("optional mini peek states", () => {
   let api;
 
@@ -5928,6 +6033,77 @@ describe("Stop completion gate (#406)", () => {
       if (saved === undefined) delete process.env.CLAWD_COMPLETION_DEBOUNCE_MS;
       else process.env.CLAWD_COMPLETION_DEBOUNCE_MS = saved;
     }
+  });
+
+  for (const batchFirst of [true, false]) {
+    it(`keeps the AskUserQuestion transcript fallback after a batch (batchFirst=${batchFirst})`, () => {
+      const dir = fs.mkdtempSync(path.join(os.tmpdir(), "clawd-claude-batch-probe-"));
+      const transcript = path.join(dir, "transcript.jsonl");
+      const rawSessionId = "claude-batch-probe";
+      const sessionId = resolveSessionIdentity(rawSessionId, "local").sessionId;
+      const opts = { agentId: "claude-code", rawSessionId, claudePromptId: "probe-prompt",
+        toolUseId: "ask-tool", toolName: "AskUserQuestion", transcriptPath: transcript };
+      const batch = () => api.updateSession(sessionId, "thinking", "PostToolBatch",
+        { ...opts, batchToolUseIds: ["ask-tool"] });
+      try {
+        fs.writeFileSync(transcript, JSON.stringify({ type: "assistant",
+          message: { content: [{ type: "tool_use", name: "AskUserQuestion" }] } }) + "\n");
+        api.updateSession(sessionId, "thinking", "UserPromptSubmit", opts);
+        api.updateSession(sessionId, "working", "PreToolUse", opts);
+        if (batchFirst) batch();
+        api.updateSession(sessionId, "working", "PostToolUse", opts);
+        if (!batchFirst) batch();
+        mock.timers.tick(1999);
+        assert.equal(api.sessions.get(sessionId).state, "thinking");
+        assert.ok(!soundsPlayed.includes("complete"));
+        fs.appendFileSync(transcript, JSON.stringify({ type: "assistant",
+          message: { content: "Final answer after the question." } }) + "\n");
+        mock.timers.tick(1);
+        assert.equal(api.sessions.get(sessionId).state, "idle");
+        assert.equal(api.deriveSessionBadge(api.sessions.get(sessionId)), "done");
+        mock.timers.tick(_defaultTheme.timings.minDisplay.thinking);
+        assert.equal(soundsPlayed.filter(sound => sound === "complete").length, 1);
+        assert.equal(batch(), false, "a trailing batch cannot reopen transcript completion");
+        api.updateSession(sessionId, "working", "PreToolUse",
+          { ...opts, claudePromptId: "queued-prompt", toolUseId: "queued-tool", toolName: "Read" });
+        api.updateSession(sessionId, "thinking", "PostToolBatch",
+          { ...opts, claudePromptId: "queued-prompt", batchToolUseIds: ["queued-tool"] });
+        assert.equal(api.sessions.get(sessionId).state, "thinking");
+      } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+    });
+  }
+
+  it("cancels the batch-thinking question probe when a real next tool starts", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "clawd-claude-batch-probe-"));
+    const transcript = path.join(dir, "transcript.jsonl");
+    const opts = { agentId: "claude-code", claudePromptId: "probe-prompt", toolUseId: "ask-tool",
+      toolName: "AskUserQuestion", transcriptPath: transcript };
+    try {
+      fs.writeFileSync(transcript, "");
+      api.updateSession("probe-cancel", "thinking", "UserPromptSubmit", opts);
+      api.updateSession("probe-cancel", "working", "PreToolUse", opts);
+      api.updateSession("probe-cancel", "working", "PostToolUse", opts);
+      api.updateSession("probe-cancel", "thinking", "PostToolBatch", { ...opts, batchToolUseIds: ["ask-tool"] });
+      api.updateSession("probe-cancel", "working", "PreToolUse", { ...opts, toolUseId: "next-tool", toolName: "Read" });
+      api.updateSession("probe-cancel", "working", "PostToolUse", opts);
+      fs.appendFileSync(transcript, JSON.stringify({ type: "assistant", message: { content: "Old final answer." } }) + "\n");
+      mock.timers.tick(10000);
+      assert.equal(api.sessions.get("probe-cancel").state, "working");
+      assert.ok(!soundsPlayed.includes("complete"));
+    } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+  });
+
+  it("keeps newer work active when an older early batch's tool arrives late", () => {
+    const sid = "interleaved-batch-session";
+    const event = (name, value, extra = {}) => api.updateSession(sid, value, name,
+      { agentId: "claude-code", claudePromptId: "same-prompt", ...extra });
+    event("UserPromptSubmit", "thinking");
+    event("PostToolBatch", "thinking", { batchToolUseIds: ["old-tool"] });
+    event("PreToolUse", "working", { toolUseId: "new-tool" });
+    event("PreToolUse", "working", { toolUseId: "old-tool" });
+    assert.equal(api.sessions.get(sid).state, "working");
+    event("PostToolBatch", "thinking", { batchToolUseIds: ["new-tool"] });
+    assert.equal(api.sessions.get(sid).state, "thinking");
   });
 
   it("Claude AskUserQuestion PostToolUse falls back to transcript completion when Stop is missed", () => {

@@ -27,6 +27,9 @@
     "sessionHudShowQuota",
     "quotaTrayEnabled",
     "quotaRingDisplayMode",
+    "quotaAlertsEnabled",
+    "quotaAlertThresholds",
+    "quotaRecoveryAlertsEnabled",
     "permissionAutomationMode",
     "permissionAutomationAutoToolsWarningDismissed",
     "permissionAutomationUnattendedWarningDismissed",
@@ -869,7 +872,9 @@
   // which provider rows appear in the HUD's quota section. Per-provider opt-ins that rewrite
   // another tool's config (Claude statusline) or need a secret (Kimi API key)
   // stay on that provider's card under Agents; "Data sources" here only reports
-  // on the read-only sources the master switch drives.
+  // on the read-only sources the master switch drives. The low-quota reminders
+  // live here too: they read the same quota reports and need no extra collection.
+  // A new provider's collection switch goes on its card, never in this group.
   function buildQuotaRingGroup() {
     const enabledRow = helpers.buildSwitchRow({
       key: "sessionHudShowQuota",
@@ -895,6 +900,20 @@
     mergeRow.style.display = state.snapshot && state.snapshot.quotaMergeSources === true
       ? ""
       : "none";
+    const alertsEnabledRow = helpers.buildSwitchRow({
+      key: "quotaAlertsEnabled",
+      labelKey: "quotaEnabled",
+      descKey: "quotaDescription",
+    });
+    const thresholdsRow = buildQuotaAlertThresholdsRow();
+    const recoveryRow = helpers.buildSwitchRow({
+      key: "quotaRecoveryAlertsEnabled",
+      labelKey: "quotaRecovery",
+      descKey: "quotaRecoveryDesc",
+    });
+    const testRow = buildQuotaNotificationTestRow();
+    // Visibility of these rows follows the master switch; see syncReminderRowsVisibility.
+    const reminderRows = [thresholdsRow, recoveryRow, testRow];
     const optionList = buildOptionList("quota-ring-option-list", [
       enabledRow,
       trayEnabledRow,
@@ -902,6 +921,10 @@
       displayModeRow,
       providersBlock.element,
       mergeRow,
+      alertsEnabledRow,
+      thresholdsRow,
+      recoveryRow,
+      testRow,
     ]);
     const group = helpers.buildCollapsibleGroup({
       id: "general:quota-ring",
@@ -911,6 +934,34 @@
       className: "quota-ring-collapsible",
       children: [optionList],
     });
+    // The three reminder rows only make sense while the master switch is on.
+    // Hide them rather than gray them out, so a disabled group stays compact and
+    // never shows a hidden control in its disabled style.
+    function syncReminderRowsVisibility() {
+      const visible = !!(state.snapshot && state.snapshot.quotaAlertsEnabled === true);
+      const apply = () => {
+        const revealed = [];
+        for (const row of reminderRows) {
+          const wasHidden = row.hidden === true;
+          row.hidden = !visible;
+          row.setAttribute("aria-hidden", visible ? "false" : "true");
+          if (visible && wasHidden) revealed.push(row);
+        }
+        return revealed;
+      };
+      // Reuse the group's entrance animation, but only for rows that actually
+      // change from hidden to shown so a plain value sync stays static.
+      const willReveal = visible && reminderRows.some((row) => row.hidden === true);
+      if (willReveal && typeof group.mutateCollapsibleBody === "function") {
+        group.mutateCollapsibleBody(apply);
+      } else {
+        apply();
+      }
+    }
+    if (state.mountedControls.quotaAlertThresholds) {
+      state.mountedControls.quotaAlertThresholds.syncVisibility = syncReminderRowsVisibility;
+    }
+    syncReminderRowsVisibility();
     if (window.settingsAPI && typeof window.settingsAPI.getQuotaSourceCount === "function") {
       Promise.resolve(window.settingsAPI.getQuotaSourceCount())
         .then((count) => {
@@ -1250,6 +1301,163 @@
     controlWrap.appendChild(control.element);
     row.append(text, controlWrap);
     state.mountedControls.quotaRingDisplayMode = control;
+    return row;
+  }
+
+  function buildQuotaAlertThresholdsRow() {
+    const row = document.createElement("div");
+    row.className = "row quota-alert-thresholds-row";
+    const text = document.createElement("div");
+    text.className = "row-text";
+    const label = document.createElement("span");
+    label.className = "row-label";
+    label.textContent = t("quotaThresholds");
+    const desc = document.createElement("span");
+    desc.className = "row-desc";
+    desc.textContent = t("quotaThresholdHelp");
+    text.append(label, desc);
+    const host = document.createElement("div");
+    host.className = "row-control";
+    row.append(text, host);
+
+    // The select's option value is the canonical, descending threshold list, so
+    // a preset is both the write payload and the selected value.
+    const presets = [
+      { value: "10", thresholds: [10], labelKey: "quotaPreset10" },
+      { value: "20,10", thresholds: [20, 10], labelKey: "quotaPreset20_10" },
+      { value: "30,20,10", thresholds: [30, 20, 10], labelKey: "quotaPreset30_20_10" },
+      { value: "50,20,10", thresholds: [50, 20, 10], labelKey: "quotaPreset50_20_10" },
+    ];
+
+    let pending = false;
+    let control = null;
+    // Canonical form of the custom option currently built into `control`, or null
+    // when that control has no custom option. The select cannot add or remove
+    // options in place, so a change forces a rebuild and not just a setValue.
+    let customSignature = undefined;
+
+    function readValues() {
+      const values = state.snapshot && state.snapshot.quotaAlertThresholds;
+      return Array.isArray(values) && values.length ? values : [20, 10];
+    }
+
+    function canonical(values) {
+      return [...values].sort((a, b) => b - a).join(",");
+    }
+
+    function matchPreset(values) {
+      const target = canonical(values);
+      return presets.find((preset) => preset.value === target) || null;
+    }
+
+    function customLabel(values) {
+      const list = [...values].sort((a, b) => b - a)
+        .map((value) => `${value}%`)
+        .join(t("quotaListSeparator"));
+      return t("quotaPresetCustom").replace("{list}", list);
+    }
+
+    function buildControl(values) {
+      if (control) {
+        // The old control may be replaced while its own onChange is still in
+        // flight. Disposing it makes that pending settle a no-op, and the new
+        // control reads the committed snapshot instead of the stale click.
+        control.dispose();
+        state.mountedControls.settingsSelects.delete(control);
+        control.element.remove();
+      }
+      const preset = matchPreset(values);
+      const options = presets.map((presetOption) => ({
+        value: presetOption.value,
+        label: t(presetOption.labelKey),
+      }));
+      if (!preset) options.push({ value: "custom", label: customLabel(values) });
+      customSignature = preset ? null : canonical(values);
+      control = helpers.buildSettingsSelect({
+        value: preset ? preset.value : "custom",
+        options,
+        ariaLabel: t("quotaThresholds"),
+        onChange: (next) => save(next),
+      });
+      host.appendChild(control.element);
+      control.setDisabled(pending);
+    }
+
+    function syncFromSnapshot() {
+      const values = readValues();
+      const preset = matchPreset(values);
+      const signature = preset ? null : canonical(values);
+      if (!control || signature !== customSignature) buildControl(values);
+      else control.setValue(preset ? preset.value : "custom");
+      if (control) control.setDisabled(pending);
+    }
+
+    async function save(next) {
+      if (pending) return false;
+      // The custom option is only ever the already-committed value, so choosing
+      // it changes nothing and writes nothing.
+      if (next === "custom") return true;
+      const preset = presets.find((entry) => entry.value === next);
+      if (!preset) return false;
+      pending = true;
+      if (control) control.setDisabled(true);
+      try {
+        const result = await window.settingsAPI.update("quotaAlertThresholds", preset.thresholds);
+        if (!result || result.status !== "ok") throw new Error((result && result.message) || "unknown error");
+        const values = result.snapshot ? result.snapshot.quotaAlertThresholds : preset.thresholds;
+        const changes = { quotaAlertThresholds: values };
+        ops.applyChanges({ changes, ...(result.snapshot ? { snapshot: result.snapshot } : {}) });
+        return true;
+      } catch (err) {
+        ops.showToast(t("toastSaveFailed") + (err && err.message), { error: true });
+        return false;
+      } finally {
+        pending = false;
+        // On success applyChanges has already synced the value through
+        // syncFromSnapshot. On failure we deliberately leave the value alone so
+        // the picker's own onChange(false) revert is what restores it.
+        if (control) control.setDisabled(false);
+      }
+    }
+
+    state.mountedControls.quotaAlertThresholds = { row, syncFromSnapshot };
+    syncFromSnapshot();
+    return row;
+  }
+
+  function buildQuotaNotificationTestRow() {
+    const row = document.createElement("div");
+    row.className = "row quota-notification-test-row";
+    const text = document.createElement("div");
+    text.className = "row-text";
+    const label = document.createElement("span");
+    label.className = "row-label";
+    label.textContent = t("notificationTest");
+    const desc = document.createElement("span");
+    desc.className = "row-desc";
+    const descKey = i18n && i18n.IS_MAC
+      ? "notificationTestDescMac"
+      : (i18n && i18n.IS_WIN ? "notificationTestDescWin" : "notificationTestDescLinux");
+    desc.textContent = t(descKey);
+    text.append(label, desc);
+    const control = document.createElement("div");
+    control.className = "row-control";
+    const button = helpers.buildButton({ labelKey: "notificationTestSend", size: "compact" });
+    button.addEventListener("click", async () => {
+      if (button.disabled) return;
+      helpers.setButtonState(button, { pending: true });
+      try {
+        const result = await window.settingsAPI.testQuotaNotification();
+        ops.showToast(t(result && result.ok === true ? "notificationTestSent" : "notificationTestFailed"),
+          { error: !(result && result.ok === true) });
+      } catch {
+        ops.showToast(t("notificationTestFailed"), { error: true });
+      } finally {
+        helpers.setButtonState(button, { pending: false });
+      }
+    });
+    control.appendChild(button);
+    row.append(text, control);
     return row;
   }
 
@@ -2738,6 +2946,10 @@
       const control = state.mountedControls.flashEffect;
       if (!control || !document.body.contains(control.element)) return false;
     }
+    if (keys.includes("quotaAlertThresholds") || keys.includes("quotaAlertsEnabled")) {
+      const control = state.mountedControls.quotaAlertThresholds;
+      if (!control || !document.body.contains(control.row)) return false;
+    }
     if (keys.includes("permissionAutomationMode")) {
       const control = state.mountedControls.permissionAutomationMode;
       if (!control || !document.body.contains(control.element)) return false;
@@ -2766,7 +2978,7 @@
     }
     for (const key of keys) {
       if (key === "size" || key === "soundVolume" || key === "textScale" || key === "textScaleByDisplay") continue;
-      if (key === "quotaRingDisplayMode" || key === "flashEffect") continue;
+      if (key === "quotaRingDisplayMode" || key === "flashEffect" || key === "quotaAlertThresholds") continue;
       if (key === "permissionAutomationMode"
         || key === "permissionAutomationAutoToolsWarningDismissed"
         || key === "permissionAutomationUnattendedWarningDismissed") continue;
@@ -2784,6 +2996,7 @@
     }
     for (const key of keys) {
       if (key === "size") continue;
+      if (key === "quotaAlertThresholds") continue;
       if (key === "quotaRingDisplayMode") {
         state.mountedControls.quotaRingDisplayMode.setValue(
           state.snapshot && state.snapshot.quotaRingDisplayMode
@@ -2857,6 +3070,13 @@
       && state.mountedControls.soundSummary
       && document.body.contains(state.mountedControls.soundSummary.element)) {
       state.mountedControls.soundSummary.syncFromSnapshot();
+    }
+    if (keys.includes("quotaAlertThresholds") || keys.includes("quotaAlertsEnabled")) {
+      state.mountedControls.quotaAlertThresholds.syncFromSnapshot();
+      // The master switch also drives whether the reminder rows are visible.
+      if (typeof state.mountedControls.quotaAlertThresholds.syncVisibility === "function") {
+        state.mountedControls.quotaAlertThresholds.syncVisibility();
+      }
     }
     return true;
   }

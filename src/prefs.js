@@ -51,6 +51,7 @@ const {
   MAX_AUTO_CLOSE_SECONDS,
 } = require("./bubble-policy");
 const { normalizeSessionAliases } = require("./session-alias");
+const { normalizeQuotaAlertThresholds } = require("./quota-alerts");
 const {
   TEXT_SCALE_MIN,
   TEXT_SCALE_MAX,
@@ -196,6 +197,9 @@ const SCHEMA = {
   // Preserve the historical used-percentage presentation for existing users;
   // remaining is a display-only choice and never changes stored quota data.
   quotaRingDisplayMode: { type: "string", default: "used", enum: ["used", "remaining"] },
+  quotaAlertsEnabled: { type: "boolean", default: false },
+  quotaAlertThresholds: { type: "array", defaultFactory: () => [20, 10], normalize: normalizeQuotaAlertThresholds },
+  quotaRecoveryAlertsEnabled: { type: "boolean", default: true },
   // Empty by default, i.e. every connected provider draws — matching the
   // behaviour before this preference existed. Storing what is HIDDEN rather
   // than what is shown is the reason a newly connected provider appears on its

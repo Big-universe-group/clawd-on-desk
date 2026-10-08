@@ -2,6 +2,56 @@
 
 This document holds the deeper runtime and integration notes that were previously in the root `AGENTS.md`.
 
+Claude's live tool/model phase additionally uses `PostToolBatch` on the conservative
+2.1.280+ baseline. The hook sends only bounded tool IDs and `prompt_id`, omitting
+inputs, responses and process probes. `src/claude-tool-phase.js` keeps a bounded
+in-memory main-session ledger; `/state` observes it before permission cleanup and
+passes its internal decision to `state.js` without consuming the event twice.
+Direct state callers use the same arbiter before completion timers, recap and
+session mutation. Only the batch hint is rejected wholesale. A non-retired
+prompt id on an ordinary tool hook can establish a queued turn without Submit
+when no turn is open. An unseen id while a turn is open disables batch inference
+without retiring the current prompt, so its own Stop still completes normally;
+multiple Submit messages under one id retain normal message handling and the
+existing tool evidence. Fresh identified tools after Stop reopen a continuation,
+while SessionEnd always disposes the session independently of prompt identity.
+Proven retired hooks and settled success tails can annotate existing title/model/
+context metadata without changing phase or liveness. Their exact permission
+matches still clean up; retired events cannot use singleton or plan fallbacks
+against a newer request. A current failure racing behind its batch preserves the
+logical model phase while playing the normal error cue, then resumes thinking.
+Missing correlation keeps the legacy mapping. A batch cannot
+replace pending approvals or live subagent cues, and its recovery/history
+classification is intentionally empty so a delayed phase hint never reopens a
+durable record. This does not add durable fencing to existing Pre/Post writers.
+An early batch can overtake fast tool hooks because it skips PID discovery.
+The ledger retains bounded whole-batch evidence and waits for ordinary
+correlated evidence for every named tool before returning to thinking. Late
+tails then preserve that phase and cannot block later batches; terminal and
+prompt boundaries clear the retained evidence. AskUserQuestion's transcript
+completion probe survives an accepted batch and may settle its thinking phase
+when Stop is missing; fresh tools, prompts and terminal events still cancel it.
+Closed turns may retain bounded batches for an unseen queued prompt without
+adopting it; only an ordinary exact-prompt callback opens that turn. Delayed
+settlement rechecks approval/DND/headless gates. A result may release only its
+own exact tool approval; other requests still block the thinking hint. Settled
+tools retain a first-Pre marker for recap-only accounting, and synthetic
+SubagentStart still updates collaboration lifecycle. Failure resume keeps live
+subagent activity above thinking. Queue evidence is cleared on terminal/new
+prompt boundaries and shares the existing tool and prompt capacity bounds.
+After a confirmed native child ends, already-settled synthetic tool-start hints
+cannot recreate an anonymous collaboration lane. This is a conservative bound
+on older hints, not a guessed tool-to-child identity; unknown/duplicate child
+Stops do not qualify, and fresh identified starts remain authoritative. A
+bounded exact-prompt/tool tombstone may admit a first delayed Pre solely to
+recap accounting after a terminal. It never reopens the row, refreshes activity,
+replays completion or applies singleton/plan permission cleanup. Retirement
+eviction drops the accounting exception with the corresponding tool tombstone.
+A result that beats its own Pre is recorded as unsettled work for the turn:
+its own batch can settle it and earlier batches cannot cross it. This ordering
+alone no longer makes the whole turn unconfirmable; thinking still requires a
+correlated batch and the existing gates.
+
 ## Data Flow
 
 ```text
@@ -511,7 +561,27 @@ DND remains an interaction/visual gate and does not stop recap or coverage. Susp
 | 双窗口与浮层 | `src/pet-window-runtime.js` 创建/定位 render + hit window；`src/floating-window-runtime.js` / `src/topmost-runtime.js` 管浮层重排与 z-order |
 | Settings 写入与副作用 | `settings-controller` 是唯一写入者；`settings-actions*` 是 pre-commit gates；`settings-effect-router` 是 post-commit runtime effects |
 | Settings UI | `settings-ui-core` 持有 shared UI state，`settings-renderer` 是侧栏/tab shell，业务页在 `settings-tab-*` |
+| Quota reminders | `quota-alerts-runtime` reads source-separated account snapshots; `quota-alerts` owns bounded hashed dedup history; `quota-notifications` acknowledges native delivery. Controls live in General's Quota ring and use the Settings controller. |
 | Theme | `theme-loader` 是 stateless loader；`theme-runtime` 是唯一 active-theme owner |
+
+Quota reminders remain disabled until explicitly enabled. They use existing quota collection,
+require fresh per-window confirmation after startup, and never make account requests.
+DND or failed notification delivery preserves eligibility. The settings-only test notification
+is owner-gated, does not mutate quota/history, and uses the same settings i18n as native alerts.
+See `docs/guides/quota-reminders.md` for thresholds, recovery and retention.
+
+Only Claude Code and Antigravity slot names supply a display window (FiveHour or
+Weekly) when their reports omit windowMinutes; Codex-family slot names are never
+guessed, because the "primary" slot is not reliably the 5-hour window (see the
+comment at the top of `hooks/codex-rate-limits.js`). An explicit reported
+duration remains authoritative. Failed delivery retries after 30 seconds,
+doubles to a 15-minute cap, and never consumes eligibility. Cooldown is private
+in-memory state per source/window and only for the last failed candidate; a new
+window or a different candidate (such as a more urgent threshold) starts fresh,
+and it is discarded with its history owner.
+DND suppresses attempts without extending cooldown. Native show acknowledges
+system acceptance; the localized Test result points to OS notification settings
+when no banner appears. The Windows balloon fallback still acknowledges dispatch.
 
 `state.js` 的 session snapshot 是共享 schema：Dashboard、Session HUD（含 Orbit quota ring）以及可选 Telegram completion、Discord presence、LAN PWA 等 consumer 都会读取它。新增、重命名或删除字段时必须检查全部 consumer，不能只看 Dashboard/HUD。
 

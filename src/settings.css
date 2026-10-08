@@ -411,7 +411,7 @@ html, body {
 }
 .recap-agent-metrics {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
   margin: 0;
 }
@@ -743,7 +743,6 @@ html, body {
 @media (max-width: 780px) {
   .recap-card { padding: 16px; }
   .recap-agent-row { grid-template-columns: 1fr; gap: 8px; }
-  .recap-agent-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .recap-visual-heading { align-items: flex-start; flex-direction: column; gap: 2px; }
   .recap-today-band { gap: 2px; }
 }
@@ -2192,6 +2191,17 @@ html, body {
     color: #f6c343;
   }
 }
+/* Author display rules outrank the UA [hidden] rule, so the reminder rows
+   toggled by the master switch need their own explicit hidden guard. */
+.quota-ring-option-list .row[hidden] {
+  display: none;
+}
+/* The longest localized presets (pt-BR / es) need more than the default
+   .settings-select min-width before their trailing text gets clipped. */
+.quota-alert-thresholds-row .settings-select {
+  min-width: 216px;
+  width: 240px;
+}
 
 .kimi-quota-card {
   align-items: stretch;
@@ -2352,6 +2362,7 @@ html, body {
 }
 @container (max-width: 400px) {
   .quota-ring-display-mode-row,
+  .quota-alert-thresholds-row,
   .volume-slider-row {
     align-items: stretch;
     flex-direction: column;
@@ -2361,6 +2372,9 @@ html, body {
   .volume-slider-row .volume-control {
     width: 100%;
     min-width: 0;
+    margin-left: 0;
+  }
+  .quota-alert-thresholds-row .row-control {
     margin-left: 0;
   }
 }

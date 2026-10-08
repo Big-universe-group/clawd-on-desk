@@ -188,6 +188,7 @@ contextBridge.exposeInMainWorld("settingsAPI", {
   enterShortcutRecording: (actionId) => ipcRenderer.invoke("settings:enterShortcutRecording", actionId),
   exitShortcutRecording: () => ipcRenderer.invoke("settings:exitShortcutRecording"),
   update: (key, value) => ipcRenderer.invoke("settings:update", { key, value }),
+  testQuotaNotification: () => ipcRenderer.invoke("settings:quota-test-notification"),
   getPreviewSoundUrl: () => ipcRenderer.invoke("settings:get-preview-sound-url"),
   command: (action, payload) => ipcRenderer.invoke("settings:command", { action, payload }),
   openDashboard: () => ipcRenderer.send("settings:open-dashboard"),

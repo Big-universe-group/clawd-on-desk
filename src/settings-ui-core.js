@@ -95,6 +95,7 @@
       textScale: null,
       roamMovementStyle: null,
       bubblePlacement: null,
+      quotaAlertThresholds: null,
       roamArea: null,
       settingsSelects: new Set(),
       segmentedRadios: new Set(),
@@ -1500,6 +1501,7 @@
     state.mountedControls.bubblePlacement = null;
     state.mountedControls.quotaRingDisplayMode = null;
     state.mountedControls.flashEffect = null;
+    state.mountedControls.quotaAlertThresholds = null;
     state.mountedControls.permissionAutomationMode = null;
     state.mountedControls.roamArea = null;
     state.mountedControls.aboutAutoUpdate = null;

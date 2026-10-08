@@ -36,6 +36,7 @@ const {
   resolveHookAgentId,
 } = require("./server-agent-id");
 const { resolveCodexOfficialHookState } = require("./server-codex-official-turns");
+const { normalizeClaudePhaseId, normalizeClaudeBatchToolUseIds } = require("../hooks/claude-tool-batch");
 const { normalizeTranscriptPath } = require("./transcript-path");
 const { normalizeQuotaGroup } = require("../hooks/quota-bucket");
 const { ANTIGRAVITY_QUOTA_FIELDS } = require("../hooks/antigravity-context-usage");
@@ -420,6 +421,16 @@ function handleStatePost(req, res, options) {
       const toolInputFingerprint = typeof data.tool_input_fingerprint === "string" && data.tool_input_fingerprint
         ? data.tool_input_fingerprint
         : null;
+      const claudePromptId = agentId === "claude-code" ? normalizeClaudePhaseId(data.prompt_id) : null;
+      const batchToolUseIds = event === "PostToolBatch" ? normalizeClaudeBatchToolUseIds(data.tool_use_ids) : null;
+      if (event === "PostToolBatch" && (agentId !== "claude-code" || !claudePromptId
+        || !batchToolUseIds || subagentId || svg || state !== "thinking"
+        || (ctx.pendingPermissions || []).some((perm) => perm && perm.res
+          && perm.sessionId === session_id && perm.agentId === "claude-code"))) {
+        res.writeHead(204, { [CLAWD_SERVER_HEADER]: CLAWD_SERVER_ID });
+        res.end();
+        return;
+      }
       // Session title (Claude Code /rename or Codex turn_context.summary).
       // Non-string / empty values are silently dropped - matches the
       // "ignore + fall back" pattern used by cwd / agent_id above.
@@ -908,6 +919,19 @@ function handleStatePost(req, res, options) {
         if (event === "UserPromptSubmit" && typeof ctx.debugLog === "function") {
           ctx.debugLog(`wt-hwnd sid=${sid} event=${event} source=${wtHwndSource}`);
         }
+        // Consume phase evidence only after enablement, metadata-only and
+        // state validation gates, and before any permission-side effects.
+        const claudeToolPhaseDecision = agentId === "claude-code"
+          && typeof ctx.observeClaudeToolPhase === "function"
+          ? ctx.observeClaudeToolPhase(sid, event, { agentId, toolUseId,
+              claudePromptId, batchToolUseIds, subagentId, subagentLifecycleSource, headless: effHeadless })
+          : null;
+        if (claudeToolPhaseDecision && !claudeToolPhaseDecision.accept) {
+          res.writeHead(204, { [CLAWD_SERVER_HEADER]: CLAWD_SERVER_ID });
+          res.end();
+          return;
+        }
+        const isRetiredClaudePhase = !!(claudeToolPhaseDecision && claudeToolPhaseDecision.retired);
         const stateEventInteraction = classifyPermissionInteraction({
           agentId,
           toolName,
@@ -964,8 +988,8 @@ function handleStatePost(req, res, options) {
             subagentId,
             toolName,
             toolUseId,
-            toolInputFingerprint,
-            allowSingletonFallback: event === "Stop",
+            toolInputFingerprint: isRetiredClaudePhase ? null : toolInputFingerprint,
+            allowSingletonFallback: event === "Stop" && !isRetiredClaudePhase,
           });
           if (perm) {
             ctx.resolvePermissionEntry(perm, stateSweepBehaviorFor(perm), "User answered in terminal");
@@ -977,7 +1001,7 @@ function handleStatePost(req, res, options) {
           // An exact match already identifies which decision completed. Do
           // not infer that a sibling decision from the same session/subagent
           // also completed — concurrent questions can legitimately coexist.
-          if (!perm || !isDecisionInteraction(perm.interaction)) {
+          if (!isRetiredClaudePhase && (!perm || !isDecisionInteraction(perm.interaction))) {
             const staleDecisions = pendingForSource().filter((stale) => (
               stale !== perm && isDecisionInteraction(stale.interaction)
             ));
@@ -1006,7 +1030,7 @@ function handleStatePost(req, res, options) {
           ))) {
             ctx.resolvePermissionEntry(stale, "no-decision", "Session ended");
           }
-        } else if (hasExplicitPermissionLifecycleSession && (
+        } else if (hasExplicitPermissionLifecycleSession && !isRetiredClaudePhase && (
           event === "UserPromptSubmit"
           || (
             event === "PreToolUse"
@@ -1025,7 +1049,7 @@ function handleStatePost(req, res, options) {
         }
         recordRequestHookEvent.acceptedUnlessDnd(shouldDropForDnd());
         let sessionUpdateApplied = true;
-        if (svg) {
+        if (svg && !(claudeToolPhaseDecision && claudeToolPhaseDecision.preservePhase)) {
           const safeSvg = pathApi.basename(svg);
           ctx.setState(state, safeSvg);
         } else {
@@ -1067,6 +1091,9 @@ function handleStatePost(req, res, options) {
             assistantLastOutputTruncated,
             toolName,
             ...(toolUseId ? { toolUseId } : {}),
+            ...(claudePromptId ? { claudePromptId } : {}),
+            ...(batchToolUseIds ? { batchToolUseIds } : {}),
+            ...(claudeToolPhaseDecision ? { claudeToolPhaseDecision } : {}),
             transcriptPath,
             permissionSuspect,
             permissionAction,
@@ -1096,7 +1123,7 @@ function handleStatePost(req, res, options) {
         // Decorative only: the lifecycle update above remains authoritative.
         // Main owns the opt-in / DND / visibility / mini / drag gate; a visual
         // failure must never turn a valid hook state POST into a 400.
-        if (testResult && typeof ctx.handleTestResult === "function") {
+        if (testResult && !isRetiredClaudePhase && typeof ctx.handleTestResult === "function") {
           try {
             ctx.handleTestResult(testResult, {
               sessionId: sid,
