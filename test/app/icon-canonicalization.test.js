@@ -17,11 +17,11 @@ const PACKAGED_ICON_ASSETS = [
 ];
 const LOCALIZED_READMES = [
   "README.md",
-  "README.zh-CN.md",
-  "README.zh-TW.md",
-  "README.ko-KR.md",
-  "README.ja-JP.md",
-  "README.es.md",
+  "docs/i18n/zh-CN/README.md",
+  "docs/i18n/zh-TW/README.md",
+  "docs/i18n/ko-KR/README.md",
+  "docs/i18n/ja-JP/README.md",
+  "docs/i18n/es/README.md",
 ];
 
 test("ordinary tray and README callers use the canonical application icon", () => {
@@ -52,7 +52,14 @@ test("ordinary tray and README callers use the canonical application icon", () =
 
   for (const relativePath of LOCALIZED_READMES) {
     const source = fs.readFileSync(path.join(ROOT, relativePath), "utf8");
-    assert.match(source, /<img src="assets\/icon\.png" width="128" alt="Clawd">/);
+    // The header icon src is relative to each README's own folder.
+    const headerIcon = source.match(/<img src="([^"]+)" width="128" alt="Clawd">/);
+    assert.ok(headerIcon, `${relativePath} should show the header icon`);
+    assert.strictEqual(
+      path.resolve(path.dirname(path.join(ROOT, relativePath)), headerIcon[1]),
+      CANONICAL_ICON,
+      `${relativePath} should use the canonical application icon`,
+    );
     assert.doesNotMatch(source, /assets\/tray-icon\.png/);
   }
 });

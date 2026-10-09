@@ -7,11 +7,11 @@ const path = require("node:path");
 
 const root = path.join(__dirname, "..", "..");
 const localizedReadmes = [
-  "README.zh-CN.md",
-  "README.zh-TW.md",
-  "README.ja-JP.md",
-  "README.ko-KR.md",
-  "README.es.md",
+  "docs/i18n/zh-CN/README.md",
+  "docs/i18n/zh-TW/README.md",
+  "docs/i18n/ja-JP/README.md",
+  "docs/i18n/ko-KR/README.md",
+  "docs/i18n/es/README.md",
 ];
 
 function supportAgents(file) {

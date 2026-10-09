@@ -7,23 +7,41 @@ const vm = require("node:vm");
 const test = require("node:test");
 
 const ROOT = path.join(__dirname, "..", "..");
-const TABLE_READMES = ["README.md", "README.ko-KR.md", "README.ja-JP.md", "README.es.md"];
+// Root README.md is the GitHub landing page; translations live in
+// docs/i18n/<lang>/README.md.
+const TABLE_READMES = ["README.md", "docs/i18n/ko-KR/README.md", "docs/i18n/ja-JP/README.md", "docs/i18n/es/README.md"];
 const ALL_READMES = [
   "README.md",
-  "README.zh-CN.md",
-  "README.zh-TW.md",
-  "README.ko-KR.md",
-  "README.ja-JP.md",
-  "README.es.md",
+  "docs/i18n/zh-CN/README.md",
+  "docs/i18n/zh-TW/README.md",
+  "docs/i18n/ko-KR/README.md",
+  "docs/i18n/ja-JP/README.md",
+  "docs/i18n/es/README.md",
 ];
+const SPANISH_README = "docs/i18n/es/README.md";
+
+// Language links are relative to each README's own folder.
+function linkedReadmes(file, source) {
+  return [...source.matchAll(/href="([^"#:]*README\.md)"/g)]
+    .map((match) => path.posix.normalize(path.posix.join(path.posix.dirname(file), match[1])));
+}
 
 test("all other README variants expose Spanish navigation without a Spanish self-link", () => {
-  for (const file of ALL_READMES.filter((name) => name !== "README.es.md")) {
+  for (const file of ALL_READMES.filter((name) => name !== SPANISH_README)) {
     const source = fs.readFileSync(path.join(ROOT, file), "utf8");
-    assert.match(source, /href="README\.es\.md"/, `${file} should link to README.es.md`);
+    assert.ok(linkedReadmes(file, source).includes(SPANISH_README), `${file} should link to ${SPANISH_README}`);
   }
-  const spanish = fs.readFileSync(path.join(ROOT, "README.es.md"), "utf8");
-  assert.doesNotMatch(spanish, /href="README\.es\.md"/, "README.es.md should not link to itself");
+  const spanish = fs.readFileSync(path.join(ROOT, SPANISH_README), "utf8");
+  assert.ok(!linkedReadmes(SPANISH_README, spanish).includes(SPANISH_README), `${SPANISH_README} should not link to itself`);
+});
+
+test("every README language link resolves to an existing README", () => {
+  for (const file of ALL_READMES) {
+    const source = fs.readFileSync(path.join(ROOT, file), "utf8");
+    for (const target of linkedReadmes(file, source)) {
+      assert.ok(fs.existsSync(path.join(ROOT, target)), `${file} links to missing ${target}`);
+    }
+  }
 });
 
 const VERIFIED_GITHUB_CONTRIBUTORS = [

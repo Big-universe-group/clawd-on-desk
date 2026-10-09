@@ -1,6 +1,6 @@
 # 状态映射
 
-[返回 README](../../README.zh-CN.md)
+[返回 README](../i18n/zh-CN/README.md)
 
 大多数 agent 生命周期事件会映射到同一组 Clawd 状态。
 

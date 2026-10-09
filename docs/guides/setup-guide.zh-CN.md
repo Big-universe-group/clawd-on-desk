@@ -1,6 +1,6 @@
 # 配置指南
 
-[返回 README](../../README.zh-CN.md)
+[返回 README](../i18n/zh-CN/README.md)
 
 ## Agent 配置说明
 

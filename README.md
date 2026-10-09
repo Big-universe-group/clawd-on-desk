@@ -3,15 +3,15 @@
 </p>
 <h1 align="center">Clawd on Desk</h1>
 <p align="center">
-  <a href="README.zh-CN.md">中文版</a>
+  <a href="docs/i18n/zh-CN/README.md">中文版</a>
   ·
-  <a href="README.zh-TW.md">繁體中文</a>
+  <a href="docs/i18n/zh-TW/README.md">繁體中文</a>
   ·
-  <a href="README.ko-KR.md">한국어</a>
+  <a href="docs/i18n/ko-KR/README.md">한국어</a>
   ·
-  <a href="README.ja-JP.md">日本語</a>
+  <a href="docs/i18n/ja-JP/README.md">日本語</a>
   ·
-  <a href="README.es.md">Español</a>
+  <a href="docs/i18n/es/README.md">Español</a>
 </p>
 <p align="center">
   <sub>🌏 Don't see your language? <a href="https://github.com/rullerzhou-afk/clawd-on-desk/pulls">Open a PR</a> to add one — Français, Deutsch, etc. all welcome.</sub>

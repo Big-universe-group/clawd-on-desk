@@ -1,17 +1,17 @@
 <p align="center">
-  <img src="assets/icon.png" width="128" alt="Clawd">
+  <img src="../../../assets/icon.png" width="128" alt="Clawd">
 </p>
 <h1 align="center">Clawd on Desk</h1>
 <p align="center">
-  <a href="README.md">English</a>
+  <a href="../../../README.md">English</a>
   ·
-  <a href="README.zh-CN.md">中文版</a>
+  <a href="../zh-CN/README.md">中文版</a>
   ·
-  <a href="README.zh-TW.md">繁體中文</a>
+  <a href="../zh-TW/README.md">繁體中文</a>
   ·
-  <a href="README.ja-JP.md">日本語</a>
+  <a href="../ja-JP/README.md">日本語</a>
   ·
-  <a href="README.es.md">Español</a>
+  <a href="../es/README.md">Español</a>
 </p>
 <p align="center">
   <a href="https://github.com/rullerzhou-afk/clawd-on-desk/releases"><img src="https://img.shields.io/github/v/release/rullerzhou-afk/clawd-on-desk" alt="Version"></a>
@@ -23,7 +23,7 @@
 </p>
 
 <p align="center">
-  <img src="assets/hero.gif" alt="Clawd on Desk 애니메이션 데모: 픽셀 크랩이 AI 코딩 에이전트 상태에 맞춰 잠자기, 생각하기, 도구 실행 중 타이핑, 서브에이전트 1개일 때 헤드폰 그루브, 여러 서브에이전트 병렬 작업 중 세 개 공 저글링, 권한 요청 알림, 작업 완료 축하로 실시간 전환합니다. Claude Code, Codex, Cursor, Copilot, Gemini, Antigravity, Qwen, Pi, OMP, OpenClaw 등을 지원합니다.">
+  <img src="../../../assets/hero.gif" alt="Clawd on Desk 애니메이션 데모: 픽셀 크랩이 AI 코딩 에이전트 상태에 맞춰 잠자기, 생각하기, 도구 실행 중 타이핑, 서브에이전트 1개일 때 헤드폰 그루브, 여러 서브에이전트 병렬 작업 중 세 개 공 저글링, 권한 요청 알림, 작업 완료 축하로 실시간 전환합니다. Claude Code, Codex, Cursor, Copilot, Gemini, Antigravity, Qwen, Pi, OMP, OpenClaw 등을 지원합니다.">
 </p>
 
 Clawd는 당신의 데스크톱 위에서 살며, 당신의 AI 코딩 에이전트가 지금 무엇을 하고 있는지 실시간으로 반응합니다. 당신은 긴 작업을 시작하고, 잠시 자리를 비운 뒤, 크랩이 완료 소식을 전하면 돌아오면 됩니다.
@@ -42,7 +42,7 @@ Clawd는 당신의 데스크톱 위에서 살며, 당신의 AI 코딩 에이전�
 - **Antigravity CLI (agy)** — `~/.gemini/config/hooks.json`의 command hook 지원 (Antigravity config가 있으면 Clawd 시작 시 자동 등록되며, `npm run install:antigravity-hooks`로 수동 설치 가능). **상태만 동기화**되며, Clawd는 agy 권한 말풍선을 띄우지 않습니다. Allow / Deny / Always-allow 선택은 agy 자체 터미널 메뉴에서 처리합니다.
 - **Cursor Agent** — `~/.cursor/hooks.json`의 [Cursor IDE hooks](https://cursor.com/docs/agent/hooks) 지원 (Clawd 시작 시 자동 등록되며, `npm run install:cursor-hooks`로 수동 설치 가능)
 - **CodeBuddy** — Claude Code 호환 command hook + HTTP permission hook을 `~/.codebuddy/settings.json`에 등록합니다 (Clawd 시작 시 자동 등록되며, `node hooks/codebuddy/codebuddy-install.js`로 수동 설치 가능)
-- **사용자 지정 HTTP Agent** — Settings에서 다른 로컬 앱을 등록한 뒤 앱이나 adapter가 Clawd의 동적 `/state` 엔드포인트로 이벤트를 전송합니다. 등록만으로 hook이 설치되지는 않으며 v1은 상태 전용입니다. 자세한 내용은 [사용자 지정 HTTP Agent 가이드](docs/guides/custom-agent-http.md)를 참고하세요.
+- **사용자 지정 HTTP Agent** — Settings에서 다른 로컬 앱을 등록한 뒤 앱이나 adapter가 Clawd의 동적 `/state` 엔드포인트로 이벤트를 전송합니다. 등록만으로 hook이 설치되지는 않으며 v1은 상태 전용입니다. 자세한 내용은 [사용자 지정 HTTP Agent 가이드](../../guides/custom-agent-http.md)를 참고하세요.
 - **WorkBuddy** — `~/.workbuddy-ai/settings.json`(현재) 또는 `~/.workbuddy/settings.json`(레거시)의 Claude Code 호환 command hook을 사용합니다 (Settings → Agents에서 설치하거나 `node hooks/workbuddy/workbuddy-install.js` 실행). 상태와 Notification만 동기화하며 권한 결정은 WorkBuddy의 기본 GUI에 남습니다.
 - **Grok Build** — `~/.grok/hooks/clawd-on-desk.json`에 설치하는 선택적 Claude Code 호환 command hook입니다 (Settings → Agents에서 설치하거나 `node hooks/grok-build/grok-install.js` 실행). 상태와 알림만 동기화합니다. Grok에는 blocking `PermissionRequest` hook이 없으므로 Allow / Deny는 Grok TUI에서 처리합니다.
 - **Kiro CLI** — `~/.kiro/agents/` 아래 커스텀 agent 설정에 command hook을 주입하고, 추가로 `clawd` agent를 자동 생성합니다. Clawd가 시작될 때마다 Kiro 기본 `kiro_default`에서 다시 동기화되므로 `kiro-cli --agent clawd` 또는 `/agent swap clawd`로 비교적 원본 동작을 유지한 채 hook을 켤 수 있습니다. 상태 hook은 macOS와 Windows에서 검증되었습니다.
@@ -56,7 +56,7 @@ Clawd는 당신의 데스크톱 위에서 살며, 당신의 AI 코딩 에이전�
 - **Hermes Agent** — Hermes의 관리형 plugin 디렉터리를 통한 [plugin 연동](https://hermes-agent.org/) (Hermes가 설치되어 있으면 Clawd 시작 시 자동 등록되며, `npm run install:hermes-plugin`으로 수동 설치 가능). 상태, 세션, SessionEnd, 터미널 포커스를 지원합니다.
 - **Qoder** — `~/.qoder/settings.json`의 command hook으로 상태만 연동합니다 (`~/.qoder/` 디렉터리가 있으면 Clawd 시작 시 자동 등록되며, `npm run install:qoder-hooks`로 수동 설치 가능). Phase 1은 애니메이션만 구동하고 권한 요청은 알림으로만 표시하며, Clawd는 권한 말풍선을 띄우거나 대신 응답하지 않습니다. Allow / Deny 선택은 Qoder 자체 권한 흐름에서 처리합니다.
 - **QwenWork (千问办公)** — `~/.QwenWorkCN/settings.json`의 command hook으로 hook-only / state-only 연동합니다 (Settings → Agents에서 설치하거나 `npm run install:qwenwork-hooks`, 제거는 `npm run uninstall:qwenwork-hooks`). macOS / Windows 데스크톱만 지원하며, [qwenwork.cn/download](https://qwenwork.cn/download)에 Linux 클라이언트가 없으므로 WSL 페어링도 제공하지 않습니다. Phase 1은 애니메이션과 Session HUD를 구동합니다. `PermissionRequest` / `PermissionDenied`는 관찰만 하여 `working`으로 매핑되고 hook stdout은 항상 `{}`이며, Clawd는 allow/deny를 만들지 않습니다. 권한 결정은 QwenWork 자체 흐름이 전담합니다. startup recovery는 없습니다 — 데스크톱 상주 프로세스는 작업 진행 중을 의미하지 않기 때문입니다.
-- **DeepSeek Harness** — DSH web profile과 DeepSeek Harness 데스크톱 앱(macOS / Windows)을 지원하는, Clawd가 관리하는 DSH in-process plugin 기반의 실험적 연동입니다. 공개 session event가 session별 순서에 따라 Clawd 상태를 구동하며, 공개 blocking `approval/request`는 Allow Once / Deny 말풍선을 표시할 수 있습니다. 결정이 없으면 항상 DSH 자체 승인 흐름(web answerer 또는 데스크톱 앱 자체의 승인 대화상자)으로 돌아갑니다. `ask_user_question`은 전적으로 DSH 기본 provider에 남고 Clawd는 DSH projection storage를 읽지 않습니다. 자세한 내용은 [DeepSeek Harness 가이드](docs/guides/dsh-setup.md)를 참고하세요.
+- **DeepSeek Harness** — DSH web profile과 DeepSeek Harness 데스크톱 앱(macOS / Windows)을 지원하는, Clawd가 관리하는 DSH in-process plugin 기반의 실험적 연동입니다. 공개 session event가 session별 순서에 따라 Clawd 상태를 구동하며, 공개 blocking `approval/request`는 Allow Once / Deny 말풍선을 표시할 수 있습니다. 결정이 없으면 항상 DSH 자체 승인 흐름(web answerer 또는 데스크톱 앱 자체의 승인 대화상자)으로 돌아갑니다. `ask_user_question`은 전적으로 DSH 기본 provider에 남고 Clawd는 DSH projection storage를 읽지 않습니다. 자세한 내용은 [DeepSeek Harness 가이드](../../guides/dsh-setup.md)를 참고하세요.
 - **TraeCode (Trae CN)** — `~/.trae-cn/hooks.json`을 사용하는 실험적 상태 전용 hook 연동입니다 (Settings → Agents에서 설치하거나 `npm run install:traecode-hooks` 실행, 제거는 `npm run uninstall:traecode-hooks`). Trae에서 hooks를 수동으로 켜야 합니다 (**Settings → Hooks → Enable**, 실행 모드는 **Sandbox**; [Trae 공식 hooks 문서](https://docs.trae.cn/ide/automate-actions-with-hooks) 참고). 첫 릴리스는 Trae 중국판만 지원합니다. Clawd는 첫 질문에서 세션 제목을 만들고 권한을 결정하지 않습니다. `SessionEnd`가 없어 닫힌 대화는 데스크톱 유휴 시간 제한으로 정리됩니다.
 - **멀티 에이전트 공존** — 여러 에이전트를 동시에 실행할 수 있으며, Clawd는 각 세션을 독립적으로 추적합니다.
 
@@ -80,7 +80,7 @@ Clawd는 당신의 데스크톱 위에서 살며, 당신의 AI 코딩 에이전�
 
 ### 원격 알림
 - **Telegram / Feishu (Lark)** — 대화형 원격 승인: 권한 요청을 휴대폰으로 전달하고 데스크톱으로 돌아가지 않고 Allow / Deny 할 수 있습니다.
-- **Slack** — **알림 전용**: Slack Incoming Webhook(또는 선택적 `xoxb-` Bot Token + channel id)을 통해 작업 **완료**, **오류**, **권한 요청**을 Block Kit 카드로 보냅니다. 이 버전에서는 Slack에서 Allow / Deny 할 수 없습니다. 권한 메시지는 알림일 뿐이며 결정은 데스크톱 앱에서 합니다. Telegram / Feishu와 같은 원격 승인 설정에서 구성하며 secret은 prefs 밖의 로컬 env 파일에 저장됩니다(macOS / Linux는 `0600`, Windows는 AppData ACL 사용). 미설정 또는 오프라인 상태에서는 안전하게 fallback합니다. 메시지에 session title, folder, host name이 포함될 수 있으므로 private channel을 권장합니다. 자세한 내용은 [Slack 알림 가이드](docs/guides/slack-notifications.md)를 참고하세요.
+- **Slack** — **알림 전용**: Slack Incoming Webhook(또는 선택적 `xoxb-` Bot Token + channel id)을 통해 작업 **완료**, **오류**, **권한 요청**을 Block Kit 카드로 보냅니다. 이 버전에서는 Slack에서 Allow / Deny 할 수 없습니다. 권한 메시지는 알림일 뿐이며 결정은 데스크톱 앱에서 합니다. Telegram / Feishu와 같은 원격 승인 설정에서 구성하며 secret은 prefs 밖의 로컬 env 파일에 저장됩니다(macOS / Linux는 `0600`, Windows는 AppData ACL 사용). 미설정 또는 오프라인 상태에서는 안전하게 fallback합니다. 메시지에 session title, folder, host name이 포함될 수 있으므로 private channel을 권장합니다. 자세한 내용은 [Slack 알림 가이드](../../guides/slack-notifications.md)를 참고하세요.
 
 ### 세션 인텔리전스
 - **멀티 세션 추적** — 모든 에이전트 세션 상태를 모아 가장 우선순위가 높은 상태를 반영합니다.
@@ -112,38 +112,38 @@ Clawd는 당신의 데스크톱 위에서 살며, 당신의 AI 코딩 에이전�
 
 <table>
   <tr>
-    <td align="center"><img src="assets/gif/clawd-idle.gif" width="100"><br><sub>대기</sub></td>
-    <td align="center"><img src="assets/gif/clawd-thinking.gif" width="100"><br><sub>생각 말풍선</sub></td>
-    <td align="center"><img src="assets/gif/clawd-typing.gif" width="100"><br><sub>타이핑</sub></td>
-    <td align="center"><img src="assets/gif/clawd-building.gif" width="100"><br><sub>건설</sub></td>
-    <td align="center"><img src="assets/gif/clawd-headphones-groove.gif" width="100"><br><sub>1개 서브에이전트</sub></td>
-    <td align="center"><img src="assets/gif/clawd-juggling.gif" width="100"><br><sub>2+ 서브에이전트</sub></td>
+    <td align="center"><img src="../../../assets/gif/clawd-idle.gif" width="100"><br><sub>대기</sub></td>
+    <td align="center"><img src="../../../assets/gif/clawd-thinking.gif" width="100"><br><sub>생각 말풍선</sub></td>
+    <td align="center"><img src="../../../assets/gif/clawd-typing.gif" width="100"><br><sub>타이핑</sub></td>
+    <td align="center"><img src="../../../assets/gif/clawd-building.gif" width="100"><br><sub>건설</sub></td>
+    <td align="center"><img src="../../../assets/gif/clawd-headphones-groove.gif" width="100"><br><sub>1개 서브에이전트</sub></td>
+    <td align="center"><img src="../../../assets/gif/clawd-juggling.gif" width="100"><br><sub>2+ 서브에이전트</sub></td>
   </tr>
   <tr>
-    <td align="center"><img src="assets/gif/calico-idle.gif" width="80"><br><sub>Calico 대기</sub></td>
-    <td align="center"><img src="assets/gif/calico-thinking.gif" width="80"><br><sub>Calico 생각</sub></td>
-    <td align="center"><img src="assets/gif/calico-typing.gif" width="80"><br><sub>Calico 타이핑</sub></td>
-    <td align="center"><img src="assets/gif/calico-building.gif" width="80"><br><sub>Calico 건설</sub></td>
-    <td align="center"><img src="assets/gif/calico-juggling.gif" width="80"><br><sub>Calico 저글링</sub></td>
-    <td align="center"><img src="assets/gif/calico-conducting.gif" width="80"><br><sub>Calico 지휘</sub></td>
+    <td align="center"><img src="../../../assets/gif/calico-idle.gif" width="80"><br><sub>Calico 대기</sub></td>
+    <td align="center"><img src="../../../assets/gif/calico-thinking.gif" width="80"><br><sub>Calico 생각</sub></td>
+    <td align="center"><img src="../../../assets/gif/calico-typing.gif" width="80"><br><sub>Calico 타이핑</sub></td>
+    <td align="center"><img src="../../../assets/gif/calico-building.gif" width="80"><br><sub>Calico 건설</sub></td>
+    <td align="center"><img src="../../../assets/gif/calico-juggling.gif" width="80"><br><sub>Calico 저글링</sub></td>
+    <td align="center"><img src="../../../assets/gif/calico-conducting.gif" width="80"><br><sub>Calico 지휘</sub></td>
   </tr>
   <tr>
-    <td align="center"><img src="assets/gif/cloudling-idle.gif" width="120"><br><sub>Cloudling 대기</sub></td>
-    <td align="center"><img src="assets/gif/cloudling-thinking.gif" width="120"><br><sub>Cloudling 생각</sub></td>
-    <td align="center"><img src="assets/gif/cloudling-typing.gif" width="120"><br><sub>Cloudling 타이핑</sub></td>
-    <td align="center"><img src="assets/gif/cloudling-building.gif" width="120"><br><sub>Cloudling 건설</sub></td>
-    <td align="center"><img src="assets/gif/cloudling-juggling.gif" width="120"><br><sub>Cloudling 저글링</sub></td>
-    <td align="center"><img src="assets/gif/cloudling-conducting.gif" width="120"><br><sub>Cloudling 지휘</sub></td>
+    <td align="center"><img src="../../../assets/gif/cloudling-idle.gif" width="120"><br><sub>Cloudling 대기</sub></td>
+    <td align="center"><img src="../../../assets/gif/cloudling-thinking.gif" width="120"><br><sub>Cloudling 생각</sub></td>
+    <td align="center"><img src="../../../assets/gif/cloudling-typing.gif" width="120"><br><sub>Cloudling 타이핑</sub></td>
+    <td align="center"><img src="../../../assets/gif/cloudling-building.gif" width="120"><br><sub>Cloudling 건설</sub></td>
+    <td align="center"><img src="../../../assets/gif/cloudling-juggling.gif" width="120"><br><sub>Cloudling 저글링</sub></td>
+    <td align="center"><img src="../../../assets/gif/cloudling-conducting.gif" width="120"><br><sub>Cloudling 지휘</sub></td>
   </tr>
 </table>
 
-전체 이벤트-상태 매핑, 미니 모드, 클릭 반응은 **[docs/guides/state-mapping.md](docs/guides/state-mapping.md)** 에서 확인할 수 있습니다.
+전체 이벤트-상태 매핑, 미니 모드, 클릭 반응은 **[docs/guides/state-mapping.md](../../guides/state-mapping.md)** 에서 확인할 수 있습니다.
 
 ## 멀티 디스플레이
 
 Clawd는 멀티 모니터 환경에 맞춰 동작합니다: 실행된 디스플레이에 비례한 크기로의 조정, 세로 모니터에서는 너무 작아 보이지 않도록 크기 보정, 디스플레이 간 드래그 이동을 지원합니다.
 
-<p align="center"><sub>실제 멀티 모니터 동작은 <a href="assets/videos/clawd-multi-monitor-demo.mp4">이 저장소의 데모 영상</a>에서 확인할 수 있습니다.</sub></p>
+<p align="center"><sub>실제 멀티 모니터 동작은 <a href="../../../assets/videos/clawd-multi-monitor-demo.mp4">이 저장소의 데모 영상</a>에서 확인할 수 있습니다.</sub></p>
 
 ## 빠른 시작
 
@@ -175,13 +175,13 @@ npm install
 npm start
 ```
 
-**Claude Code**와 **Codex CLI**는 기본적으로 hook이 동기화됩니다. 다른 Agent는 먼저 **Settings → Agents**에서 해당 integration을 설치해야 하며, 설치되어 있고 활성화된 integration만 Clawd 시작 시 계속 동기화됩니다. 원격 SSH, WSL, 플랫폼별 참고 사항(macOS / Linux)까지 포함된 가이드는 **[docs/guides/setup-guide.md](docs/guides/setup-guide.md)** 를 참고하세요.
+**Claude Code**와 **Codex CLI**는 기본적으로 hook이 동기화됩니다. 다른 Agent는 먼저 **Settings → Agents**에서 해당 integration을 설치해야 하며, 설치되어 있고 활성화된 integration만 Clawd 시작 시 계속 동기화됩니다. 원격 SSH, WSL, 플랫폼별 참고 사항(macOS / Linux)까지 포함된 가이드는 **[docs/guides/setup-guide.md](../../guides/setup-guide.md)** 를 참고하세요.
 
-`Codex + WSL`의 공식 현황, Clawd의 현재 구현 경계, 그리고 왜 이 부분이 오해되기 쉬운지는 **[docs/guides/codex-wsl-clarification.ko-KR.md](docs/guides/codex-wsl-clarification.ko-KR.md)** 를 참고하세요.
+`Codex + WSL`의 공식 현황, Clawd의 현재 구현 경계, 그리고 왜 이 부분이 오해되기 쉬운지는 **[docs/guides/codex-wsl-clarification.ko-KR.md](../../guides/codex-wsl-clarification.ko-KR.md)** 를 참고하세요.
 
 ## 알려진 제한 사항
 
-일부 에이전트는 기능 차이가 있습니다. 예를 들어 권한 말풍선이 없거나, 폴링 지연이 있거나, 터미널 포커스를 지원하지 않을 수 있습니다. 전체 표는 **[docs/guides/known-limitations.md](docs/guides/known-limitations.md)** 에 있습니다.
+일부 에이전트는 기능 차이가 있습니다. 예를 들어 권한 말풍선이 없거나, 폴링 지연이 있거나, 터미널 포커스를 지원하지 않을 수 있습니다. 전체 표는 **[docs/guides/known-limitations.md](../../guides/known-limitations.md)** 에 있습니다.
 
 ## 커스텀 테마
 
@@ -207,7 +207,7 @@ node scripts/validate-theme.js path/to/your-theme
 
 `Settings…` → `Theme`의 테마 카드에는 `Tracked idle`, `Static theme`, `Mini`, `Direct sleep`, `No reactions` 같은 능력 배지가 표시되어 전환 전에 테마 특성을 확인할 수 있습니다.
 
-전체 제작 가이드는 [docs/guides/guide-theme-creation.md](docs/guides/guide-theme-creation.md) 에 있습니다. 입문/중급/고급 경로, `theme.json` 필드 설명, 에셋 가이드라인까지 포함합니다.
+전체 제작 가이드는 [docs/guides/guide-theme-creation.md](../../guides/guide-theme-creation.md) 에 있습니다. 입문/중급/고급 경로, `theme.json` 필드 설명, 에셋 가이드라인까지 포함합니다.
 
 > 서드파티 SVG 파일은 보안을 위해 자동으로 sanitize 됩니다.
 
@@ -405,9 +405,9 @@ Clawd를 더 좋게 만드는 데 도움을 준 모든 분들께 감사합니다
 
 ## 라이선스
 
-소스 코드는 [GNU Affero General Public License v3.0](LICENSE)(AGPL-3.0)로 배포됩니다.
+소스 코드는 [GNU Affero General Public License v3.0](../../../LICENSE)(AGPL-3.0)로 배포됩니다.
 
-**아트워크와 번들 테마 에셋(`assets/` 및 `themes/*/assets/` 포함)은 AGPL-3.0 라이선스 대상이 아닙니다.** 각 저작권자의 권리가 유지되며 자세한 내용은 [assets/LICENSE](assets/LICENSE)와 아래 고지를 참고하세요.
+**아트워크와 번들 테마 에셋(`assets/` 및 `themes/*/assets/` 포함)은 AGPL-3.0 라이선스 대상이 아닙니다.** 각 저작권자의 권리가 유지되며 자세한 내용은 [assets/LICENSE](../../../assets/LICENSE)와 아래 고지를 참고하세요.
 
 - **Clawd** 캐릭터는 [Anthropic](https://www.anthropic.com)의 자산입니다. 이 프로젝트는 비공식 팬 프로젝트이며 Anthropic과 제휴하거나 승인받지 않았습니다.
 - **Calico cat (삼색 고양이)** 아트워크는 鹿鹿([@rullerzhou-afk](https://github.com/rullerzhou-afk))의 작품이며, 모든 권리를 보유합니다.

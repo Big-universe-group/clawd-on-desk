@@ -1,19 +1,19 @@
 <p align="center">
-  <img src="assets/icon.png" width="128" alt="Clawd">
+  <img src="../../../assets/icon.png" width="128" alt="Clawd">
 </p>
 <h1 align="center">Clawd on Desk</h1>
 <p align="center">
-  <a href="README.md">English</a>
+  <a href="../../../README.md">English</a>
   ·
-  <a href="README.zh-CN.md">中文版</a>
+  <a href="../zh-CN/README.md">中文版</a>
   ·
-  <a href="README.zh-TW.md">繁體中文</a>
+  <a href="../zh-TW/README.md">繁體中文</a>
   ·
-  <a href="README.ko-KR.md">한국어</a>
+  <a href="../ko-KR/README.md">한국어</a>
   ·
-  <a href="README.ja-JP.md">日本語</a>
+  <a href="README.md">日本語</a>
   ·
-  <a href="README.es.md">Español</a>
+  <a href="../es/README.md">Español</a>
 </p>
 <p align="center">
   <a href="https://github.com/rullerzhou-afk/clawd-on-desk/releases"><img src="https://img.shields.io/github/v/release/rullerzhou-afk/clawd-on-desk" alt="Version"></a>
@@ -25,7 +25,7 @@
 </p>
 
 <p align="center">
-  <img src="assets/hero.gif" alt="Clawd on Desk のアニメーションデモ。AI コーディングエージェントの状態に合わせて、ピクセルのカニが睡眠、思考、ツール実行中のタイピング、サブエージェント 1 個ではヘッドホングルーヴ、複数では3ボールジャグリング、権限リクエストの通知、タスク完了後のお祝いへリアルタイムに切り替わります。Claude Code、Codex、Cursor、Copilot、Gemini、Antigravity、Qwen、Pi、OMP、OpenClaw などに対応しています。">
+  <img src="../../../assets/hero.gif" alt="Clawd on Desk のアニメーションデモ。AI コーディングエージェントの状態に合わせて、ピクセルのカニが睡眠、思考、ツール実行中のタイピング、サブエージェント 1 個ではヘッドホングルーヴ、複数では3ボールジャグリング、権限リクエストの通知、タスク完了後のお祝いへリアルタイムに切り替わります。Claude Code、Codex、Cursor、Copilot、Gemini、Antigravity、Qwen、Pi、OMP、OpenClaw などに対応しています。">
 </p>
 
 Clawd はデスクトップに住むペットで、AI コーディングエージェントが今何をしているかにリアルタイムで反応します。長いタスクを開始したら席を外し、Clawd が完了を知らせたら戻ってくるだけです。
@@ -44,7 +44,7 @@ Clawd はデスクトップに住むペットで、AI コーディングエー�
 - **Antigravity CLI (agy)** — `~/.gemini/config/hooks.json` の command hook に対応（Antigravity config がある場合は Clawd 起動時に自動登録、または `npm run install:antigravity-hooks`）。**state-only** のため、Clawd は agy の権限バブルを表示しません。Allow / Deny / Always-allow は agy 自身のターミナルメニューで選択します
 - **Cursor Agent** — `~/.cursor/hooks.json` の [Cursor IDE hooks](https://cursor.com/docs/agent/hooks) に対応（Clawd 起動時に自動登録、または `npm run install:cursor-hooks`）
 - **CodeBuddy** — `~/.codebuddy/settings.json` 経由で Claude Code 互換の command hook と HTTP permission hook に対応（Clawd 起動時に自動登録、または `node hooks/codebuddy/codebuddy-install.js`）
-- **カスタム HTTP Agent** — Settings で別のローカルアプリを登録し、アプリまたは adapter から Clawd の動的 `/state` エンドポイントへイベントを送信します。登録だけでは hook はインストールされず、v1 は state-only です。詳細は[カスタム HTTP Agent ガイド](docs/guides/custom-agent-http.md)を参照してください
+- **カスタム HTTP Agent** — Settings で別のローカルアプリを登録し、アプリまたは adapter から Clawd の動的 `/state` エンドポイントへイベントを送信します。登録だけでは hook はインストールされず、v1 は state-only です。詳細は[カスタム HTTP Agent ガイド](../../guides/custom-agent-http.md)を参照してください
 - **WorkBuddy** — `~/.workbuddy-ai/settings.json`（現行）または `~/.workbuddy/settings.json`（旧版）の Claude Code 互換 command hook に対応（Settings → Agents からインストール、または `node hooks/workbuddy/workbuddy-install.js`）。状態と Notification のみを同期し、権限判断は WorkBuddy のネイティブ GUI に残ります
 - **Grok Build** — `~/.grok/hooks/clawd-on-desk.json` に登録する任意の Claude Code 互換 command hook です（Settings → Agents からインストール、または `node hooks/grok-build/grok-install.js`）。状態と通知のみを同期します。Grok には blocking `PermissionRequest` hook がないため、Allow / Deny は Grok TUI で処理します。
 - **Kiro CLI** — `~/.kiro/agents/` 配下のカスタムエージェント設定に command hook を注入。Clawd 起動時には Kiro 組み込みの `kiro_default` から再同期される `clawd` エージェントも自動作成されるため、`kiro-cli --agent clawd` または `/agent swap clawd` で挙動差を抑えながら hook を利用できます（Clawd 起動時に自動登録、または `npm run install:kiro-hooks`）。state hook は macOS と Windows で検証済みです。
@@ -58,7 +58,7 @@ Clawd はデスクトップに住むペットで、AI コーディングエー�
 - **Hermes Agent** — Hermes の管理 plugin ディレクトリ経由の [plugin integration](https://hermes-agent.org/)（Hermes インストール済みの場合は Clawd 起動時に自動登録、または `npm run install:hermes-plugin`）。状態、セッション、SessionEnd、ターミナルフォーカスに対応
 - **Qoder** — `~/.qoder/settings.json` の command hook で state-only 連携します（`~/.qoder/` ディレクトリがある場合は Clawd 起動時に自動登録、または `npm run install:qoder-hooks`）。Phase 1 はアニメーションのみを対象とし、権限リクエストは通知として観察するだけで、Clawd は権限バブルを表示せず代わりに応答もしません。Allow / Deny は Qoder 自身の権限フローで選択します
 - **QwenWork（千问办公）** — `~/.QwenWorkCN/settings.json` の command hook による hook-only / state-only 連携です（Settings → Agents から導入、または `npm run install:qwenwork-hooks`。削除は `npm run uninstall:qwenwork-hooks`）。対応プラットフォームは macOS / Windows デスクトップのみで、[qwenwork.cn/download](https://qwenwork.cn/download) に Linux クライアントはないため WSL ペアリングも提供しません。Phase 1 はアニメーションと Session HUD を駆動します。`PermissionRequest` / `PermissionDenied` は観察のみで `working` にマップされ、hook の stdout は常に `{}`、Clawd は allow/deny を返しません。権限の決定は QwenWork 自身のフローだけが行います。startup recovery はありません（デスクトップの常駐プロセスはターン実行中を意味しないため）
-- **DeepSeek Harness** — DSH の web profile と DeepSeek Harness デスクトップアプリ（macOS / Windows）に対応する、Clawd 管理の DSH in-process plugin を使った実験的な連携です。公開 session event が session ごとの順序で Clawd の状態を駆動し、公開の blocking `approval/request` は Allow Once / Deny バブルを表示できます。決定がなければ常に DSH 自身の承認フロー（web answerer、またはデスクトップアプリ自身の承認ダイアログ）に戻ります。`ask_user_question` は完全に DSH ネイティブ provider に残り、Clawd は DSH projection storage を一切読みません。詳細は [DeepSeek Harness ガイド](docs/guides/dsh-setup.md)
+- **DeepSeek Harness** — DSH の web profile と DeepSeek Harness デスクトップアプリ（macOS / Windows）に対応する、Clawd 管理の DSH in-process plugin を使った実験的な連携です。公開 session event が session ごとの順序で Clawd の状態を駆動し、公開の blocking `approval/request` は Allow Once / Deny バブルを表示できます。決定がなければ常に DSH 自身の承認フロー（web answerer、またはデスクトップアプリ自身の承認ダイアログ）に戻ります。`ask_user_question` は完全に DSH ネイティブ provider に残り、Clawd は DSH projection storage を一切読みません。詳細は [DeepSeek Harness ガイド](../../guides/dsh-setup.md)
 - **TraeCode (Trae CN)** — `~/.trae-cn/hooks.json` を使う実験的な状態専用 hook 連携です（Settings → Agents からインストール、または `npm run install:traecode-hooks`。削除は `npm run uninstall:traecode-hooks`）。Trae 側で hooks を手動で有効化してください（**Settings → Hooks → Enable**、実行モードは **Sandbox**。詳細は [Trae 公式 hooks ドキュメント](https://docs.trae.cn/ide/automate-actions-with-hooks)）。初回リリースは Trae 中国版のみが対象です。Clawd は最初のプロンプトからセッション名を作成し、権限判断は行いません。`SessionEnd` がないため、閉じた会話はデスクトップのアイドルタイムアウトで整理されます。
 - **複数エージェントの共存** — すべてのエージェントを同時に動かせます。Clawd は各セッションを個別に追跡します
 
@@ -82,7 +82,7 @@ Clawd はデスクトップに住むペットで、AI コーディングエー�
 
 ### リモート通知
 - **Telegram / Feishu（Lark）** — インタラクティブなリモート承認：権限リクエストをスマートフォンへ転送し、デスクトップに戻らず Allow / Deny できます
-- **Slack** — **通知専用**：Slack Incoming Webhook（または任意の `xoxb-` Bot Token + channel id）を使い、タスクの**完了**、**エラー**、**権限リクエスト**を Block Kit カードで送信します。このバージョンでは Slack から Allow / Deny はできません。権限メッセージは通知のみで、判断はデスクトップアプリで行います。Telegram / Feishu と同じリモート承認設定にあり、secret は prefs 外のローカル env ファイルに保存されます（macOS / Linux は `0600`、Windows は AppData ACL）。未設定またはオフライン時は安全にフォールバックします。メッセージには session title、folder、host name が含まれる場合があるため、private channel を推奨します。詳細は [Slack 通知ガイド](docs/guides/slack-notifications.md)
+- **Slack** — **通知専用**：Slack Incoming Webhook（または任意の `xoxb-` Bot Token + channel id）を使い、タスクの**完了**、**エラー**、**権限リクエスト**を Block Kit カードで送信します。このバージョンでは Slack から Allow / Deny はできません。権限メッセージは通知のみで、判断はデスクトップアプリで行います。Telegram / Feishu と同じリモート承認設定にあり、secret は prefs 外のローカル env ファイルに保存されます（macOS / Linux は `0600`、Windows は AppData ACL）。未設定またはオフライン時は安全にフォールバックします。メッセージには session title、folder、host name が含まれる場合があるため、private channel を推奨します。詳細は [Slack 通知ガイド](../../guides/slack-notifications.md)
 
 ### セッション情報
 - **マルチセッション追跡** — すべてのエージェントのセッションから、優先度の最も高い状態を解決します
@@ -114,38 +114,38 @@ Clawd はデスクトップに住むペットで、AI コーディングエー�
 
 <table>
   <tr>
-    <td align="center"><img src="assets/gif/clawd-idle.gif" width="100"><br><sub>Idle</sub></td>
-    <td align="center"><img src="assets/gif/clawd-thinking.gif" width="100"><br><sub>Thought Bubble</sub></td>
-    <td align="center"><img src="assets/gif/clawd-typing.gif" width="100"><br><sub>Typing</sub></td>
-    <td align="center"><img src="assets/gif/clawd-building.gif" width="100"><br><sub>Building</sub></td>
-    <td align="center"><img src="assets/gif/clawd-headphones-groove.gif" width="100"><br><sub>1 Subagent</sub></td>
-    <td align="center"><img src="assets/gif/clawd-juggling.gif" width="100"><br><sub>2+ Subagents</sub></td>
+    <td align="center"><img src="../../../assets/gif/clawd-idle.gif" width="100"><br><sub>Idle</sub></td>
+    <td align="center"><img src="../../../assets/gif/clawd-thinking.gif" width="100"><br><sub>Thought Bubble</sub></td>
+    <td align="center"><img src="../../../assets/gif/clawd-typing.gif" width="100"><br><sub>Typing</sub></td>
+    <td align="center"><img src="../../../assets/gif/clawd-building.gif" width="100"><br><sub>Building</sub></td>
+    <td align="center"><img src="../../../assets/gif/clawd-headphones-groove.gif" width="100"><br><sub>1 Subagent</sub></td>
+    <td align="center"><img src="../../../assets/gif/clawd-juggling.gif" width="100"><br><sub>2+ Subagents</sub></td>
   </tr>
   <tr>
-    <td align="center"><img src="assets/gif/calico-idle.gif" width="80"><br><sub>Calico Idle</sub></td>
-    <td align="center"><img src="assets/gif/calico-thinking.gif" width="80"><br><sub>Calico Thinking</sub></td>
-    <td align="center"><img src="assets/gif/calico-typing.gif" width="80"><br><sub>Calico Typing</sub></td>
-    <td align="center"><img src="assets/gif/calico-building.gif" width="80"><br><sub>Calico Building</sub></td>
-    <td align="center"><img src="assets/gif/calico-juggling.gif" width="80"><br><sub>Calico Juggling</sub></td>
-    <td align="center"><img src="assets/gif/calico-conducting.gif" width="80"><br><sub>Calico Conducting</sub></td>
+    <td align="center"><img src="../../../assets/gif/calico-idle.gif" width="80"><br><sub>Calico Idle</sub></td>
+    <td align="center"><img src="../../../assets/gif/calico-thinking.gif" width="80"><br><sub>Calico Thinking</sub></td>
+    <td align="center"><img src="../../../assets/gif/calico-typing.gif" width="80"><br><sub>Calico Typing</sub></td>
+    <td align="center"><img src="../../../assets/gif/calico-building.gif" width="80"><br><sub>Calico Building</sub></td>
+    <td align="center"><img src="../../../assets/gif/calico-juggling.gif" width="80"><br><sub>Calico Juggling</sub></td>
+    <td align="center"><img src="../../../assets/gif/calico-conducting.gif" width="80"><br><sub>Calico Conducting</sub></td>
   </tr>
   <tr>
-    <td align="center"><img src="assets/gif/cloudling-idle.gif" width="120"><br><sub>Cloudling Idle</sub></td>
-    <td align="center"><img src="assets/gif/cloudling-thinking.gif" width="120"><br><sub>Cloudling Thinking</sub></td>
-    <td align="center"><img src="assets/gif/cloudling-typing.gif" width="120"><br><sub>Cloudling Typing</sub></td>
-    <td align="center"><img src="assets/gif/cloudling-building.gif" width="120"><br><sub>Cloudling Building</sub></td>
-    <td align="center"><img src="assets/gif/cloudling-juggling.gif" width="120"><br><sub>Cloudling Juggling</sub></td>
-    <td align="center"><img src="assets/gif/cloudling-conducting.gif" width="120"><br><sub>Cloudling Conducting</sub></td>
+    <td align="center"><img src="../../../assets/gif/cloudling-idle.gif" width="120"><br><sub>Cloudling Idle</sub></td>
+    <td align="center"><img src="../../../assets/gif/cloudling-thinking.gif" width="120"><br><sub>Cloudling Thinking</sub></td>
+    <td align="center"><img src="../../../assets/gif/cloudling-typing.gif" width="120"><br><sub>Cloudling Typing</sub></td>
+    <td align="center"><img src="../../../assets/gif/cloudling-building.gif" width="120"><br><sub>Cloudling Building</sub></td>
+    <td align="center"><img src="../../../assets/gif/cloudling-juggling.gif" width="120"><br><sub>Cloudling Juggling</sub></td>
+    <td align="center"><img src="../../../assets/gif/cloudling-conducting.gif" width="120"><br><sub>Cloudling Conducting</sub></td>
   </tr>
 </table>
 
-event-to-state mapping、mini mode、クリックリアクションの詳細: **[docs/guides/state-mapping.md](docs/guides/state-mapping.md)**
+event-to-state mapping、mini mode、クリックリアクションの詳細: **[docs/guides/state-mapping.md](../../guides/state-mapping.md)**
 
 ## マルチディスプレイ
 
 Clawd はマルチモニター環境に適応します。起動したディスプレイに合わせて比例サイズを決め、縦長モニターでは読みやすさを保つために上限付きで拡大し、ディスプレイ間のドラッグにも対応します。
 
-<p align="center"><sub>実際のマルチモニター挙動は、<a href="assets/videos/clawd-multi-monitor-demo.mp4">このリポジトリ内のデモ動画</a>で確認できます。</sub></p>
+<p align="center"><sub>実際のマルチモニター挙動は、<a href="../../../assets/videos/clawd-multi-monitor-demo.mp4">このリポジトリ内のデモ動画</a>で確認できます。</sub></p>
 
 ## クイックスタート
 
@@ -177,15 +177,15 @@ npm install
 npm start
 ```
 
-**Claude Code** と **Codex CLI** はデフォルトで hook が同期されます。その他の Agent は、先に **Settings → Agents** で対応する integration をインストールしてください。インストール済みかつ有効な integration だけが Clawd 起動時に同期されます。Remote SSH、WSL、macOS/Linux のプラットフォーム別メモも含めた詳細: **[docs/guides/setup-guide.md](docs/guides/setup-guide.md)**
+**Claude Code** と **Codex CLI** はデフォルトで hook が同期されます。その他の Agent は、先に **Settings → Agents** で対応する integration をインストールしてください。インストール済みかつ有効な integration だけが Clawd 起動時に同期されます。Remote SSH、WSL、macOS/Linux のプラットフォーム別メモも含めた詳細: **[docs/guides/setup-guide.md](../../guides/setup-guide.md)**
 
-リモートサーバーで Claude Code / Codex CLI を動かし、状態と権限バブルをローカル Clawd に転送したい場合は、アプリ内の **Settings → Remote SSH → Deploy / Repair Hooks** を使います。共有サーバー分離の境界、完全な手順、Doctor の境界、FAQ はこちら: **[docs/guides/guide-remote-ssh.md](docs/guides/guide-remote-ssh.md)**
+リモートサーバーで Claude Code / Codex CLI を動かし、状態と権限バブルをローカル Clawd に転送したい場合は、アプリ内の **Settings → Remote SSH → Deploy / Repair Hooks** を使います。共有サーバー分離の境界、完全な手順、Doctor の境界、FAQ はこちら: **[docs/guides/guide-remote-ssh.md](../../guides/guide-remote-ssh.md)**
 
-公式の `Codex + WSL` ステータス、Clawd の現在の実装境界、そして誤解しやすい理由については、こちらを参照してください: **[docs/guides/codex-wsl-clarification.md](docs/guides/codex-wsl-clarification.md)**
+公式の `Codex + WSL` ステータス、Clawd の現在の実装境界、そして誤解しやすい理由については、こちらを参照してください: **[docs/guides/codex-wsl-clarification.md](../../guides/codex-wsl-clarification.md)**
 
 ## 既知の制限
 
-一部のエージェントには機能差があります（権限バブルなし、ポーリング遅延、ターミナルフォーカスなしなど）。完全な表はこちら: **[docs/guides/known-limitations.md](docs/guides/known-limitations.md)**
+一部のエージェントには機能差があります（権限バブルなし、ポーリング遅延、ターミナルフォーカスなしなど）。完全な表はこちら: **[docs/guides/known-limitations.md](../../guides/known-limitations.md)**
 
 ## カスタムテーマ
 
@@ -211,7 +211,7 @@ node scripts/validate-theme.js path/to/your-theme
 
 `Settings...` → `Theme` のテーマカードには、`Tracked idle`、`Static theme`、`Mini`、`Direct sleep`、`No reactions` などの capability badge が表示されるため、ユーザーは切り替える前にテーマの対応範囲を確認できます。
 
-初心者から上級者までの段階別パス、`theme.json` のフィールドリファレンス、アセットガイドラインを含む完全な作成ガイドは [docs/guides/guide-theme-creation.md](docs/guides/guide-theme-creation.md) を参照してください。
+初心者から上級者までの段階別パス、`theme.json` のフィールドリファレンス、アセットガイドラインを含む完全な作成ガイドは [docs/guides/guide-theme-creation.md](../../guides/guide-theme-creation.md) を参照してください。
 
 > サードパーティ製 SVG ファイルは、セキュリティのため自動で sanitize されます。
 
@@ -409,9 +409,9 @@ Clawd をより良くしてくれたすべての方に感謝します。
 
 ## ライセンス
 
-ソースコードは [GNU Affero General Public License v3.0](LICENSE) (AGPL-3.0) のもとでライセンスされています。
+ソースコードは [GNU Affero General Public License v3.0](../../../LICENSE) (AGPL-3.0) のもとでライセンスされています。
 
-**Artwork および同梱テーマアセット（`assets/` と `themes/*/assets/` を含む）は AGPL-3.0 の対象外です。** すべての権利は各著作権者に帰属します。詳細は [assets/LICENSE](assets/LICENSE) と以下の注記を参照してください。
+**Artwork および同梱テーマアセット（`assets/` と `themes/*/assets/` を含む）は AGPL-3.0 の対象外です。** すべての権利は各著作権者に帰属します。詳細は [assets/LICENSE](../../../assets/LICENSE) と以下の注記を参照してください。
 
 - **Clawd** キャラクターは [Anthropic](https://www.anthropic.com) の所有物です。このプロジェクトは非公式のファンプロジェクトであり、Anthropic との提携または承認を受けたものではありません。
 - **Calico cat (三毛猫)** のアートワークは 鹿鹿 ([@rullerzhou-afk](https://github.com/rullerzhou-afk)) によるものです。All rights reserved.

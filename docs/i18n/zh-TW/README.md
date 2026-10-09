@@ -1,17 +1,17 @@
 <p align="center">
-  <img src="assets/icon.png" width="128" alt="Clawd">
+  <img src="../../../assets/icon.png" width="128" alt="Clawd">
 </p>
 <h1 align="center">Clawd 桌寵</h1>
 <p align="center">
-  <a href="README.md">English</a>
+  <a href="../../../README.md">English</a>
   ·
-  <a href="README.zh-CN.md">簡體中文</a>
+  <a href="../zh-CN/README.md">簡體中文</a>
   ·
-  <a href="README.ko-KR.md">한국어</a>
+  <a href="../ko-KR/README.md">한국어</a>
   ·
-  <a href="README.ja-JP.md">日本語</a>
+  <a href="../ja-JP/README.md">日本語</a>
   ·
-  <a href="README.es.md">Español</a>
+  <a href="../es/README.md">Español</a>
 </p>
 <p align="center">
   <a href="https://github.com/rullerzhou-afk/clawd-on-desk/releases"><img src="https://img.shields.io/github/v/release/rullerzhou-afk/clawd-on-desk" alt="Version"></a>
@@ -23,7 +23,7 @@
 </p>
 
 <p align="center">
-  <img src="assets/hero.gif" alt="Clawd 桌寵動畫示範：像素螃蟹會跟著 AI 程式設計助理的狀態即時切換，睡覺、思考、工具執行時打字、單一子代理時戴耳機律動、多個子代理並行時三球雜耍、權限請求出現時提醒、任務完成後慶祝。支援 Claude Code、Codex、Cursor、Copilot、Gemini、Antigravity、Qwen、Pi、OMP、OpenClaw 等。">
+  <img src="../../../assets/hero.gif" alt="Clawd 桌寵動畫示範：像素螃蟹會跟著 AI 程式設計助理的狀態即時切換，睡覺、思考、工具執行時打字、單一子代理時戴耳機律動、多個子代理並行時三球雜耍、權限請求出現時提醒、任務完成後慶祝。支援 Claude Code、Codex、Cursor、Copilot、Gemini、Antigravity、Qwen、Pi、OMP、OpenClaw 等。">
 </p>
 
 Clawd 住在你的桌面上，即時感知 AI 程式設計助理在做什麼。發起一個長任務，起身做點別的，等螃蟹告訴你任務完成了再回來。
@@ -43,7 +43,7 @@ Clawd 住在你的桌面上，即時感知 AI 程式設計助理在做什麼。�
 - **Antigravity CLI (agy)** — 在 `~/.gemini/config/hooks.json` 設定 command hook（已有 Antigravity 設定時 Clawd 啟動會自動註冊，或執行 `npm run install:antigravity-hooks`）；**僅同步狀態**：Clawd 不會為 agy 顯示任何權限對話框，所有 Allow / Deny / Always-allow 都在 agy 自己的終端機選單完成
 - **Cursor Agent** — [Cursor IDE hooks](https://cursor.com/docs/agent/hooks)，設定在 `~/.cursor/hooks.json`（Clawd 啟動時自動註冊，或執行 `npm run install:cursor-hooks`）
 - **CodeBuddy** — 以 Claude Code 相容的 command hook + HTTP 權限 hook 整合，設定寫入 `~/.codebuddy/settings.json`（Clawd 啟動時自動註冊，或執行 `node hooks/codebuddy/codebuddy-install.js`）
-- **自訂 HTTP Agent** — 在 Settings 註冊其他本機應用，再由應用或 adapter 主動向 Clawd 的動態 `/state` 位址上報事件；註冊不會安裝 hook，v1 僅同步狀態，權限決定留在應用自己的介面。詳見[自訂 HTTP Agent 指南](docs/guides/custom-agent-http.md)
+- **自訂 HTTP Agent** — 在 Settings 註冊其他本機應用，再由應用或 adapter 主動向 Clawd 的動態 `/state` 位址上報事件；註冊不會安裝 hook，v1 僅同步狀態，權限決定留在應用自己的介面。詳見[自訂 HTTP Agent 指南](../../guides/custom-agent-http.md)
 - **WorkBuddy** — 可選 Claude Code 相容 command hook，當前使用 `~/.workbuddy-ai/settings.json`，舊版使用 `~/.workbuddy/settings.json`（從 Settings → Agents 安裝，或執行 `node hooks/workbuddy/workbuddy-install.js`）；僅同步狀態與通知，權限仍由 WorkBuddy 原生 GUI 處理
 - **Grok Build** — 可選 Claude Code 相容 command hook，寫入 `~/.grok/hooks/clawd-on-desk.json`（從 Settings → Agents 安裝，或執行 `node hooks/grok-build/grok-install.js`）。僅同步狀態與通知；Grok 沒有阻塞式 `PermissionRequest` hook，Allow / Deny 仍由 Grok TUI 處理。
 - **Kiro CLI** — command hooks 注入到 `~/.kiro/agents/` 下的自訂 agent 設定，並自動建立 `clawd` agent；Clawd 每次啟動都會從內建的 `kiro_default` 重新同步它，盡量和預設 agent 保持一致。macOS 與 Windows 上狀態動效已驗證可用；需要時可用 `kiro-cli --agent clawd` 或在工作階段內執行 `/agent swap clawd` 啟用 hooks（Clawd 啟動時自動註冊，或執行 `npm run install:kiro-hooks`）
@@ -57,7 +57,7 @@ Clawd 住在你的桌面上，即時感知 AI 程式設計助理在做什麼。�
 - **Hermes Agent** — [外掛整合](https://hermes-agent.org/)，寫入 Hermes 受管理的外掛目錄（偵測到 Hermes 後 Clawd 啟動時自動註冊，或執行 `npm run install:hermes-plugin`）；支援狀態、工作階段、SessionEnd 和終端機焦點
 - **Qoder** — 在 `~/.qoder/settings.json` 設定 command hooks（`~/.qoder/` 目錄已存在時 Clawd 啟動會自動註冊，或執行 `npm run install:qoder-hooks`）；**僅同步狀態**：Phase 1 只驅動動畫，權限請求僅以通知方式觀察，Clawd 不顯示權限對話框也不代答，所有 Allow / Deny 都在 Qoder 自己的權限流程完成
 - **QwenWork（千問辦公）** — 在 `~/.QwenWorkCN/settings.json` 設定 hook-only / state-only command hooks（從 Settings → Agents 安裝，或執行 `npm run install:qwenwork-hooks`，解除安裝用 `npm run uninstall:qwenwork-hooks`）；目前只支援 macOS / Windows 桌面版——[qwenwork.cn/download](https://qwenwork.cn/download) 沒有 Linux 版，因此也不提供 WSL Pair。Phase 1 驅動動畫與 Session HUD；`PermissionRequest` / `PermissionDenied` 僅作觀察並對應到 `working`，hook stdout 恆為 `{}`，Clawd 不產生 allow/deny，權限唯一決策者是 QwenWork 自己的流程。沒有 startup recovery：桌面主程序長駐，不代表正在執行任務
-- **DeepSeek Harness** — 實驗性整合，支援 DSH 的 web profile 與 DeepSeek Harness 桌面版（macOS / Windows），透過 Clawd 管理的 DSH 行程內 plugin 運作。公開 session 事件會依 session 順序驅動 Clawd 狀態，公開的阻塞式 `approval/request` 可顯示 Allow Once / Deny 氣泡；無決定時一律交還給 DSH 自己的審批流程（web 的 answerer，或桌面版自己的審批框）。`ask_user_question` 完全留在 DSH 原生 provider，Clawd 從不讀取 DSH projection 儲存內容。詳見 [DeepSeek Harness 指南](docs/guides/dsh-setup.md)
+- **DeepSeek Harness** — 實驗性整合，支援 DSH 的 web profile 與 DeepSeek Harness 桌面版（macOS / Windows），透過 Clawd 管理的 DSH 行程內 plugin 運作。公開 session 事件會依 session 順序驅動 Clawd 狀態，公開的阻塞式 `approval/request` 可顯示 Allow Once / Deny 氣泡；無決定時一律交還給 DSH 自己的審批流程（web 的 answerer，或桌面版自己的審批框）。`ask_user_question` 完全留在 DSH 原生 provider，Clawd 從不讀取 DSH projection 儲存內容。詳見 [DeepSeek Harness 指南](../../guides/dsh-setup.md)
 - **TraeCode (Trae CN)** — 實驗性、僅狀態同步的 hook 整合，寫入 `~/.trae-cn/hooks.json`（從 Settings → Agents 安裝，或執行 `npm run install:traecode-hooks`；解除安裝用 `npm run uninstall:traecode-hooks`）。須在 Trae 手動開啟 hooks（**Settings → Hooks → Enable**，執行模式選 **Sandbox**；見 [Trae 官方 hooks 文件](https://docs.trae.cn/ide/automate-actions-with-hooks)）。首版僅支援 Trae 中國版；Clawd 從第一則提問推導會話標題，不接管權限，也沒有 `SessionEnd`，關閉的會話由桌面端閒置逾時清理。
 - **多 Agent 並存** — 多個 Agent 可以同時跑，Clawd 會獨立追蹤每個工作階段
 
@@ -83,7 +83,7 @@ Clawd 住在你的桌面上，即時感知 AI 程式設計助理在做什麼。�
 
 ### 遠端通知
 - **Telegram / 飛書（Lark）** — 互動式遠端審批：把權限請求轉送到手機，直接遠端 Allow / Deny，不必回到桌面
-- **Slack** — **僅通知**：透過 Slack Incoming Webhook（或可選的 `xoxb-` Bot Token + channel id）以 Block Kit 卡片推送任務**完成**、**錯誤**與**權限請求**。本版本中 Slack 無法 Allow 或 Deny；權限訊息只是通知，仍需回到桌面 App 決定。請在遠端審批通道中與 Telegram / 飛書並列設定；密鑰保存在 prefs 之外的本機 env 檔案（macOS / Linux 為 `0600`，Windows 依賴 AppData ACL），未設定或離線時會安全降級。訊息可能包含 session 標題、資料夾與主機名稱，建議使用私人頻道。詳見 [Slack 通知指南](docs/guides/slack-notifications.md)
+- **Slack** — **僅通知**：透過 Slack Incoming Webhook（或可選的 `xoxb-` Bot Token + channel id）以 Block Kit 卡片推送任務**完成**、**錯誤**與**權限請求**。本版本中 Slack 無法 Allow 或 Deny；權限訊息只是通知，仍需回到桌面 App 決定。請在遠端審批通道中與 Telegram / 飛書並列設定；密鑰保存在 prefs 之外的本機 env 檔案（macOS / Linux 為 `0600`，Windows 依賴 AppData ACL），未設定或離線時會安全降級。訊息可能包含 session 標題、資料夾與主機名稱，建議使用私人頻道。詳見 [Slack 通知指南](../../guides/slack-notifications.md)
 
 ### 工作階段智慧體
 
@@ -118,38 +118,38 @@ Clawd 住在你的桌面上，即時感知 AI 程式設計助理在做什麼。�
 
 <table>
   <tr>
-    <td align="center"><img src="assets/gif/clawd-idle.gif" width="100"><br><sub>待機</sub></td>
-    <td align="center"><img src="assets/gif/clawd-thinking.gif" width="100"><br><sub>思考泡泡</sub></td>
-    <td align="center"><img src="assets/gif/clawd-typing.gif" width="100"><br><sub>打字</sub></td>
-    <td align="center"><img src="assets/gif/clawd-building.gif" width="100"><br><sub>建造</sub></td>
-    <td align="center"><img src="assets/gif/clawd-headphones-groove.gif" width="100"><br><sub>耳機律動</sub></td>
-    <td align="center"><img src="assets/gif/clawd-juggling.gif" width="100"><br><sub>三球雜耍</sub></td>
+    <td align="center"><img src="../../../assets/gif/clawd-idle.gif" width="100"><br><sub>待機</sub></td>
+    <td align="center"><img src="../../../assets/gif/clawd-thinking.gif" width="100"><br><sub>思考泡泡</sub></td>
+    <td align="center"><img src="../../../assets/gif/clawd-typing.gif" width="100"><br><sub>打字</sub></td>
+    <td align="center"><img src="../../../assets/gif/clawd-building.gif" width="100"><br><sub>建造</sub></td>
+    <td align="center"><img src="../../../assets/gif/clawd-headphones-groove.gif" width="100"><br><sub>耳機律動</sub></td>
+    <td align="center"><img src="../../../assets/gif/clawd-juggling.gif" width="100"><br><sub>三球雜耍</sub></td>
   </tr>
   <tr>
-    <td align="center"><img src="assets/gif/calico-idle.gif" width="80"><br><sub>三花待機</sub></td>
-    <td align="center"><img src="assets/gif/calico-thinking.gif" width="80"><br><sub>三花思考</sub></td>
-    <td align="center"><img src="assets/gif/calico-typing.gif" width="80"><br><sub>三花打字</sub></td>
-    <td align="center"><img src="assets/gif/calico-building.gif" width="80"><br><sub>三花建造</sub></td>
-    <td align="center"><img src="assets/gif/calico-juggling.gif" width="80"><br><sub>三花雜耍</sub></td>
-    <td align="center"><img src="assets/gif/calico-conducting.gif" width="80"><br><sub>三花指揮</sub></td>
+    <td align="center"><img src="../../../assets/gif/calico-idle.gif" width="80"><br><sub>三花待機</sub></td>
+    <td align="center"><img src="../../../assets/gif/calico-thinking.gif" width="80"><br><sub>三花思考</sub></td>
+    <td align="center"><img src="../../../assets/gif/calico-typing.gif" width="80"><br><sub>三花打字</sub></td>
+    <td align="center"><img src="../../../assets/gif/calico-building.gif" width="80"><br><sub>三花建造</sub></td>
+    <td align="center"><img src="../../../assets/gif/calico-juggling.gif" width="80"><br><sub>三花雜耍</sub></td>
+    <td align="center"><img src="../../../assets/gif/calico-conducting.gif" width="80"><br><sub>三花指揮</sub></td>
   </tr>
   <tr>
-    <td align="center"><img src="assets/gif/cloudling-idle.gif" width="120"><br><sub>雲寶待機</sub></td>
-    <td align="center"><img src="assets/gif/cloudling-thinking.gif" width="120"><br><sub>雲寶思考</sub></td>
-    <td align="center"><img src="assets/gif/cloudling-typing.gif" width="120"><br><sub>雲寶打字</sub></td>
-    <td align="center"><img src="assets/gif/cloudling-building.gif" width="120"><br><sub>雲寶建造</sub></td>
-    <td align="center"><img src="assets/gif/cloudling-juggling.gif" width="120"><br><sub>雲寶雜耍</sub></td>
-    <td align="center"><img src="assets/gif/cloudling-conducting.gif" width="120"><br><sub>雲寶指揮</sub></td>
+    <td align="center"><img src="../../../assets/gif/cloudling-idle.gif" width="120"><br><sub>雲寶待機</sub></td>
+    <td align="center"><img src="../../../assets/gif/cloudling-thinking.gif" width="120"><br><sub>雲寶思考</sub></td>
+    <td align="center"><img src="../../../assets/gif/cloudling-typing.gif" width="120"><br><sub>雲寶打字</sub></td>
+    <td align="center"><img src="../../../assets/gif/cloudling-building.gif" width="120"><br><sub>雲寶建造</sub></td>
+    <td align="center"><img src="../../../assets/gif/cloudling-juggling.gif" width="120"><br><sub>雲寶雜耍</sub></td>
+    <td align="center"><img src="../../../assets/gif/cloudling-conducting.gif" width="120"><br><sub>雲寶指揮</sub></td>
   </tr>
 </table>
 
-完整事件對應表、迷你模式、互動彩蛋見：**[狀態對應指南（簡體中文）](docs/guides/state-mapping.zh-CN.md)**
+完整事件對應表、迷你模式、互動彩蛋見：**[狀態對應指南（簡體中文）](../../guides/state-mapping.zh-CN.md)**
 
 ## 多螢幕支援
 
 Clawd 支援多螢幕場景：按啟動時所在螢幕做等比縮放，直立螢幕有尺寸加成防止寵物過小，也可以跨螢幕拖動。
 
-<p align="center"><sub>想看多螢幕下的實際效果？可以<a href="assets/videos/clawd-multi-monitor-demo.mp4">開啟儲存庫裡的示範影片</a>。</sub></p>
+<p align="center"><sub>想看多螢幕下的實際效果？可以<a href="../../../assets/videos/clawd-multi-monitor-demo.mp4">開啟儲存庫裡的示範影片</a>。</sub></p>
 
 ## 快速開始
 
@@ -181,13 +181,13 @@ npm install
 npm start
 ```
 
-**Claude Code** 與 **Codex CLI** 預設會自動同步 hooks。其他 Agent 必須先在 **Settings → Agents** 安裝對應整合；只有已安裝且啟用的整合，Clawd 才會在啟動時繼續同步。也涵蓋遠端 SSH、WSL 及平台說明（macOS 與 Linux）：**[設定指南（簡體中文）](docs/guides/setup-guide.zh-CN.md)**
+**Claude Code** 與 **Codex CLI** 預設會自動同步 hooks。其他 Agent 必須先在 **Settings → Agents** 安裝對應整合；只有已安裝且啟用的整合，Clawd 才會在啟動時繼續同步。也涵蓋遠端 SSH、WSL 及平台說明（macOS 與 Linux）：**[設定指南（簡體中文）](../../guides/setup-guide.zh-CN.md)**
 
-關於 `Codex + WSL` 的官方現況、Clawd 目前實作的邊界、以及為什麼容易被誤解，見：**[Codex / WSL 說明（簡體中文）](docs/guides/codex-wsl-clarification.zh-CN.md)**
+關於 `Codex + WSL` 的官方現況、Clawd 目前實作的邊界、以及為什麼容易被誤解，見：**[Codex / WSL 說明（簡體中文）](../../guides/codex-wsl-clarification.zh-CN.md)**
 
 ## 已知限制
 
-有些 Agent 存在功能差異（沒有權限對話框、輪詢延遲、不能跳到終端機等）。完整列表見：**[已知限制（簡體中文）](docs/guides/known-limitations.zh-CN.md)**
+有些 Agent 存在功能差異（沒有權限對話框、輪詢延遲、不能跳到終端機等）。完整列表見：**[已知限制（簡體中文）](../../guides/known-limitations.zh-CN.md)**
 
 ## 自訂主題
 
@@ -215,7 +215,7 @@ node scripts/validate-theme.js path/to/your-theme
 
 `設定…` → `主題` 裡的主題卡現在會顯示支援項目，例如 `游標跟隨閒置狀態`、`靜態主題`、`迷你模式`、`直接睡`、`無 reactions`，方便使用者在切換前比較主題差異。
 
-詳見 [docs/guides/guide-theme-creation.md](docs/guides/guide-theme-creation.md)（主題創作完整指南，含入門/進階/高階路徑、theme.json 欄位說明、素材規範）。
+詳見 [docs/guides/guide-theme-creation.md](../../guides/guide-theme-creation.md)（主題創作完整指南，含入門/進階/高階路徑、theme.json 欄位說明、素材規範）。
 
 > 第三方 SVG 檔案會自動消毒，確保安全。
 
@@ -375,9 +375,9 @@ Clawd on Desk 是社群驅動的專案。歡迎提 Bug、提需求、提 PR —�
 
 ## 授權
 
-原始碼以 [GNU Affero General Public License v3.0](LICENSE)（AGPL-3.0）授權釋出。
+原始碼以 [GNU Affero General Public License v3.0](../../../LICENSE)（AGPL-3.0）授權釋出。
 
-**美術素材和內建主題素材（包括 `assets/` 與 `themes/*/assets/`）不適用 AGPL-3.0 授權。** 所有權利歸各自著作權人所有，詳見 [assets/LICENSE](assets/LICENSE) 及下列說明。
+**美術素材和內建主題素材（包括 `assets/` 與 `themes/*/assets/`）不適用 AGPL-3.0 授權。** 所有權利歸各自著作權人所有，詳見 [assets/LICENSE](../../../assets/LICENSE) 及下列說明。
 
 - **Clawd** 角色設計屬於 [Anthropic](https://www.anthropic.com)。本專案為非官方粉絲作品，與 Anthropic 沒有官方關聯。
 - **三花貓** 素材由 鹿鹿 ([@rullerzhou-afk](https://github.com/rullerzhou-afk)) 創作，保留所有權利。
