@@ -71,10 +71,10 @@ npm run uninstall:mimocode-plugin
 node hooks/codebuddy/codebuddy-install.js
 node hooks/opencode/opencode-install.js
 
-bash test-demo.sh [seconds]
-bash test-mini.sh [seconds]
-bash test-macos.sh
-bash test-oneshot-gate.sh [state] [seconds]
+bash scripts/manual/test-demo.sh [seconds]
+bash scripts/manual/test-mini.sh [seconds]
+bash scripts/manual/test-macos.sh
+bash scripts/manual/test-oneshot-gate.sh [state|all] [seconds] [agent]
 ```
 
 新安装默认只把 Claude Code 和 Codex 标记为已安装并启用；其他 agent 默认未安装、未启用。正常启动时，Clawd 只会为 `integrationInstalled=true` 且 `enabled=true` 的 agent 自动同步 Claude / Codex / Copilot / Gemini / Antigravity / Cursor / CodeBuddy / WorkBuddy / Grok Build / Kiro / Kimi / Qwen / ZCode / CodeWhale / Qoder / QoderWork / QwenWork / Reasonix / TraeCode / MiniMax Code hooks、opencode / MiMo Code / OpenClaw / Hermes plugins 和 Pi extension。Settings Agent 页的 Install 会安装并启用该集成；Uninstall 会卸载 Clawd 管理的 hook/plugin/extension，并同时把该 agent 设为未安装、未启用。单独关闭 enabled 只会跳过启动同步并屏蔽事件/权限入口，不卸载用户已有 hooks / plugins / extensions；重新启用未安装 agent 只打开事件入口，不会写本机集成文件。手动安装命令主要用于调试、重装或远程部署。

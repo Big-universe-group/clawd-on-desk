@@ -1,5 +1,22 @@
 # Manual validation harnesses
 
+## Pet visual checks (`test-*.sh`)
+
+Bash + `curl` scripts that drive a running Clawd (`npm start`) through fake
+`/state` / `/permission` requests so you can watch the pet. They are not part of
+`npm test`. `clawd-server-lib.sh` finds the server via `~/.clawd/runtime.json`,
+then `127.0.0.1:23333-23337`, confirmed by the `x-clawd-server` header, so the
+scripts work from any cwd and any hook port.
+
+| Script | What it checks |
+|---|---|
+| `test-demo.sh [seconds]` | Plays every main-mode SVG mapped in `themes/clawd/theme.json`, then returns to idle. The active theme must be the built-in Clawd theme. |
+| `test-mini.sh [seconds]` | Plays every `miniMode.states` entry of the Clawd theme, then returns to idle. |
+| `test-oneshot-gate.sh [state\|all] [seconds] [agent]` | Sends the Claude events for `error` / `notification` / `sweeping` / `attention` / `carrying`; toggle the row in Settings → Animation Map to confirm the gate suppresses / restores it. Each test session gets a `SessionEnd` afterwards. |
+| `test-macos.sh` | macOS only, interactive: runs `hooks/claude-code/clawd-hook.js`, matches ancestors against the live `BASE_TERMINAL_NAMES_MAC` / editor map, osascript activation, a `/permission` bubble, and two Dashboard sessions. Test sessions are ended on exit. If the permission decision returns instantly, permission automation answered and the bubble was not exercised. |
+
+---
+
 ## Kimi Code quota Phase 0
 
 This manual-only probe validates the experimental Kimi Code API-key usage
