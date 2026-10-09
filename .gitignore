@@ -20,6 +20,9 @@ docs/**
 # Translated READMEs: docs/i18n/<lang>/README.md
 !docs/i18n/
 !docs/i18n/**
+# Per-turn development log: docs/dev-log/
+!docs/dev-log/
+!docs/dev-log/**
 !docs/guides/
 !docs/guides/copilot-setup.md
 !docs/guides/copilot-setup.zh-CN.md

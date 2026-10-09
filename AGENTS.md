@@ -2,6 +2,10 @@
 
 This file is the entry point for coding agents working in this repository. Keep it short and operational. Durable architecture lives in `docs/project/`; `docs/plans/` and `docs/investigations/` are historical evidence unless this file explicitly links them.
 
+## Dev Log（每个 turn 必做）
+
+凡涉及本项目的 turn（需求提出/变更/撤销、设计决策、代码改动、排查结论、项目结构问答），回答完成后按 `docs/dev-log/README.md` 记一笔：写到 `docs/dev-log/inbox/<当天日期>/<主题>.md`，并在同目录 `Index.md` 加一行；同一主题的追问、回滚追加到同一篇。`docs/dev-log/需求变更记录.md` 只在用户要求「整合 dev-log」时改。用户说「不用记录」或闲聊时跳过。回复末尾一行注明：`🗂 已记录到 docs/dev-log/inbox/<日期>/<文件名>`。
+
 ## Project Overview
 
 Clawd 是一个 Electron 桌宠：通过 hook、日志轮询、plugin 和 extension 感知 AI coding agent 的工作状态，并播放像素风动画。当前支持 Claude Code、Codex CLI、Copilot CLI、Gemini CLI、Antigravity CLI (agy)、Cursor Agent、CodeBuddy、WorkBuddy、Grok Build、Kiro CLI、Kimi Code CLI (Kimi-CLI)、Qwen Code、ZCode、CodeWhale、opencode、MiMo Code、Pi、OpenClaw、Hermes Agent、Qoder、QoderWork、QwenWork (千问办公)、Reasonix、DeepSeek Harness、TraeCode (Trae CN)、MiniMax Code；内置 Clawd / Calico / Cloudling 三套主题，支持用户主题，并可经 Settings 从独立 `rullerzhou-afk/clawd-themes` 仓库下载可选官方主题（Hash Sage、Whale-chan，external theme 权限、可卸载）；平台覆盖 Windows、macOS、Linux，UI 支持 en / zh / zh-TW / ko / ja / pt-BR / es。
