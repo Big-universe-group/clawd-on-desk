@@ -6,3 +6,4 @@
 - 建立 dev-log [实现] → docs/dev-log 约定 + AGENTS.md / RULES.md 规则，补录 10-08、10-09
 - 根目录 test 脚本用途 [问答/实现] → 4 个手动视觉 QA 脚本已修正并挪到 scripts/manual/，动画列表改读 theme.json
 - stats 与结构微调并行 worktree [问答] → 可以开；从 refactor/layering 切 feat/stats，同时只跑一个 Clawd，hook 路径会跟着 npm start 的目录走
+- 源码目录改名 my-desktop-aide [需求变更/实现] → `forkproject/clawd-on-desk` → `~/Public/unusebamboo/my-desktop-aide`；两台删 upstream 远端、`my-repo-sync` 去 fork 条目；install 脚本 + cc-switch DB + statusline owner 同步改路径（bamboo-env `87fbec9`）
