@@ -1,6 +1,6 @@
 "use strict";
 
-// Resolve an agent CLI (codex, omp) to an absolute executable path.
+// Resolve an agent CLI to an absolute executable path.
 //
 // A packaged app launched from the Dock/Finder inherits launchd's minimal
 // PATH (/usr/bin:/bin:/usr/sbin:/sbin) — no Homebrew, no ~/.local/bin — so

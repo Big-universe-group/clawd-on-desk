@@ -232,3 +232,23 @@ describe("usage collector", () => {
     assert.strictEqual(state.commits.length, 1);
   });
 });
+
+describe("usage collector source discovery", () => {
+  const { listUsageSourceAgentIds } = require("../../src/quota/usage-collector");
+
+  it("discovers active sources from agent usage ports in agent-id order", () => {
+    assert.deepStrictEqual(listUsageSourceAgentIds(), ["claude-code", "codex", "omp"]);
+  });
+
+  it("default sources bind the agent id of the plugin that provides them", () => {
+    const collector = createUsageCollector({});
+    const status = collector.getStatus();
+    collector.dispose();
+    const pairs = status.map((s) => [s.id, s.agentId]);
+    assert.deepStrictEqual(pairs, [
+      ["claude-oauth", "claude-code"],
+      ["codex-app-server", "codex"],
+      ["omp-usage", "omp"],
+    ]);
+  });
+});

@@ -152,7 +152,7 @@ Copilot CLI 同步走 `<COPILOT_HOME 或 ~/.copilot>/hooks/hooks.json`，marker-
 | `src/ui/dashboard/quick-mode.js` | 完整 Dashboard 的 1–9 键盘模式（**macOS/Windows only**）：quick 宿主、opacity/input parking、轮次栅栏与冻结数字映射；Windows 显式取消与页面失效的来源恢复在 `src/platform/win/quick-select-origin-focus.js`，quick 宿主的退出清理挂在 `before-quit` |
 | `src/ui/hud/session-hud.js` + `src/ui/hud/session-hud-renderer.js` | 桌宠旁轻量会话 HUD、折叠行、点击跳转 |
 | `src/runtime/session/alias.js` | session alias key 规范化、TTL pruning、Kiro cwd scope |
-| `src/quota/usage-collector.js` + `src/quota/sources/*.js` | 额度用量聚合：Claude Code 登录用量（只读 OAuth token → `/api/oauth/usage`）、Codex `app-server` `account/rateLimits/read`、OMP `omp usage --json --redact`；按 agent gate 与 `sessionHudShowQuota` 主开关事件触发刷新，写入 account-quota 本机 source（含通用 `extraQuota`） |
+| `src/quota/usage-collector.js` + `src/agents/<id>/quota-source.js`（经 `ports/usage.js` 的 `createQuotaSource` 发现） | 额度用量聚合：Claude Code 登录用量（只读 OAuth token → `/api/oauth/usage`）、Codex `app-server` `account/rateLimits/read`、OMP `omp usage --json --redact`；按 agent gate 与 `sessionHudShowQuota` 主开关事件触发刷新，写入 account-quota 本机 source（含通用 `extraQuota`） |
 | `src/ui/hud/session-hud.js` + `src/quota/ring-geometry.js` + `src/quota/ring-renderer.js` | Session HUD 内的额度分区：provider 计数/行数布局、按 provider 着色的行与 +N 溢出行，随 Session HUD 一起显示/自动隐藏 |
 | `src/features/themes/loader.js` + `src/features/themes/runtime.js` | stateless 主题加载/消毒与唯一 active-theme owner；`waitForThemeReloadSettled` 完成信号 |
 | `src/features/themes/official/catalog.js` / `-download.js` / `-installer.js` / `-main.js` | 官方可下载主题：严格 catalog/cache、Electron `net.request` 流式下载、受限流式 ZIP 解压与 marker-before-rename、main owner/IPC/共享 `theme` lock |

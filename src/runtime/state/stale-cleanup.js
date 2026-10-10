@@ -1,54 +1,24 @@
 "use strict";
 
-const {
-  isCodexCliOriginator,
-  isCodexDesktopOriginator,
-} = require("../../../hooks/codex/codex-originator");
-const { deriveCodexHomeFromTranscriptPath } = require("../../agents/codex/thread-id");
+const { callAgentPort } = require("../../core/ports/agent-ports");
 const { isWslSourced } = require("../../core/server/remote-process-metadata");
 
 const SESSION_STALE_MS = 600000;
 const WORKING_STALE_MS = 300000;
 const DETACHED_IDLE_STALE_MS = 30000;
-const CODEX_LOCAL_WORKING_STALE_FLOOR_MS = 20 * 60 * 1000;
-const OPENCODE_LOCAL_WORKING_STALE_FLOOR_MS = 20 * 60 * 1000;
 
 function isWorkingLikeState(state) {
   return state === "working" || state === "juggling" || state === "thinking";
 }
 
-function isLocalCodexWorkingLikeSession(session) {
+// A local, attached conversation that has settled to idle. Agents whose
+// conversations share one long-lived app process (and emit no SessionEnd) opt
+// into an idle-age cutoff for these through their ingest adapter.
+function isLocalIdleConversation(session) {
   return !!session
-    && session.agentId === "codex"
-    && !session.host
-    && isWorkingLikeState(session.state);
-}
-
-function isLocalOpencodeWorkingLikeSession(session) {
-  return !!session
-    && session.agentId === "opencode"
     && !session.host
     && !session.headless
-    && isWorkingLikeState(session.state);
-}
-
-function isLocalCodexDesktopIdleSession(session) {
-  return !!session
-    && session.agentId === "codex"
-    && !session.host
-    && !session.headless
-    && session.state === "idle"
-    && isCodexDesktopOriginator(session.codexOriginator);
-}
-
-function isLocalQueueableCodexCliIdleSession(session) {
-  return !!session
-    && session.agentId === "codex"
-    && !session.host
-    && !session.headless
-    && session.state === "idle"
-    && isCodexCliOriginator(session.codexOriginator)
-    && !!deriveCodexHomeFromTranscriptPath(session.transcriptPath, process.platform);
+    && session.state === "idle";
 }
 
 function hasReplyableCompletionMapping(session, options) {
@@ -60,28 +30,17 @@ function hasReplyableCompletionMapping(session, options) {
   }
 }
 
-function isLocalZcodeDesktopIdleSession(session) {
-  return !!session
-    && session.agentId === "zcode"
-    && !session.host
-    && !session.headless
-    && session.state === "idle";
-}
-
-function isLocalTraeDesktopIdleSession(session) {
-  return !!session
-    && session.agentId === "traecode"
-    && !session.host
-    && !session.headless
-    && session.state === "idle";
-}
-
-function isLocalWorkBuddyDesktopIdleSession(session) {
-  return !!session
-    && session.agentId === "workbuddy"
-    && !session.host
-    && !session.headless
-    && session.state === "idle";
+// Agent-specific working timeout (ingest port `staleWorkingTimeoutMs`); the
+// generic timeout when the agent has no override for this session.
+function resolveWorkingStaleMs(session, workingStaleMs, config) {
+  const override = callAgentPort(
+    session && session.agentId,
+    "ingest",
+    "staleWorkingTimeoutMs",
+    [session, { workingStaleMs, staleConfig: config }],
+    undefined
+  );
+  return Number.isFinite(override) ? override : workingStaleMs;
 }
 
 function getStaleSessionDecision(session, options = {}) {
@@ -90,38 +49,13 @@ function getStaleSessionDecision(session, options = {}) {
   let sessionStaleMs = Number.isFinite(config.sessionStaleMs)
     ? config.sessionStaleMs
     : SESSION_STALE_MS;
-  let workingStaleMs = Number.isFinite(config.workingStaleMs)
+  const genericWorkingStaleMs = Number.isFinite(config.workingStaleMs)
     ? config.workingStaleMs
     : WORKING_STALE_MS;
   const detachedIdleStaleMs = Number.isFinite(config.detachedIdleStaleMs)
     ? config.detachedIdleStaleMs
     : DETACHED_IDLE_STALE_MS;
-
-  if (isLocalCodexWorkingLikeSession(session)) {
-    // Local Codex can spend many minutes in one silent model/command segment,
-    // especially while the Desktop app is retrying a weak network. Unlike the
-    // generic working timeout, this is an explicit user choice. Zero means a
-    // silent-but-live local Codex turn is never idled by age alone.
-    const configuredCodexTimeout = Number.isFinite(config.codexWorkingStaleMs)
-      && config.codexWorkingStaleMs >= 0
-      ? config.codexWorkingStaleMs
-      : CODEX_LOCAL_WORKING_STALE_FLOOR_MS;
-    workingStaleMs = configuredCodexTimeout;
-  }
-
-  if (isLocalOpencodeWorkingLikeSession(session)) {
-    // OpenCode tools can run silently for many minutes (for example, a long
-    // shell command). Keep the same bounded stale guard used for local Codex
-    // instead of letting the generic five-minute working timeout release the
-    // sleep blocker during a legitimate tool call.
-    const floor = (
-      Number.isFinite(config.opencodeLocalWorkingStaleFloorMs)
-      && config.opencodeLocalWorkingStaleFloorMs > 0
-    )
-      ? config.opencodeLocalWorkingStaleFloorMs
-      : OPENCODE_LOCAL_WORKING_STALE_FLOOR_MS;
-    workingStaleMs = Math.max(workingStaleMs, floor);
-  }
+  const workingStaleMs = resolveWorkingStaleMs(session, genericWorkingStaleMs, config);
 
   const isProcessAlive = options.isProcessAlive;
   // A WSL session's PIDs are Linux PIDs that can alias unrelated live processes
@@ -153,66 +87,20 @@ function getStaleSessionDecision(session, options = {}) {
   );
   const age = now - referenceTs;
 
-  // Codex Desktop threads share one long-lived app-server PID and do not emit
-  // SessionEnd. A live process therefore cannot keep an individual idle thread
-  // alive forever; use the existing user-configured idle-age cutoff instead.
-  if (
-    sessionStaleMs > 0
-    && age > sessionStaleMs
-    && isLocalCodexDesktopIdleSession(session)
-  ) {
-    if (hasReplyableCompletionMapping(session, options)) return { action: null };
-    return { action: "delete", reason: "codex-desktop-idle-timeout" };
-  }
-
-  // A JSONL-only CLI session can be queueable even when this host cannot map
-  // its writer PID. Keep the session identity while the Telegram mapping is
-  // live; otherwise the generic unreachable/no-source rules still retire it.
-  if (
-    sessionStaleMs > 0
-    && age > sessionStaleMs
-    && isLocalQueueableCodexCliIdleSession(session)
-    && hasReplyableCompletionMapping(session, options)
-  ) {
-    return { action: null };
-  }
-
-  // ZCode desktop conversations have no SessionEnd event and can share the
-  // app's long-lived app-server PID. Once source_pid is correctly anchored to
-  // ZCode.exe, process liveness alone cannot retire an individual closed
-  // conversation, so apply the same configured idle cutoff as Codex Desktop.
-  if (
-    sessionStaleMs > 0
-    && age > sessionStaleMs
-    && isLocalZcodeDesktopIdleSession(session)
-  ) {
-    return { action: "delete", reason: "zcode-desktop-idle-timeout" };
-  }
-
-  // TraeCode conversations have no SessionEnd event and share the IDE's
-  // long-lived process. A live IDE process therefore cannot keep an individual
-  // closed conversation alive forever — apply the same configured idle cutoff
-  // used for Codex Desktop and ZCode.
-  if (
-    sessionStaleMs > 0
-    && age > sessionStaleMs
-    && isLocalTraeDesktopIdleSession(session)
-  ) {
-    return { action: "delete", reason: "traecode-desktop-idle-timeout" };
-  }
-
-  // WorkBuddy emits Stop when a turn finishes (stored as idle) but never emits
-  // SessionEnd, and archiving or deleting a conversation sends no event either.
-  // On Windows agent_pid is the long-lived main process, so a live process
-  // cannot vouch for an individual finished conversation forever — apply the
-  // same configured idle cutoff used for Codex Desktop, ZCode, and TraeCode.
-  // agent-exit above still wins when WorkBuddy itself quits.
-  if (
-    sessionStaleMs > 0
-    && age > sessionStaleMs
-    && isLocalWorkBuddyDesktopIdleSession(session)
-  ) {
-    return { action: "delete", reason: "workbuddy-desktop-idle-timeout" };
+  // Agents whose conversations outlive any process signal (shared long-lived
+  // app PIDs, no SessionEnd) decide the expired-idle outcome themselves
+  // (ingest port `staleIdleDecision`); null falls through to the generic rules.
+  if (sessionStaleMs > 0 && age > sessionStaleMs) {
+    const agentDecision = callAgentPort(
+      session.agentId,
+      "ingest",
+      "staleIdleDecision",
+      [session, {
+        hasReplyableCompletionMapping: () => hasReplyableCompletionMapping(session, options),
+      }],
+      null
+    );
+    if (agentDecision) return agentDecision;
   }
 
   // NOTE: requiresCompletionAck does NOT hold a session out of stale cleanup.
@@ -294,14 +182,7 @@ module.exports = {
   SESSION_STALE_MS,
   WORKING_STALE_MS,
   DETACHED_IDLE_STALE_MS,
-  CODEX_LOCAL_WORKING_STALE_FLOOR_MS,
-  OPENCODE_LOCAL_WORKING_STALE_FLOOR_MS,
   isWorkingLikeState,
-  isLocalCodexWorkingLikeSession,
-  isLocalQueueableCodexCliIdleSession,
-  isLocalOpencodeWorkingLikeSession,
-  isLocalZcodeDesktopIdleSession,
-  isLocalTraeDesktopIdleSession,
-  isLocalWorkBuddyDesktopIdleSession,
+  isLocalIdleConversation,
   getStaleSessionDecision,
 };

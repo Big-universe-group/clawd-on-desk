@@ -20,9 +20,7 @@
 // - Status details are short English diagnostics; tokens and response bodies
 //   never reach logs, status, or persistence.
 
-const { createClaudeOAuthSource } = require("./sources/claude-oauth");
-const { createCodexAppServerSource } = require("./sources/codex-app-server");
-const { createOmpUsageSource } = require("./sources/omp-usage");
+const { listAgentPorts } = require("../core/ports/agent-ports");
 
 const SOURCE_MIN_INTERVAL_MS = 5 * 60 * 1000;
 const FORCE_MIN_INTERVAL_MS = 60 * 1000;
@@ -36,12 +34,19 @@ const RESULT_STATES = new Set([
   "error",
 ]);
 
+// Active sources come from agent plugins' `usage` port (`createQuotaSource`),
+// in agent-id order. Each source binds its own agent id.
+function listUsageSourcePorts() {
+  return listAgentPorts("usage")
+    .filter(({ adapter }) => adapter && typeof adapter.createQuotaSource === "function");
+}
+
+function listUsageSourceAgentIds() {
+  return listUsageSourcePorts().map(({ agentId }) => agentId);
+}
+
 function createDefaultSources(deps) {
-  return [
-    createClaudeOAuthSource(deps),
-    createCodexAppServerSource(deps),
-    createOmpUsageSource(deps),
-  ];
+  return listUsageSourcePorts().map(({ adapter }) => adapter.createQuotaSource(deps));
 }
 
 function createUsageCollector(deps = {}) {
@@ -196,6 +201,7 @@ function createUsageCollector(deps = {}) {
 
 module.exports = {
   createUsageCollector,
+  listUsageSourceAgentIds,
   SOURCE_MIN_INTERVAL_MS,
   FORCE_MIN_INTERVAL_MS,
   DEFAULT_RATE_LIMIT_BACKOFF_MS,

@@ -4,11 +4,12 @@ const { describe, it } = require("node:test");
 const assert = require("node:assert/strict");
 
 const createAgentRuntimeMain = require("../../src/agents/runtime-main");
+const { CODEX_LOG_EVENTS_COVERED_BY_OFFICIAL_HOOKS } = require("../../src/agents/codex/main-runtime");
 
 describe("main Codex official hook JSONL suppression", () => {
   it("suppresses guardian_assessment for hook-active Codex sessions", () => {
     assert.ok(
-      createAgentRuntimeMain.CODEX_LOG_EVENTS_COVERED_BY_OFFICIAL_HOOKS.has("event_msg:guardian_assessment"),
+      CODEX_LOG_EVENTS_COVERED_BY_OFFICIAL_HOOKS.has("event_msg:guardian_assessment"),
       "guardian_assessment should not re-drive hook-active Codex sessions from JSONL"
     );
   });

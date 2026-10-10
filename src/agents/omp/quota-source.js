@@ -12,7 +12,7 @@
 
 const { spawn: defaultSpawn } = require("child_process");
 
-const { resolveCliBinary, spawnCli } = require("./cli-binary");
+const { resolveCliBinary, spawnCli } = require("../../quota/cli-binary");
 
 const SOURCE_ID = "omp-usage";
 const AGENT_ID = "omp";

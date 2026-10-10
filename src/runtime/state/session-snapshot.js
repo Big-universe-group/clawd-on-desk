@@ -552,18 +552,21 @@ function buildSessionSnapshot(sessions, options = {}) {
       ? JSON.parse(JSON.stringify(options.accountQuota))
       : [],
     // Provider icons for the quota strip (same agent icons the session rows
-    // use, resolved via the injected accessor). Static per run — excluded
-    // from the snapshot signature.
+    // use, resolved via the injected accessor). Each agent's `usage` port
+    // names the quota key its icon fills. Static per run — excluded from the
+    // snapshot signature.
     quotaAgentIcons: (() => {
       const iconFor = typeof options.getAgentIconUrl === "function"
         ? options.getAgentIconUrl
         : () => null;
-      return {
-        antigravityQuota: iconFor("antigravity-cli"),
-        claudeQuota: iconFor("claude-code"),
-        codexQuota: iconFor("codex"),
-        kimiQuota: iconFor("kimi-cli"),
-      };
+      const { listAgentPorts } = require("../../core/ports/agent-ports");
+      const icons = {};
+      for (const { agentId, adapter } of listAgentPorts("usage")) {
+        if (adapter && typeof adapter.quotaIconKey === "string") {
+          icons[adapter.quotaIconKey] = iconFor(agentId);
+        }
+      }
+      return icons;
     })(),
     sessionAutomationOrphans: automationRecords
       .filter((record) => !matchedAutomationGrantIds.has(record.grantId))

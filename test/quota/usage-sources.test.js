@@ -11,11 +11,11 @@ const {
   parseOmpUsageOutput,
   createOmpUsageSource,
   OMP_USAGE_ARGS,
-} = require("../../src/quota/sources/omp-usage");
+} = require("../../src/agents/omp/quota-source");
 const {
   mapCodexRateLimitsResponse,
   createCodexAppServerSource,
-} = require("../../src/quota/sources/codex-app-server");
+} = require("../../src/agents/codex/quota-source");
 const {
   CLAUDE_USAGE_ENDPOINT,
   SECURITY_BIN,
@@ -25,8 +25,8 @@ const {
   mapClaudeUsageResponse,
   classifyClaudeUsageResponse,
   createClaudeOAuthSource,
-} = require("../../src/quota/sources/claude-oauth");
-const { resolveCliBinary, buildCliEnv } = require("../../src/quota/sources/cli-binary");
+} = require("../../src/agents/claude-code/quota-source");
+const { resolveCliBinary, buildCliEnv } = require("../../src/quota/cli-binary");
 
 // Sanitized real `omp usage --json --redact` output (capacity section elided;
 // it is not read).

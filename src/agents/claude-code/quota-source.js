@@ -20,7 +20,7 @@ const path = require("path");
 const https = require("node:https");
 const { execFile } = require("child_process");
 
-const { parseRetryAfter } = require("../../agents/kimi-cli/quota/client");
+const { parseRetryAfter } = require("../kimi-cli/quota/client");
 
 const SOURCE_ID = "claude-oauth";
 const AGENT_ID = "claude-code";

@@ -25,6 +25,11 @@
     throw new Error("settings-i18n.js failed to load before settings-ui-core.js");
   }
 
+  const registry = root.ClawdSettingsRegistry;
+  if (!registry) {
+    throw new Error("registry.js failed to load before settings-ui-core.js");
+  }
+
   const animMergeApi = root.ClawdSettingsAnimOverridesMerge || {};
   const mergePosterCacheIntoAnimationData = animMergeApi.mergePosterCacheIntoAnimationData
     || ((data) => data);
@@ -59,12 +64,14 @@
   const MAX_PERSISTED_SCROLL_TOP = 10_000_000;
   // Runtime-only geometry belongs in the snapshot for consistency, but has no
   // mounted Settings control. Re-rendering for it would destroy focused inputs
-  // and reset the active tab's scroll position after every window move/resize.
+  // and reset the active page's scroll position after every window move/resize.
   const RENDERER_INERT_SETTINGS_KEYS = new Set(["settingsWindowBounds", "dashboardWindowBounds"]);
 
   const state = {
     snapshot: null,
-    activeTab: "general",
+    activeCategory: registry.DEFAULT_CATEGORY_ID,
+    // Sections rendered by the current page: id → { section, element }.
+    mountedSections: new Map(),
     transientUiState: {
       generalSwitches: new Map(),
       agentSwitches: new Map(),
@@ -159,8 +166,8 @@
     pendingAnimationOverrideEdits: new Map(),
     nextAnimationOverrideEditSeq: 1,
     animOverridesSubtab: "map",
-    settingsTabScrollPositions: new Map(),
-    persistedSettingsTab: "general",
+    settingsCategoryScrollPositions: new Map(),
+    persistedSettingsCategory: registry.DEFAULT_CATEGORY_ID,
     // null = not chosen yet; the Agents tab resolves it from what is connected.
     agentsSubtab: null,
     agentsUnavailableQuery: "",
@@ -185,13 +192,12 @@
     modal: null,
   };
 
-  const tabs = {};
   const toastStack = document.getElementById("toastStack");
   const core = {
     state,
     runtime,
     renderHooks,
-    tabs,
+    registry,
   };
 
   function readSizeUiFromSnapshot() {

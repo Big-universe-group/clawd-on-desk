@@ -13,7 +13,7 @@
 const { spawn: defaultSpawn } = require("child_process");
 
 const { resolveCodexRateLimitReport } = require("../../../hooks/codex/codex-rate-limits");
-const { resolveCliBinary, spawnCli } = require("./cli-binary");
+const { resolveCliBinary, spawnCli } = require("../../quota/cli-binary");
 
 const SOURCE_ID = "codex-app-server";
 const AGENT_ID = "codex";

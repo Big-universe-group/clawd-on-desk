@@ -11,6 +11,7 @@ const CodexSubagentClassifier = require("../../src/agents/codex/subagent-classif
 const { resolveCodexOfficialHookState } = require("../../src/agents/codex/server-official-turns");
 const { makeSessionKey } = require("../../src/core/util/session-key");
 const { digestCodexTurnId } = require("../../src/agents/codex/turn-id");
+const { CODEX_OFFICIAL_LOG_SUPPRESS_TTL_MS } = require("../../src/agents/codex/main-runtime");
 const { CODEX_LOCAL_WORKING_STALE_FLOOR_MS } = require("../../src/runtime/state/stale-cleanup");
 const themeLoader = require("../../src/features/themes/loader");
 
@@ -131,7 +132,7 @@ describe("agent-runtime-main", () => {
       false
     );
 
-    currentTime += createAgentRuntimeMain.CODEX_OFFICIAL_LOG_SUPPRESS_TTL_MS + 1;
+    currentTime += CODEX_OFFICIAL_LOG_SUPPRESS_TTL_MS + 1;
     assert.equal(
       runtime.shouldSuppressCodexLogEvent("codex-1", "working", "event_msg:guardian_assessment"),
       false

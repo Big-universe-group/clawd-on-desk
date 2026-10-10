@@ -1,6 +1,7 @@
 "use strict";
 
 const { getPlatformConfig } = require("../../../hooks/shared/shared-process");
+const { listAgentPorts } = require("../ports/agent-ports");
 const {
   DEFAULT_MAX_DEPTH,
   MAX_PID,
@@ -11,58 +12,50 @@ const {
 
 const WINDOWS_PROCESS_CHAIN_VERSION = 1;
 const WINDOWS_PROCESS_CHAIN_MODES = new Set(["legacy", "shadow", "b1a-authoritative"]);
-const B1A_AGENT_IDS = Object.freeze([
-  "codex",
-  "cursor-agent",
-  "kiro-cli",
-  "codebuddy",
-  "reasonix",
-]);
 
-const BASE_CONFIG = getPlatformConfig({ platform: "win32" });
-const CURSOR_CONFIG = getPlatformConfig({ platform: "win32", extraTerminals: { win: ["cursor.exe"] } });
-const CODEBUDDY_CONFIG = getPlatformConfig({
-  platform: "win32",
-  extraTerminals: { win: ["codebuddy.exe"] },
-  extraEditors: { win: { "codebuddy.exe": "codebuddy" } },
-});
+// Windows B1a process-chain opt-in is declared per agent by its `process`
+// port (`windowsProcessChain: { agentNames, extraTerminals?, extraEditors?,
+// editorFallback? }`). The walk itself stays agent-neutral.
+let agentConfigCache = null;
 
-const AGENT_CONFIGS = Object.freeze({
-  codex: Object.freeze({
-    agentNames: new Set(["codex.exe"]),
-    terminalNames: BASE_CONFIG.terminalNames,
-    systemBoundary: BASE_CONFIG.systemBoundary,
-    editorMap: BASE_CONFIG.editorMap,
-  }),
-  "cursor-agent": Object.freeze({
-    agentNames: new Set(["cursor.exe"]),
-    terminalNames: CURSOR_CONFIG.terminalNames,
-    systemBoundary: CURSOR_CONFIG.systemBoundary,
-    editorMap: CURSOR_CONFIG.editorMap,
-    editorFallback: "cursor",
-  }),
-  "kiro-cli": Object.freeze({
-    agentNames: new Set(["kiro-cli.exe"]),
-    terminalNames: BASE_CONFIG.terminalNames,
-    systemBoundary: BASE_CONFIG.systemBoundary,
-    editorMap: BASE_CONFIG.editorMap,
-  }),
-  codebuddy: Object.freeze({
-    agentNames: new Set(["codebuddy.exe"]),
-    terminalNames: CODEBUDDY_CONFIG.terminalNames,
-    systemBoundary: CODEBUDDY_CONFIG.systemBoundary,
-    editorMap: CODEBUDDY_CONFIG.editorMap,
-  }),
-  reasonix: Object.freeze({
-    agentNames: new Set(["reasonix.exe", "reasonix-desktop.exe", "reasonix-cli.exe"]),
-    terminalNames: BASE_CONFIG.terminalNames,
-    systemBoundary: BASE_CONFIG.systemBoundary,
-    editorMap: BASE_CONFIG.editorMap,
-  }),
-});
+function buildAgentConfig(spec) {
+  const extraTerminals = Array.isArray(spec.extraTerminals) && spec.extraTerminals.length
+    ? { extraTerminals: { win: [...spec.extraTerminals] } }
+    : {};
+  const extraEditors = spec.extraEditors && typeof spec.extraEditors === "object"
+    ? { extraEditors: { win: { ...spec.extraEditors } } }
+    : {};
+  const platformConfig = getPlatformConfig({ platform: "win32", ...extraTerminals, ...extraEditors });
+  return Object.freeze({
+    agentNames: new Set(spec.agentNames),
+    terminalNames: platformConfig.terminalNames,
+    systemBoundary: platformConfig.systemBoundary,
+    editorMap: platformConfig.editorMap,
+    ...(typeof spec.editorFallback === "string" && spec.editorFallback
+      ? { editorFallback: spec.editorFallback }
+      : {}),
+  });
+}
+
+function getAgentConfigs() {
+  if (agentConfigCache) return agentConfigCache;
+  const configs = new Map();
+  for (const { agentId, adapter } of listAgentPorts("process")) {
+    const spec = adapter.windowsProcessChain;
+    if (!spec || !Array.isArray(spec.agentNames) || spec.agentNames.length === 0) continue;
+    configs.set(agentId, buildAgentConfig(spec));
+  }
+  agentConfigCache = configs;
+  return configs;
+}
+
+// Agents that opted into the Windows process-chain walk, sorted by id.
+function listB1aAgentIds() {
+  return [...getAgentConfigs().keys()];
+}
 
 function getB1aAgentConfig(agentId) {
-  return AGENT_CONFIGS[agentId] || null;
+  return getAgentConfigs().get(agentId) || null;
 }
 
 function normalizeWindowsProcessChainMode(value) {
@@ -280,8 +273,6 @@ function buildShadowComparison(legacy, candidate) {
 }
 
 module.exports = {
-  AGENT_CONFIGS,
-  B1A_AGENT_IDS,
   MAX_PID,
   WINDOWS_PROCESS_CHAIN_MODES,
   WINDOWS_PROCESS_CHAIN_VERSION,
@@ -290,6 +281,7 @@ module.exports = {
   createServerWindowsProcessMetadataResolver,
   getB1aAgentConfig,
   normalizeHookPidHeader,
+  listB1aAgentIds,
   normalizeInstanceGeneration,
   normalizeWindowsProcessChainMode,
   processMetadataForState,

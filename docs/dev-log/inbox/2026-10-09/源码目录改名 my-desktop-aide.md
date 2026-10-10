@@ -17,7 +17,7 @@
 
 ## 改动
 - bamboo-env（`87fbec9`）：
-	+ `profile.d/60-clawd-dev.zsh`：`CLAWD_DEV_DIR` → `$HOME/Public/unusebamboo/my-desktop-aide`
+	+ `profile.d/60-clawd-dev.zsh`（同日之后目录归类为 `profile/profile.d/`）：`CLAWD_DEV_DIR` → `$HOME/Public/unusebamboo/my-desktop-aide`
 	+ `bin/my-repo-sync`：`FORK_UPSTREAM` 删掉 `clawd-on-desk` 条目
 	+ `README.md`：`profile.d` 说明、origin 那行（该项目移出 fork 名单）
 	+ `omp/RULES.md`：dev-log 的 `.gitignore` 例外示例改指 `my-desktop-aide`
